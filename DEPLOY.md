@@ -158,7 +158,7 @@ Everything in Part A applies here too — same sequence, same scripts. This sect
 - `fail2ban` on SSH
 - Install Docker + Docker Compose v2
 
-Attach the growable block volume now, mount it somewhere like `/mnt/garage-data`, and point `garage/garage.toml`'s `data_dir` (and the `garage_data` volume mount in `docker-compose.yml`) at it — **not** the boot disk.
+Attach the growable block volume now, mount it, and set `GARAGE_DATA_HOST_PATH` in `.env` to that mount point (e.g. `/mnt/basecamp-data-1001` on DigitalOcean) — **not** the boot disk. `docker-compose.yml`'s `garage` service bind-mounts this directly rather than using a Docker-managed named volume, specifically so it's guaranteed to land on the attached volume and not silently default to the boot disk's Docker data root.
 
 ### B.3 Transfer the repo, run Part A's sequence
 

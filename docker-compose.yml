@@ -146,8 +146,13 @@ services:
     volumes:
       - ./garage/garage.toml:/etc/garage.toml:ro
       - garage_meta:/var/lib/garage/meta
-      # Mount this on a separate attached/growable volume, not the boot disk
-      - garage_data:/var/lib/garage/data
+      # A direct bind mount, not a named volume — GARAGE_DATA_HOST_PATH (.env)
+      # must point at a separately attached, independently growable block
+      # volume's mount point (e.g. /mnt/<your-volume-name>), never the boot
+      # disk. This is host-specific by nature (DigitalOcean/AWS/etc. all
+      # name attached volumes differently per instance), which is exactly
+      # why it's an env var here instead of hardcoded.
+      - ${GARAGE_DATA_HOST_PATH}:/var/lib/garage/data
     networks: [internal]
 
   meta:
@@ -198,4 +203,3 @@ networks:
 volumes:
   db_data:
   garage_meta:
-  garage_data:

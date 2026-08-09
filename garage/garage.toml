@@ -1,0 +1,30 @@
+# Garage config — self-hosted S3-compatible object storage for Basecamp.
+# See NOTE.md for the reasoning: primary storage is self-hosted here, on an
+# attached volume that can be grown independently of the VPS boot disk.
+# Encrypted backups sync from here to an external service (R2/B2) — that
+# external copy is backup-only, never live storage.
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+
+db_engine = "sqlite"
+
+replication_mode = "none"  # single node; see NOTE.md — durability is the
+                            # tradeoff of self-hosting, mitigated by the
+                            # offsite encrypted backup, not by replication
+
+rpc_bind_addr = "0.0.0.0:3901"
+rpc_secret = "REPLACE_VIA_ENV_AT_DEPLOY"  # actually injected via GARAGE_RPC_SECRET
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "0.0.0.0:3900"
+root_domain = ".s3.basecamp.internal"
+
+[s3_web]
+bind_addr = "0.0.0.0:3902"
+root_domain = ".web.basecamp.internal"
+index = "index.html"
+
+[admin]
+api_bind_addr = "0.0.0.0:3903"

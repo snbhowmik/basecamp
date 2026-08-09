@@ -1,0 +1,201 @@
+version: "3.8"
+
+# Basecamp v1.0.0 — self-hosted stack
+#
+# Layers:
+#   kong           — API gateway, routes /auth, /rest, /storage, /realtime
+#   auth (GoTrue)  — signup, login, MFA (TOTP), JWTs, aal1/aal2
+#   rest(PostgREST)— auto-generated REST API over the Postgres schema, RLS-enforced
+#   realtime       — live subscriptions (request status changes, notifications)
+#   storage-api    — file metadata + signed URLs, backed by Garage (S3-compatible)
+#   db (Postgres)  — the actual database, RLS is the real authorization boundary
+#   studio         — admin DB browser, INTERNAL ONLY — never expose publicly
+#   garage         — self-hosted S3-compatible object storage, on an attached volume
+#
+# Nothing here is exposed publicly except through Cloudflare in front of Kong.
+# Postgres, Garage, and Studio are internal-network only.
+
+services:
+  db:
+    image: supabase/postgres:15.1.0.147
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # NOT auto-applying supabase/migrations here. This image's own
+      # docker-entrypoint-initdb.d scripts create the anon/authenticated/
+      # authenticator/supabase_* roles at first boot, and 0001_schema.sql
+      # creates a trigger on auth.mfa_factors — a table that doesn't exist
+      # until the `auth` (GoTrue) container has started once and run its own
+      # internal migrations. Mounting our SQL here runs it before GoTrue has
+      # ever started, so that CREATE TRIGGER fails, and because Postgres's
+      # init entrypoint runs each file with ON_ERROR_STOP=1, that failure
+      # aborts the whole init sequence — including this image's own
+      # role-creation scripts, which is why authenticator/etc end up with no
+      # password. Apply supabase/migrations/*.sql manually, in order, AFTER
+      # `auth` reports healthy — see README.md "Running It".
+    networks: [internal]
+    # No published ports — internal network only
+
+  auth:
+    image: supabase/gotrue:v2.150.0
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      # Unlike the rest of GoTrue's config, this one key is read without the
+      # GOTRUE_ prefix (confirmed against the v2.150.0 binary's envconfig
+      # tags) — matches the official supabase-docker reference compose file.
+      API_EXTERNAL_URL: ${SITE_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_DISABLE_SIGNUP: "false"
+      # Without this, new users' `role`/JWT role claim come back as an empty
+      # string instead of "authenticated" — PostgREST then tries to
+      # `SET ROLE ""` and every request 400s. Deprecation-warned in this
+      # version's logs but still required for it to actually work.
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_AUD: authenticated
+      # Email/password only — no OAuth providers
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      # Real SMTP (e.g. self-hosted Mailcow on your own domain) — email
+      # confirmation is required, not stubbed. See .env.example for what to
+      # fill in. GOTRUE_MAILER_AUTOCONFIRM must stay "false" once SMTP_HOST
+      # is actually set — true would silently skip confirmation entirely.
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+      # MFA — TOTP enabled, enforcement happens via RLS has_mfa() + app-side redirect,
+      # not a GoTrue-level force (GoTrue makes it available; the app makes it mandatory)
+      GOTRUE_MFA_ENABLED: "true"
+    networks: [internal]
+
+  rest:
+    image: postgrest/postgrest:v12.0.2
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+    networks: [internal]
+
+  realtime:
+    image: supabase/realtime:v2.28.0
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      # Both required by the Elixir/Phoenix app underneath this image, not
+      # optional despite not being documented alongside the DB_* vars.
+      SECRET_KEY_BASE: ${REALTIME_SECRET_KEY_BASE}
+      DB_ENC_KEY: ${REALTIME_DB_ENC_KEY}
+      ERL_AFLAGS: "-proto_dist inet_tcp"
+      # This image's runtime.exs literally checks FLY_APP_NAME (hardcoded for
+      # Fly.io deploys upstream) and raises if it's unset — not a Fly-specific
+      # deployment concern for us, just has to be present with any value.
+      FLY_APP_NAME: basecamp_realtime
+      PORT: 4000
+    networks: [internal]
+
+  storage:
+    image: supabase/storage-api:v1.0.6
+    restart: unless-stopped
+    depends_on: [db, garage]
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      JWT_SECRET: ${JWT_SECRET}
+      # storage-api reads this under its inherited postgrest-client naming,
+      # not JWT_SECRET, despite being the same value.
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      # Points at Garage instead of local disk — see NOTE.md
+      STORAGE_BACKEND: s3
+      GLOBAL_S3_BUCKET: basecamp-files
+      REGION: garage
+      S3_FORCE_PATH_STYLE: "true"
+      S3_ENDPOINT: http://garage:3900
+      S3_PROTOCOL_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY}
+      S3_PROTOCOL_ACCESS_KEY_SECRET: ${GARAGE_SECRET_KEY}
+    networks: [internal]
+
+  garage:
+    image: dxflrs/garage:v1.0.1
+    restart: unless-stopped
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      # Mount this on a separate attached/growable volume, not the boot disk
+      - garage_data:/var/lib/garage/data
+    networks: [internal]
+
+  meta:
+    image: supabase/postgres-meta:v0.75.0
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    networks: [internal]
+
+  studio:
+    image: supabase/studio:20240422-5cf8f30
+    restart: unless-stopped
+    depends_on: [db, rest, meta]
+    environment:
+      SUPABASE_URL: http://kong:8000
+      STUDIO_PG_META_URL: http://meta:8080
+      DEFAULT_ORGANIZATION_NAME: Basecamp
+      DEFAULT_PROJECT_NAME: basecamp
+    networks: [internal]
+    # Deliberately no published port — reach via SSH tunnel only, never public
+
+  kong:
+    image: kong:3.4
+    restart: unless-stopped
+    depends_on: [auth, rest, realtime, storage]
+    volumes:
+      - ./kong.yml:/etc/kong/kong.yml:ro
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+    ports:
+      # This is the ONLY port that should ever be reachable — and only via
+      # Cloudflare in front of it, not directly from the internet.
+      - "127.0.0.1:8000:8000"
+    networks: [internal]
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  db_data:
+  garage_meta:
+  garage_data:

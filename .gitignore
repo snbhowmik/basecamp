@@ -1,0 +1,9 @@
+# Never commit real secrets — see .env.example
+.env
+.env.local
+*.local
+
+node_modules
+dist
+
+.claude/

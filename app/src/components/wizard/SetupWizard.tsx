@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react';
-import { Plus, X, ShieldCheck, Check } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Plus, X, ShieldCheck, Check, MailCheck } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
+import { supabase } from '../../lib/supabase';
 import {
   createCaptainAccount,
   enrollTotp,
@@ -36,6 +37,10 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [captainUser, setCaptainUser] = useState<User | null>(null);
+  // True once signUp() succeeds but returns no session — GOTRUE_MAILER_AUTOCONFIRM
+  // is "false" in any real deployment, so signup requires the captain to click
+  // the email confirmation link before a session (and MFA enrollment) exists.
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   // Step 2 — MFA
   const [factorId, setFactorId] = useState<string | null>(null);
@@ -70,6 +75,41 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     }
   };
 
+  // Called once a session actually exists for the captain — either right
+  // after signUp() (autoconfirm on, local dev) or once they've clicked the
+  // email confirmation link and come back (real deployment). Resumes at
+  // step 2, or skips ahead to step 3 if MFA was already completed in an
+  // earlier attempt.
+  const resumeFromSession = async (user: User) => {
+    setCaptainUser(user);
+    setAwaitingConfirmation(false);
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.currentLevel === 'aal2') {
+      setStep(3);
+      return;
+    }
+    const enrolled = await enrollTotp();
+    setFactorId(enrolled.id);
+    setQrCode(enrolled.totp.qr_code);
+    setSecret(enrolled.totp.secret);
+    setStep(2);
+  };
+
+  // Confirming via the emailed link lands the captain back on this same
+  // origin with tokens in the URL — supabase-js picks that up automatically
+  // and fires SIGNED_IN here (same tab, or another tab sharing localStorage).
+  // This is what actually resumes the wizard in production; the manual
+  // "I've confirmed" button below is a fallback for when it doesn't fire.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user && awaitingConfirmation) {
+        run(() => resumeFromSession(session.user));
+      }
+    });
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingConfirmation]);
+
   const handleCreateCaptain = (e: FormEvent) => {
     e.preventDefault();
     if (password.length < 8) {
@@ -78,12 +118,20 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     }
     run(async () => {
       const user = await createCaptainAccount(fullName, email, password);
-      setCaptainUser(user);
-      const enrolled = await enrollTotp();
-      setFactorId(enrolled.id);
-      setQrCode(enrolled.totp.qr_code);
-      setSecret(enrolled.totp.secret);
-      setStep(2);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setAwaitingConfirmation(true);
+        return;
+      }
+      await resumeFromSession(user);
+    });
+  };
+
+  const handleCheckConfirmed = () => {
+    run(async () => {
+      const { data, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInErr) throw new Error("Not confirmed yet — check your email and click the link, then try again.");
+      await resumeFromSession(data.user);
     });
   };
 
@@ -172,7 +220,32 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
           </div>
         )}
 
-        {step === 1 && (
+        {step === 1 && awaitingConfirmation && (
+          <div>
+            <div className="wizard-body">
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <MailCheck size={48} color="var(--primary)" />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <h1 className="page-title">Check your email</h1>
+                <p className="page-subtitle">
+                  We sent a confirmation link to <strong>{email}</strong>. Click it, then come back here —
+                  this page will continue automatically. If it doesn't, use the button below.
+                </p>
+              </div>
+            </div>
+            <div className="wizard-footer">
+              <button className="btn btn-secondary" onClick={() => setAwaitingConfirmation(false)} disabled={submitting}>
+                Back
+              </button>
+              <button className="btn btn-primary" onClick={handleCheckConfirmed} disabled={submitting}>
+                {submitting ? 'Checking...' : "I've confirmed — continue"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 1 && !awaitingConfirmation && (
           <form onSubmit={handleCreateCaptain}>
             <div className="wizard-body">
               <div>

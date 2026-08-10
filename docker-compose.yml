@@ -50,9 +50,16 @@ services:
       # Unlike the rest of GoTrue's config, this one key is read without the
       # GOTRUE_ prefix (confirmed against the v2.150.0 binary's envconfig
       # tags) — matches the official supabase-docker reference compose file.
-      API_EXTERNAL_URL: ${SITE_URL}
+      # Must include /auth/v1 — GoTrue uses this as the base URL when
+      # generating confirmation/recovery links (e.g. ".../verify?token=...").
+      # Without it, links point at the bare domain, which Kong doesn't route
+      # anywhere (it only proxies /auth/v1/*) — confirmed live, the link 404s
+      # against the frontend's catch-all route instead of ever reaching auth.
+      API_EXTERNAL_URL: ${SITE_URL}/auth/v1
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      # Deliberately NOT /auth/v1 — this is where GoTrue sends the user back
+      # to (redirect_to) after confirming, i.e. the actual frontend.
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_JWT_SECRET: ${JWT_SECRET}
       GOTRUE_JWT_EXP: 3600

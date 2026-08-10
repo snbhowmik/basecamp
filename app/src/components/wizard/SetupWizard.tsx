@@ -135,6 +135,25 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     });
   };
 
+  // The confirmation email includes a 6-digit code as an alternative to the
+  // link — verifying it directly is more robust than depending on the
+  // link's redirect routing (external URL/proxy config) being exactly
+  // right, and confirms + signs in in one step.
+  const [confirmCode, setConfirmCode] = useState('');
+  const handleVerifyConfirmCode = (e: FormEvent) => {
+    e.preventDefault();
+    run(async () => {
+      const { data, error: verifyErr } = await supabase.auth.verifyOtp({
+        email,
+        token: confirmCode,
+        type: 'signup',
+      });
+      if (verifyErr) throw verifyErr;
+      if (!data.user) throw new Error('Verification did not return a user.');
+      await resumeFromSession(data.user);
+    });
+  };
+
   const handleVerifyTotp = (e: FormEvent) => {
     e.preventDefault();
     if (!factorId) return;
@@ -221,7 +240,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
         )}
 
         {step === 1 && awaitingConfirmation && (
-          <div>
+          <form onSubmit={handleVerifyConfirmCode}>
             <div className="wizard-body">
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <MailCheck size={48} color="var(--primary)" />
@@ -229,20 +248,38 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
               <div style={{ textAlign: 'center' }}>
                 <h1 className="page-title">Check your email</h1>
                 <p className="page-subtitle">
-                  We sent a confirmation link to <strong>{email}</strong>. Click it, then come back here —
-                  this page will continue automatically. If it doesn't, use the button below.
+                  We sent a confirmation link to <strong>{email}</strong> — clicking it will bring you
+                  back here automatically. Or enter the 6-digit code from the same email below.
                 </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">6-digit confirmation code</label>
+                <input
+                  className="form-input"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  value={confirmCode}
+                  onChange={(e) => setConfirmCode(e.target.value)}
+                  placeholder="000000"
+                  autoFocus
+                />
               </div>
             </div>
             <div className="wizard-footer">
-              <button className="btn btn-secondary" onClick={() => setAwaitingConfirmation(false)} disabled={submitting}>
+              <button type="button" className="btn btn-secondary" onClick={() => setAwaitingConfirmation(false)} disabled={submitting}>
                 Back
               </button>
-              <button className="btn btn-primary" onClick={handleCheckConfirmed} disabled={submitting}>
-                {submitting ? 'Checking...' : "I've confirmed — continue"}
-              </button>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={handleCheckConfirmed} disabled={submitting}>
+                  {submitting ? 'Checking...' : "I clicked the link"}
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={submitting || confirmCode.length !== 6}>
+                  {submitting ? 'Verifying...' : 'Verify code'}
+                </button>
+              </div>
             </div>
-          </div>
+          </form>
         )}
 
         {step === 1 && !awaitingConfirmation && (

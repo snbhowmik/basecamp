@@ -196,6 +196,17 @@ services:
       - "127.0.0.1:8000:8000"
     networks: [internal]
 
+  frontend:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      # Static build output only — `npm run build` inside app/, not something
+      # this container does itself. Served through Kong (see kong.yml's
+      # catch-all route), never a published port of its own — same
+      # single-entry-point rule as everything else here.
+      - ./app/dist:/usr/share/nginx/html:ro
+    networks: [internal]
+
 networks:
   internal:
     driver: bridge

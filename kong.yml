@@ -10,14 +10,13 @@ _transform: true
 # Without this, the browser blocks every cross-origin request the frontend
 # makes to Kong (curl/server-to-server calls don't enforce CORS, so this is
 # easy to miss testing with curl alone — it only bites in an actual browser).
-# origins: "*" for now since the frontend's real origin isn't fixed yet
-# (local dev port, eventual production domain) — tighten to the real
-# deployed origin once that's fixed, per SECURITY.md.
+# Locked to the real production origin — was "*" during local dev/testing,
+# tightened once the deployed domain was fixed, per SECURITY.md.
 plugins:
   - name: cors
     config:
       origins:
-        - "*"
+        - "https://basecamp.hackerxploit.org"
       methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
       headers:
         [
@@ -65,3 +64,13 @@ services:
         strip_path: true
         paths:
           - /storage/v1
+
+  # Catch-all — the built SPA. Kong's router matches the more specific
+  # /auth/v1, /rest/v1, /realtime/v1, /storage/v1 prefixes above first
+  # regardless of declaration order, so this only catches everything else.
+  - name: frontend
+    url: http://frontend:80
+    routes:
+      - name: frontend-route
+        paths:
+          - /

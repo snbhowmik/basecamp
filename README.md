@@ -159,3 +159,140 @@ at this scale, not an oversight. It means the encrypted offsite backup
 the only thing standing between a disk failure and losing every student's
 certificates. **Test the restore path before this goes anywhere near real
 data.** See SECURITY.md.
+
+---
+
+## V2 — Planned Extensions (design notes, not yet built)
+
+Captured here as the operator described it directly, before implementation
+starts. Nothing below is built yet — this is the brief, not a changelog.
+**Load-bearing constraint, stated explicitly by the operator: this is a
+ticketing platform, not a single-institution script — departments, batches,
+tags, and levels must stay admin-configurable and extensible, never baked
+into code or migrations as fixed values.** Every part of this design has to
+honor that or it's wrong.
+
+### Two signup paths, not one
+
+This refines the "invite-only once the captain exists" gate shipped in
+`0004_account_provisioning.sql` — that migration currently requires *every*
+signup to match a `pending_assignments` invite. V2 splits this in two:
+
+- **Public self-registration portal** — open to anyone on an allowed
+  domain, same as the original domain-restricted-signup model. **Creates
+  student accounts only, by default.** At signup, the student picks their
+  **department** and **batch** from dropdowns (see below) — this selection
+  UI appears *only* on this student-facing signup form, not anywhere else.
+- **Staff/faculty — invite-only, never through the public portal.** An
+  authorized inviter (Captain/Dean/HOD, per the existing rank-based
+  `can_invite()` rule) sends an invite; the invitee receives a unique URL
+  plus an OTP code in their inbox. Completing that flow runs them through
+  the *same onboarding the captain went through* — set password, mandatory
+  MFA enrollment — before they land in the app. This is the existing
+  `pending_assignments` mechanism from `0004`, just gated behind a
+  dedicated link+OTP rather than "sign up normally and get matched."
+
+Open question this raises, to resolve before building: does the public
+portal reuse `check_allowed_domain()`'s domain gate with the invite
+requirement dropped *only* for student-shaped signups, or does it need a
+distinct signup entry point entirely? Leaning toward the former (keeps one
+signup form, one code path) but worth deciding deliberately, not by default.
+
+### Departments and batches — extensible, not fixed
+
+Initial departments (captain can add more at any time, same as today's
+department model):
+
+- Computer Science and Engineering (CSE)
+- Computer Science and Engineering — Cyber Security (CSE-CS)
+- Computer Science and Engineering — Artificial Intelligence and Machine
+  Learning (CSE-AIML)
+- Computer Science and Engineering — BioTech (CSE-BT)
+
+**Classes are batches**, not sections — a class is one department's intake
+year-range (e.g. "CSE 2023–2027", "CSE-CS 2024–2028"), matching the
+existing `classes(name, year, department_id)` shape reasonably well
+already. Captain can add new batches as new intakes start (2026 batch and
+onward) — this must stay data, never a hardcoded year list.
+
+### Staff/faculty account page
+
+Every account (not just the captain) gets an **Account** page — profile
+details, and critically, a way to **regenerate/reset their TOTP MFA
+enrollment** if they lose their authenticator (currently there is no
+recovery path from a lost authenticator at all — a real gap for anyone
+past the captain).
+
+### Navigation, by who's signed in
+
+- **Captain:** Workflow, Dashboard, Invite, Account Overview — more to
+  come as the platform grows. Captain's dashboard surfaces "important
+  users" by default (exact definition of "important" — recent signups?
+  pending approvals awaiting the captain specifically? — still open).
+- **Everyone else:** Dashboard, Request, Account (profile + MFA
+  reset/regenerate).
+
+### Open questions for this phase (operator invited these — real app, ask rather than assume)
+
+1. Public signup path: reuse the domain-check trigger with a student-only
+   carve-out, or a genuinely separate entry point?
+2. "Important users" on the captain's default dashboard — what makes a
+   user surface there?
+3. Batch naming convention — is `"2023-2027"` the canonical `classes.name`,
+   or is year-range derived from `classes.year` + a fixed program length
+   (4 years) and displayed, not stored as a string?
+4. Staff invite link — a dedicated one-time-token route (e.g.
+   `/invite/<token>`), or the OTP-to-inbox flow alone, with no separate
+   token in the URL at all?
+5. "Workflow" page (captain nav) — is this category/routing configuration
+   (request types, first-hop pickers — PRD §8–9), or something else?
+
+---
+
+## How This Actually Got Deployed — Context for Future Sessions (Human or AI)
+
+This section exists so a fresh session — human or AI — picking this repo
+back up doesn't have to rediscover what already went wrong once. Full
+detail lives in **DEPLOY.md** (the runbook) and **NOTE.md** (dated,
+one-entry-per-incident log); this is the condensed narrative.
+
+**What was built, in order:** the schema and RLS (`0001`–`0003`), a Vite/
+React frontend (`app/`) with a first-boot setup wizard, then cascading
+account provisioning (`0004`) — all designed and reviewed before ever
+touching a live server.
+
+**Then it was actually run against a real docker-compose stack**, not just
+read for correctness — and that surfaced a chain of real, non-obvious
+infrastructure bugs that code review alone would never have caught:
+migration ordering versus GoTrue's own internal migrations, Postgres role
+passwords the base image never sets, `postgres` not being `SUPERUSER` in
+this image (`supabase_admin` is), an RLS `SELECT` policy silently blocking
+an `INSERT ... RETURNING`, `SECURITY DEFINER` functions needing a pinned
+`search_path` when triggered from a different role's session, GoTrue
+issuing an empty JWT role claim without two specific env vars, and no CORS
+plugin in Kong (invisible to `curl`, fatal in a real browser). Every one of
+these is a dated entry in NOTE.md with its actual fix.
+
+**Then it was deployed for real** — a DigitalOcean VPS, Cloudflare Tunnel
+(no inbound port open at all beyond SSH), self-hosted Mailcow for SMTP,
+Garage for object storage with a real bucket/key provisioned. That surfaced
+a second wave of issues, this time from things you only see once DNS,
+email, and a real browser are all in the loop simultaneously: GoTrue's
+`API_EXTERNAL_URL` needing the `/auth/v1` suffix (confirmation links 404'd
+without it — fixed by also adding direct OTP-code entry as a
+link-independent fallback), a duplicate Kong route from a git-sync mixup,
+and — twice — the Postgres role passwords drifting out of sync with `.env`
+after the database was reset, which was eventually traced to leftover
+inconsistent state from the very first crash-looping attempts rather than
+anything wrong with the reset procedure itself; the fix both times was a
+full clean volume wipe and a from-scratch, every-step-verified rebuild
+rather than another targeted patch.
+
+**The operating principle that made this tractable:** verify against the
+real running system at every step — `docker compose logs`, actual `curl`
+calls against the public domain, pasted terminal output — rather than
+trusting "that should work now." Several of the bugs above produced a
+plausible, individually-fixable-looking error that turned out to have a
+different real cause underneath once actually checked. A future session
+should keep doing this: prefer running the thing and reading the real
+error over reasoning from what the code *should* do.

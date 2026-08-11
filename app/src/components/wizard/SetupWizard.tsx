@@ -321,13 +321,27 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
               </div>
               {qrCode && (
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <div dangerouslySetInnerHTML={{ __html: qrCode }} style={{ width: 200, height: 200 }} />
+                  <div style={{ padding: '1rem', background: 'white', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <img src={qrCode} alt="Scan with your authenticator app" width={180} height={180} />
+                  </div>
                 </div>
               )}
               {secret && (
                 <div className="form-group">
                   <label className="form-label">Can't scan? Enter this key manually</label>
-                  <code style={{ fontSize: '0.9rem', wordBreak: 'break-all' }}>{secret}</code>
+                  <code
+                    style={{
+                      fontSize: '0.9rem',
+                      wordBreak: 'break-all',
+                      background: 'var(--bg-color)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '0.75rem 1rem',
+                      display: 'block',
+                    }}
+                  >
+                    {secret}
+                  </code>
                 </div>
               )}
               <div className="form-group">
@@ -341,6 +355,8 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
                   value={totpCode}
                   onChange={(e) => setTotpCode(e.target.value)}
                   placeholder="000000"
+                  autoFocus
+                  style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.5rem', fontWeight: 600 }}
                 />
               </div>
             </div>

@@ -1,6 +1,6 @@
 # TASK — Build Tracker
 **Basecamp v1.0.0**
-**Last Updated:** 2026-08-09
+**Last Updated:** 2026-08-10
 
 > This tracks the actual repository, not a theoretical plan. "Done" means it's in `supabase/migrations/`, `docker-compose.yml`, or another real file — not that it's been designed in a doc somewhere.
 
@@ -28,6 +28,17 @@
 - [x] Attachments: `request_attachments` with `purge_after` column
 - [x] `dashboard_grants`
 - [x] `student_activity_summary` view
+
+### Cascading Account Provisioning (`0004_account_provisioning.sql`)
+- [x] `pending_assignments` — an invite: level/tags/department/class declared for an email, nothing auth-visible until they actually sign up
+- [x] `can_invite(level, department)` — rank comparison + department-tag membership, not hardcoded role names; admin always allowed
+- [x] `apply_pending_assignment()` trigger on `profiles` insert — grants the declared level/tags, creates `student_profiles` for student-shaped invites, marks the invite consumed
+- [x] `check_allowed_domain()` extended — signup now requires a live invite once bootstrapping is over, not just an allowed domain (closed the "anyone on the domain can self-register with zero role" gap)
+- [x] `hod`/`mentor`/`dean`/`student_outreach` tags ensured to exist (idempotent) — `hod`/`mentor` are structural, referenced by exact code in `is_hod_of()`/`is_mentor_of()`
+- [x] `app/src/components/admin/InvitePanel.tsx` — invite form + sent-invites list, wired into the dashboard shell
+- [!] Not yet live-tested against a running instance the way the wizard was (see TASK.md's own convention — flag, don't pretend). Verify the full loop (Dean invited → signs up → gets HOD tag automatically) before trusting it with a real department.
+- [ ] Resend / edit-in-place for a pending invite (currently: revoke and recreate)
+- [ ] Role-aware dashboard nav — right now every signed-in user sees the same invite panel regardless of whether `can_invite()` would ever let them invite anyone
 
 ### Wizard Config Table RLS (`0003_wizard_rls.sql`)
 - [x] `is_bootstrapping()` — the bootstrap predicate: true until anyone holds the `admin` tag

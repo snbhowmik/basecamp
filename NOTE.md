@@ -1,6 +1,6 @@
 # NOTE — Decisions, Hurdles & Gotchas
 **Basecamp v1.0.0**
-**Last Updated:** 2026-08-09
+**Last Updated:** 2026-08-10
 
 > Earlier notes about Keycloak, the custom authorization engine, and the Cloudflare Worker BFF are retired — none of that exists anymore. What's below is current.
 
@@ -255,6 +255,19 @@ As written, any non-student can read any other user's stored signature image dir
 **`is_base_level()` assumes the highest `rank` value always means "student" — this breaks if the hierarchy shape changes**
 
 Every policy distinguishing student from staff calls `is_base_level()`, which compares the caller's rank to `max(rank)` in `priority_levels`. This holds for the seeded 5-level structure. If an org later inserts a level below Student — or restructures ranks in a way that changes what "highest number" means — every policy relying on this function silently reinterprets who counts as a student. Needs a test that fails loudly on that condition rather than assuming the shape never changes. Logged as SECURITY.md R-27.
+
+---
+
+### [2026-08-10] [DECIDED] [MODEL]
+**Cascading account creation is invite-by-email, not admin-set-password — the architecture has no backend to do the latter safely**
+
+Confirmed directly: "Dean creates HOD, HOD creates Mentor/Student" needed a real mechanism, and the obvious one — an admin directly creating another user's account via `supabase.auth.admin.createUser()` — requires the `service_role` key, which must never reach the frontend (SECURITY.md R-12, a critical-risk item, not a style preference). This architecture deliberately has no BFF/custom backend to hold that key server-side either (ARCH.md §2: "No Worker, no BFF").
+
+Landed on pre-provisioned invites instead (`0004_account_provisioning.sql`): an authorized person declares "this email becomes an HOD of dept X" as a `pending_assignments` row — no auth user, no password, nothing GoTrue-visible. The invitee later signs up through the exact same self-service flow the captain used (email+password+MFA), and a trigger on `profiles` insert matches their email and grants the declared level/tags automatically. Fully server-side via `SECURITY DEFINER`, no client ever touches an elevated key, no bootstrap-style RLS window needed the way the wizard needed one.
+
+Who can invite whom is rank-based (`can_invite()`: inviter must outrank the target level, and if department-scoped, must hold that department's tag) rather than hardcoded to "Dean" or "HOD" by name — consistent with priority levels not being fixed roles (PRD §6.1).
+
+**Side effect, deliberate:** signup is no longer open-to-anyone-on-the-domain once the captain exists. `check_allowed_domain()` now also requires a live, unconsumed invite. Previously anyone on an allowed domain could self-register with zero level/tags — that gap is closed as part of this change, not left as a known issue.
 
 ---
 

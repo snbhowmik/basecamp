@@ -5,6 +5,7 @@ import { isSetupComplete } from './lib/wizard';
 import { getCurrentProfile, signOut } from './lib/auth';
 import SetupWizard from './components/wizard/SetupWizard';
 import LoginForm from './components/auth/LoginForm';
+import InvitePanel from './components/admin/InvitePanel';
 
 function App() {
   const [view, setView] = useState<AppView>('loading');
@@ -67,12 +68,13 @@ function App() {
           <div className="page-header">
             <div>
               <h1 className="page-title">Welcome, {profile.full_name}</h1>
-              <p className="page-subtitle">Setup is complete. Request flows are the next build phase.</p>
+              <p className="page-subtitle">
+                Invite people into the org below — Dean, HOD, Mentor, Student, whatever you're entitled to.
+                Request flows are the next build phase.
+              </p>
             </div>
           </div>
-          <div className="empty-state card">
-            <p>Nothing to show yet — this is where request categories and dashboards will live.</p>
-          </div>
+          <InvitePanel />
         </main>
       </div>
     );

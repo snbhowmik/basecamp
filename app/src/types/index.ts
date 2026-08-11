@@ -43,6 +43,32 @@ export interface AllowedLoginDomain {
   is_active: boolean;
 }
 
+export interface Class {
+  id: string;
+  name: string;
+  year: number;
+  department_id: string;
+  tag_id: string | null;
+  is_active: boolean;
+}
+
+// Mirrors 0004_account_provisioning.sql. An invite: the target account
+// doesn't exist yet — it's granted the declared level/tags automatically
+// the moment that email signs up through the normal self-service flow.
+export interface PendingAssignment {
+  id: string;
+  email: string;
+  level_id: string;
+  tag_codes: string[];
+  department_id: string | null;
+  class_id: string | null;
+  reg_no: string | null;
+  year: number | null;
+  invited_by: string;
+  created_at: string;
+  consumed_at: string | null;
+}
+
 export type DecisionMode = 'approval' | 'log_only';
 
 export type RequestStatus =

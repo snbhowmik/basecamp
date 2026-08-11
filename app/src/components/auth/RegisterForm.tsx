@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { selfRegisterStudent } from '../../lib/invites';
+import {
+  selfRegisterStudent,
+  listPublicDepartments,
+  listPublicBatches,
+  type PublicOption,
+} from '../../lib/invites';
 import { enrollTotp, verifyTotp } from '../../lib/wizard';
-import { listDepartments, listClasses } from '../../lib/invites';
-import type { Department, Class } from '../../types';
 
 // Public student self-registration — see README.md's V2 notes and
 // 0005_public_registration.sql. Creates a base-level account only; staff
@@ -18,10 +21,11 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [regNo, setRegNo] = useState('');
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departments, setDepartments] = useState<PublicOption[]>([]);
   const [departmentId, setDepartmentId] = useState('');
-  const [classes, setClasses] = useState<Class[]>([]);
+  const [classes, setClasses] = useState<PublicOption[]>([]);
   const [classId, setClassId] = useState('');
+  const [catalogError, setCatalogError] = useState('');
 
   const [confirmCode, setConfirmCode] = useState('');
   const [factorId, setFactorId] = useState<string | null>(null);
@@ -30,7 +34,20 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
   const [totpCode, setTotpCode] = useState('');
 
   useEffect(() => {
-    listDepartments().then(setDepartments).catch(() => setDepartments([]));
+    listPublicDepartments()
+      .then((d) => {
+        setDepartments(d);
+        // An empty catalog is a real, actionable state — say so rather than
+        // rendering an empty dropdown, which is exactly what made the RLS
+        // bug behind this look like "nothing happened".
+        if (d.length === 0) {
+          setCatalogError('No departments have been set up yet. Ask your administrator to add them before registering.');
+        }
+      })
+      .catch((err) => {
+        setDepartments([]);
+        setCatalogError(err instanceof Error ? err.message : 'Could not load departments.');
+      });
   }, []);
 
   useEffect(() => {
@@ -39,7 +56,7 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
       setClassId('');
       return;
     }
-    listClasses(departmentId).then(setClasses).catch(() => setClasses([]));
+    listPublicBatches(departmentId).then(setClasses).catch(() => setClasses([]));
   }, [departmentId]);
 
   const run = async (fn: () => Promise<void>) => {
@@ -141,6 +158,9 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
           </div>
 
           {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
+          {step === 'form' && catalogError && (
+            <div className="alert alert-warning" style={{ marginBottom: '1rem' }}>{catalogError}</div>
+          )}
 
           {step === 'form' && (
             <form onSubmit={handleSubmit} className="auth-form">

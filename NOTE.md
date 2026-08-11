@@ -259,6 +259,17 @@ Every policy distinguishing student from staff calls `is_base_level()`, which co
 ---
 
 ### [2026-08-11] [BLOCKER] [RLS]
+**RLS denial returns an empty set, not an error — the public registration form's dropdowns were blank for exactly that reason**
+
+`0003_wizard_rls.sql` gates `departments`/`classes` reads behind `auth.uid() is not null`, which was correct when the only readers were signed-in users filling in an invite form. `0005` then added public student self-registration, where the registrant picks their department and batch *before* having an account. That page's queries were filtered to zero rows — no error, no failed request, no console warning. The dropdowns simply rendered empty and looked like the captain hadn't created any departments yet.
+
+**Resolution:** `list_public_departments()` / `list_public_batches()` in `0007_public_catalog.sql`, SECURITY DEFINER, granted to `anon`. Deliberately *not* opening the tables themselves to `anon`: the RPCs return `(id, name)` only, keeping `tag_id` invisible — that's the handle `is_hod_of()`/`is_mentor_of()` resolve scope through, and unauthenticated visitors have no business seeing the permission system's wiring. The names themselves aren't secret; minimal exposure is the point.
+
+**The pattern, now three for three:** every bug that has reached a real user in this project came from testing the authenticated/happy path and not the other one — the `/verify` link nobody clicked from a fresh tab, the CORS headers `curl` doesn't enforce, and now the anonymous read that returns `[]` instead of `403`. **When adding any pre-auth surface, exercise it signed out, in a real browser, before calling it done.** Also worth the habit: render "nothing configured yet" explicitly instead of an empty control, so the failure at least announces itself (done in `RegisterForm`).
+
+---
+
+### [2026-08-11] [BLOCKER] [RLS]
 **`request_field_values` shipped with no row security at all — found only while building the feature that uses it**
 
 0002 enabled RLS on "every user-data table" and 0003 covered the catalog tables, but `request_field_values` fell between the two lists and nobody noticed, because nothing had queried it yet. PostgREST exposes everything in `public`, so for five migrations any authenticated user could read and write every custom field value on every request in the system.

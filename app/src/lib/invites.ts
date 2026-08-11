@@ -96,6 +96,29 @@ export function inviteLink(token: string): string {
 // path as any other invite.
 // ------------------------------------------------------------------
 
+// Catalog reads for the PUBLIC registration form. These go through
+// SECURITY DEFINER RPCs rather than selecting from departments/classes
+// directly, because those tables' read policies require a session
+// (0003_wizard_rls.sql) and a self-registering student doesn't have one
+// yet — the direct select silently returns zero rows. See
+// 0007_public_catalog.sql.
+export interface PublicOption {
+  id: string;
+  name: string;
+}
+
+export async function listPublicDepartments(): Promise<PublicOption[]> {
+  const { data, error } = await supabase.rpc('list_public_departments');
+  if (error) throw error;
+  return (data ?? []) as PublicOption[];
+}
+
+export async function listPublicBatches(departmentId: string): Promise<PublicOption[]> {
+  const { data, error } = await supabase.rpc('list_public_batches', { p_department_id: departmentId });
+  if (error) throw error;
+  return (data ?? []) as PublicOption[];
+}
+
 export interface SelfRegisterInput {
   fullName: string;
   email: string;

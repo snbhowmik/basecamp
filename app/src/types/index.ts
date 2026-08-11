@@ -52,9 +52,10 @@ export interface Class {
   is_active: boolean;
 }
 
-// Mirrors 0004_account_provisioning.sql. An invite: the target account
-// doesn't exist yet — it's granted the declared level/tags automatically
-// the moment that email signs up through the normal self-service flow.
+// Mirrors 0004_account_provisioning.sql / 0005_public_registration.sql. An
+// invite: the target account doesn't exist yet — it's granted the declared
+// level/tags automatically the moment that email signs up (self-service
+// registration or the /invite/<token> link, both via the normal signup flow).
 export interface PendingAssignment {
   id: string;
   email: string;
@@ -64,7 +65,8 @@ export interface PendingAssignment {
   class_id: string | null;
   reg_no: string | null;
   year: number | null;
-  invited_by: string;
+  invited_by: string | null;
+  invite_token: string;
   created_at: string;
   consumed_at: string | null;
 }

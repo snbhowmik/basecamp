@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { UserPlus, X } from 'lucide-react';
+import { UserPlus, X, Copy, Check as CheckIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import {
   listPriorityLevels,
@@ -9,6 +9,7 @@ import {
   listMyInvites,
   createInvite,
   revokeInvite,
+  inviteLink,
 } from '../../lib/invites';
 import type { PriorityLevel, Tag, Department, Class, PendingAssignment } from '../../types';
 
@@ -35,6 +36,8 @@ export default function InvitePanel() {
   const [classId, setClassId] = useState('');
   const [regNo, setRegNo] = useState('');
   const [year, setYear] = useState('');
+  const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     load();
@@ -98,8 +101,10 @@ export default function InvitePanel() {
       return;
     }
     setSubmitting(true);
+    setLastInviteLink(null);
+    setLinkCopied(false);
     try {
-      await createInvite({
+      const created = await createInvite({
         email,
         levelId,
         tagCodes: selectedTagCodes,
@@ -108,7 +113,8 @@ export default function InvitePanel() {
         regNo: regNo.trim() || null,
         year: year ? Number(year) : null,
       });
-      setSuccess(`Invited ${email}. Their level/tags apply automatically the moment they sign up.`);
+      setSuccess(`Invited ${email}. Send them this link — no email is sent automatically yet (see NOTE.md).`);
+      setLastInviteLink(inviteLink(created.invite_token));
       resetForm();
       const inv = await listMyInvites();
       setInvites(inv);
@@ -148,6 +154,21 @@ export default function InvitePanel() {
 
         {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
         {success && <div className="alert alert-success" style={{ marginBottom: '1rem' }}>{success}</div>}
+        {lastInviteLink && (
+          <div className="repeatable-row" style={{ marginBottom: '1rem' }}>
+            <input className="form-input" readOnly value={lastInviteLink} onFocus={(e) => e.target.select()} />
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                navigator.clipboard.writeText(lastInviteLink);
+                setLinkCopied(true);
+              }}
+            >
+              {linkCopied ? <CheckIcon size={16} /> : <Copy size={16} />}
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="grid-cols-2">

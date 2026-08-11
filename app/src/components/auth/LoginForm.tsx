@@ -5,9 +5,10 @@ import { signIn } from '../../lib/auth';
 
 interface LoginFormProps {
   onLoggedIn: () => void;
+  onSwitchToRegister: () => void;
 }
 
-export default function LoginForm({ onLoggedIn }: LoginFormProps) {
+export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [totpCode, setTotpCode] = useState('');
@@ -74,8 +75,8 @@ export default function LoginForm({ onLoggedIn }: LoginFormProps) {
       <div className="auth-side">
         <div className="bg-pattern" />
         <div className="auth-side-content">
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1rem', lineHeight: 1.2 }}>
-            Basecamp
+          <h2 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', lineHeight: 1.2 }}>
+            SRMIST BaseCamp
           </h2>
           <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
             A request and ticketing platform, self-hosted and configured for your organisation.
@@ -119,6 +120,9 @@ export default function LoginForm({ onLoggedIn }: LoginFormProps) {
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? 'Signing in...' : 'Sign In'} <ArrowRight size={18} />
               </button>
+              <div className="auth-footer" style={{ marginTop: 0 }}>
+                Student? <span className="auth-link" onClick={onSwitchToRegister}>Register here</span>
+              </div>
             </form>
           ) : (
             <form onSubmit={handleTotpSubmit} className="auth-form">

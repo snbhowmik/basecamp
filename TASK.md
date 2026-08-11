@@ -1,6 +1,6 @@
 # TASK — Build Tracker
 **Basecamp v1.0.0**
-**Last Updated:** 2026-08-10
+**Last Updated:** 2026-08-11
 
 > This tracks the actual repository, not a theoretical plan. "Done" means it's in `supabase/migrations/`, `docker-compose.yml`, or another real file — not that it's been designed in a doc somewhere.
 
@@ -36,9 +36,22 @@
 - [x] `check_allowed_domain()` extended — signup now requires a live invite once bootstrapping is over, not just an allowed domain (closed the "anyone on the domain can self-register with zero role" gap)
 - [x] `hod`/`mentor`/`dean`/`student_outreach` tags ensured to exist (idempotent) — `hod`/`mentor` are structural, referenced by exact code in `is_hod_of()`/`is_mentor_of()`
 - [x] `app/src/components/admin/InvitePanel.tsx` — invite form + sent-invites list, wired into the dashboard shell
-- [!] Not yet live-tested against a running instance the way the wizard was (see TASK.md's own convention — flag, don't pretend). Verify the full loop (Dean invited → signs up → gets HOD tag automatically) before trusting it with a real department.
 - [ ] Resend / edit-in-place for a pending invite (currently: revoke and recreate)
 - [ ] Role-aware dashboard nav — right now every signed-in user sees the same invite panel regardless of whether `can_invite()` would ever let them invite anyone
+
+### Public Registration + Staff Invite Links (`0005_public_registration.sql`) — V2, see README.md
+- [x] Public student self-registration (`RegisterForm.tsx`) — department + batch picker, creates a base-level `pending_assignments` row for itself (unauthenticated) immediately before `signUp()`, reusing 0004's trigger machinery unchanged
+- [x] `pending_assignments.invited_by` nullable — null means self-registered
+- [x] `pending_assignments.email` uniqueness narrowed to open (unconsumed) invites only — was a permanent lock, now allows re-inviting after expiry/revocation
+- [x] `invite_token` + `get_invite_by_token()` RPC — anon-callable, returns only the one matching unconsumed row's display fields, not the table
+- [x] `/invite/<token>` (`AcceptInvite.tsx`) — staff onboarding: account + mandatory MFA, no org-setup steps (those stay captain-only)
+- [x] `InvitePanel` shows the generated `/invite/<token>` link with a copy button after creating an invite
+- [x] `nginx/frontend.conf` — SPA fallback (`try_files ... /index.html`), without which a direct visit to `/register` or `/invite/<token>` 404s (same failure class as GoTrue's `/verify` link needing `/auth/v1`)
+- [!] **No automated email delivery of invite links yet.** GoTrue can send its own auth emails (confirmation, recovery) but has no generic "send this custom link" API reachable without the `service_role` key, which must never be in the frontend (SECURITY.md R-12). Right now the inviter copies the link and sends it themselves (Slack, email client, whatever). A real fix needs either a small server-side component using the existing `SMTP_*` creds directly (not GoTrue's admin API), or accepting manual sharing permanently. Not decided yet.
+- [!] Batch/class UI for the captain to actually create departments and batches doesn't exist yet — `RegisterForm`/`InvitePanel`'s department/batch dropdowns will be empty until something populates `departments`/`classes`. Needs an admin screen (or a fallback in the wizard) before this can be tested end-to-end with real data.
+- [ ] Role-aware nav (Workflow/Dashboard/Invite/Account for captain; Dashboard/Request/Account for everyone else) — captain nav restructuring per README's V2 notes, not started
+- [ ] Account page with TOTP reset/regenerate — no recovery path today if someone loses their authenticator, for anyone past the captain
+- [!] Known low-severity gap, documented in the migration: the self-registration insert has no identity check (can't — caller is unauthenticated), so someone could pre-create a bogus open invite for an email they don't own, blocking that person's real self-registration via the unique-open-email index until an admin deletes the stray row. Acceptable for a domain-restricted deployment; revisit if actually abused.
 
 ### Wizard Config Table RLS (`0003_wizard_rls.sql`)
 - [x] `is_bootstrapping()` — the bootstrap predicate: true until anyone holds the `admin` tag

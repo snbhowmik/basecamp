@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Plus, X, ShieldCheck, Check, MailCheck } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
@@ -95,20 +95,27 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     setStep(2);
   };
 
-  // Confirming via the emailed link lands the captain back on this same
-  // origin with tokens in the URL — supabase-js picks that up automatically
-  // and fires SIGNED_IN here (same tab, or another tab sharing localStorage).
-  // This is what actually resumes the wizard in production; the manual
-  // "I've confirmed" button below is a fallback for when it doesn't fire.
+  // Resumes automatically whenever a session already exists: confirming via
+  // the emailed link lands the captain back on this same origin with tokens
+  // in the URL (supabase-js parses that and fires SIGNED_IN), and a plain
+  // page reload mid-wizard fires INITIAL_SESSION for whatever's already in
+  // localStorage — without this, a reload would lose all component state
+  // and show Step 1 again even though the account already exists, and
+  // clicking through would try to sign up the same email a second time.
+  // resumedRef (not state) guards against acting twice — this effect's
+  // closure only runs once on mount, so a state-based guard would always
+  // see its initial value.
+  const resumedRef = useRef(false);
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user && awaitingConfirmation) {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && !resumedRef.current) {
+        resumedRef.current = true;
         run(() => resumeFromSession(session.user));
       }
     });
     return () => subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [awaitingConfirmation]);
+  }, []);
 
   const handleCreateCaptain = (e: FormEvent) => {
     e.preventDefault();

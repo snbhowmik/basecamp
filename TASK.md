@@ -53,6 +53,30 @@
 - [ ] Account page with TOTP reset/regenerate — no recovery path today if someone loses their authenticator, for anyone past the captain
 - [!] Known low-severity gap, documented in the migration: the self-registration insert has no identity check (can't — caller is unauthenticated), so someone could pre-create a bogus open invite for an email they don't own, blocking that person's real self-registration via the unique-open-email index until an admin deletes the stray row. Acceptable for a domain-restricted deployment; revisit if actually abused.
 
+### V2 — Request Flow, Org Config, Account Self-Service (`0006_requests_and_org.sql`)
+- [x] **RLS gap closed:** `request_field_values` had no row security at all — not in 0002's list, not in 0003's. PostgREST exposes it, so every custom field value on every request was readable and writable by any authenticated user. Now gated by `can_see_request()`. Logged as SECURITY.md R-28.
+- [x] `can_see_request(uuid)` — single definition of request visibility, mirroring `requests_visibility`, reused by the field-values policies instead of duplicating the join
+- [x] `add_mandatory_watchers()` re-declared with `set search_path = public` — it was SECURITY DEFINER without one, the same shape as the bug in NOTE.md's 2026-08-09 entry (it worked only because of where it happened to be called from)
+- [x] `list_first_hop_candidates()` — resolves a category's picker options to real people by tag, scoped to the requester's own department so a student can't route into another department
+- [x] `search_forward_targets()` — search-and-forward (PRD §9.2), deliberately unrestricted across staff, excludes base-level users as targets
+- [x] `create_and_submit_request()` / `decide_request()` / `forward_request()` — atomic RPCs. `decide_request` writes the `signatures` row with a server-computed `state_hash`; log-only categories are acknowledged without a signature, per PRD §14.4
+- [x] `create_department()` / `create_batch()` — each creates the scope tag *and* the row pointing at it in one transaction; two client-side inserts would orphan the tag on partial failure, and that tag is what `is_hod_of()`/`is_mentor_of()` resolve through
+- [x] Explicit `grant execute` for `my_rank()`/`is_base_level()` — now called from the browser, not just from inside policies
+
+### V2 — Frontend (`app/src/components/{layout,pages}/`)
+- [x] `AppShell` — top bar, role-aware tabs, user menu. Captain: Dashboard / Workflow / Invite / Accounts. Everyone else: Dashboard / Requests / (Invite if staff) / Account
+- [x] `DashboardPage` — captain sees org counts + the staff roster ("important users"); everyone else sees their own request stats and what's on their desk
+- [x] `RequestsPage` — filterable list (on my desk / raised by me / all visible), new-request modal with category + first-hop picker, detail modal with approve / reject / request-changes / forward, activity timeline, and public/internal comments
+- [x] `WorkflowPage` — departments, batches, request types, category tree, and per-category first-hop routing options. All data, no deploys
+- [x] `AccountsPage` — captain's roster of every account, with MFA enrollment status
+- [x] `AccountPage` — profile edit, password change, and **authenticator replacement** (enroll new → verify → unenroll old, in that order, so a mistyped code can't leave the account with no factor)
+- [x] Design system rebuilt around a service-desk console layout (persistent top bar, stat cards, data tables), Inter, "SRMIST BaseCamp"
+- [!] **Not yet exercised end-to-end against a live instance.** Typechecks and builds clean, and the pre-auth screens were verified in a browser, but the authenticated pages need a real captain session plus at least one student and one staff account to prove the full loop (submit → route → approve). That is the next thing to do, not something to assume.
+- [!] Attachments on requests aren't wired up — `request_attachments` exists in the schema and the upload pipeline is still unbuilt (see Known Gaps), so the request form has no file field yet
+- [!] Custom fields (`field_definitions` / `request_field_values`) aren't surfaced in the request form — the tables and RLS are ready, the UI is V3
+- [ ] Account deactivation / re-leveling from the Accounts page (read-only today)
+- [ ] "Locked out, lost authenticator, can't sign in" recovery — the Account page only covers the still-signed-in case. A true reset needs `service_role`, i.e. a server-side component that doesn't exist yet
+
 ### Wizard Config Table RLS (`0003_wizard_rls.sql`)
 - [x] `is_bootstrapping()` — the bootstrap predicate: true until anyone holds the `admin` tag
 - [x] RLS enabled + forced on `priority_levels`, `tags`, `departments`, `classes`, `allowed_login_domains`, `request_types`, `request_categories`, `category_first_hop_options`, `field_definitions` — these had none in 0001/0002, a real gap closed after the wizard was built and tested

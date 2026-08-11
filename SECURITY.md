@@ -1,6 +1,6 @@
 # SECURITY — Threat Model & Risk Register
 **Basecamp v1.0.0**
-**Last Updated:** 2026-08-09
+**Last Updated:** 2026-08-11
 **Review Cadence:** monthly during build, quarterly in production
 
 > The previous version of this register was written for a custom Keycloak + hand-built authorization stack. Moving to self-hosted Supabase **removes** a large category of risk (a custom-built authz engine that has to be proven correct) and **adds** a smaller, more contained one (getting Supabase's own RLS/storage/MFA configuration right). This register reflects that shift.
@@ -81,6 +81,7 @@
 
 | ID | Threat | Vector | L | I | Score | Status | Mitigation |
 |---|---|---|---|---|---|---|---|
+| **R-28** | `request_field_values` had **no RLS at all** — every custom field value on every request readable and writable by any authenticated user | Table was missed by both 0002 (which covered the other request tables) and 0003 (which covered the catalog tables); PostgREST exposes anything in `public` | 3 | 4 | **12 🟠** | **Mitigated 2026-08-11** | Found while building the V2 request flow. RLS enabled + forced in `0006_requests_and_org.sql`, reads gated by `can_see_request()`, writes limited to the request's owner. **Lesson: "enable RLS on every user-data table" needs to be an enumerated checklist checked against `pg_tables`, not a list maintained by hand** — see test #12 below. |
 | **R-15** | Malicious file upload (polyglot, embedded payload) | Crafted certificate image/PDF | 3 | 4 | **12 🟠** | Open | Designed but **not yet implemented** — the re-encoding/sniffing pipeline described in ARCH.md §6.4 doesn't exist as code yet |
 | **R-16** | Storage cost/volume runaway | No per-user quota; someone uploads relentlessly | 2 | 3 | **6 🟡** | Open | Per-file size cap; per-user upload rate limit — not yet specified, needs a number |
 | **R-23** | Parent consent falsely recorded | Mentor marks consent verified without actually calling the parent | 3 | 4 | **12 🟠** | Accepted | This is now a trust-and-accountability control, not a document-forgery control — `parent_consent_verified_by` and `parent_consent_verified_at` create a named, timestamped record of who attested to the call, which is the same level of accountability a physical signature line offered, just without a document to physically forge |
@@ -135,6 +136,9 @@ Every one of these is an RLS policy, not an application-layer check layered on t
 | 9 | `is_hod_of()` / `is_mentor_of()` unit tests, positive and negative cases | All pass | 🔲 |
 | 10 | Backup restore to a clean host | Full recovery verified | 🔲 |
 | 11 | External port scan of the VPS | Only what Cloudflare needs is open | 🔲 |
+| 12 | Enumerate `pg_tables` in `public` and assert every one has `rowsecurity = true` | No table without RLS | 🔲 |
+| 13 | Student session calls `decide_request()` / `forward_request()` on someone else's request | Rejected — not the current holder | 🔲 |
+| 14 | `create_and_submit_request()` called with a forged requester | Impossible by construction — `requested_by` is `auth.uid()`, not a parameter | 🔲 |
 
 ---
 

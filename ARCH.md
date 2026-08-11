@@ -1,6 +1,6 @@
 # ARCH — Architecture & Data Design
 **Basecamp v1.0.0**
-**Last Updated:** 2026-08-09
+**Last Updated:** 2026-08-11
 
 > This document describes what's actually in `supabase/migrations/` and `docker-compose.yml` — not a target design. Where something here and the code disagree, the code is right and this needs updating.
 

@@ -1,6 +1,6 @@
 # NOTE — Decisions, Hurdles & Gotchas
 **Basecamp v1.0.0**
-**Last Updated:** 2026-08-10
+**Last Updated:** 2026-08-11
 
 > Earlier notes about Keycloak, the custom authorization engine, and the Cloudflare Worker BFF are retired — none of that exists anymore. What's below is current.
 
@@ -255,6 +255,28 @@ As written, any non-student can read any other user's stored signature image dir
 **`is_base_level()` assumes the highest `rank` value always means "student" — this breaks if the hierarchy shape changes**
 
 Every policy distinguishing student from staff calls `is_base_level()`, which compares the caller's rank to `max(rank)` in `priority_levels`. This holds for the seeded 5-level structure. If an org later inserts a level below Student — or restructures ranks in a way that changes what "highest number" means — every policy relying on this function silently reinterprets who counts as a student. Needs a test that fails loudly on that condition rather than assuming the shape never changes. Logged as SECURITY.md R-27.
+
+---
+
+### [2026-08-11] [BLOCKER] [RLS]
+**`request_field_values` shipped with no row security at all — found only while building the feature that uses it**
+
+0002 enabled RLS on "every user-data table" and 0003 covered the catalog tables, but `request_field_values` fell between the two lists and nobody noticed, because nothing had queried it yet. PostgREST exposes everything in `public`, so for five migrations any authenticated user could read and write every custom field value on every request in the system.
+
+**Resolution:** RLS enabled + forced in `0006_requests_and_org.sql`, reads gated by the new `can_see_request()` helper, writes limited to the request's owner. Logged as SECURITY.md R-28.
+
+**The actual lesson, which matters more than the fix:** "RLS is enabled on every user-data table" was being maintained as a hand-written list across two migrations. That is not a control, it is a hope. Added as pre-production test #12: enumerate `pg_tables` where `schemaname = 'public'` and assert `rowsecurity` on every row. A table with no policy is a table with no protection, and the failure is silent — nothing errors, the data is just readable.
+
+---
+
+### [2026-08-11] [DECIDED] [MODEL]
+**Request lifecycle transitions are RPCs, not client-side multi-step writes**
+
+Submitting, deciding, and forwarding each touch several tables at once — the request row, `request_assignment_history`, and (for an approval-mode decision) `signatures`. Doing that from the client means three separate PostgREST calls that can half-apply, leaving a request that's approved with no signature or forwarded with no audit trail.
+
+They're `SECURITY DEFINER` functions instead (`create_and_submit_request`, `decide_request`, `forward_request`), each re-checking authorization internally — holder identity and `has_mfa()` — because SECURITY DEFINER bypasses the RLS that would otherwise enforce it. `requested_by` is always `auth.uid()` and never a parameter, for the same reason: accepting it from the caller would let anyone file a request as anyone else.
+
+The signature's `state_hash` is computed server-side from the row as actually stored, never supplied by the client — a client-supplied hash proves nothing about what was signed.
 
 ---
 

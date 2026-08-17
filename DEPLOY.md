@@ -96,7 +96,17 @@ GoTrue runs its own internal migrations on first connect — this is what create
 ./scripts/apply-migrations.sh
 ```
 
-Applies `supabase/migrations/*.sql` in order (`0001`, `0002`, `0003`), each as `supabase_admin`. Does **not** touch `supabase/seed.sql` — see README.md "No Fixture Data" for why a real deployment never runs that file.
+Applies `supabase/migrations/*.sql` in order, each as `supabase_admin`. Does **not** touch `supabase/seed.sql` — see README.md "No Fixture Data" for why a real deployment never runs that file.
+
+### A.6b Re-run the role bootstrap (yes, again)
+
+```bash
+./scripts/bootstrap-db-roles.sh
+```
+
+`0008_invite_email.sql` creates the `basecamp_mailer` role `NOLOGIN` and without a password — a password written into a migration is a password committed to git. The bootstrap script sets it from `MAILER_DB_PASSWORD` in `.env`, which means it can only run *after* migrations, unlike its first run in §A.4 which had to happen *before* them.
+
+Running it twice is intentional and safe (it's idempotent). The first pass reported `basecamp_mailer not found — apply migrations, then re-run this script`; this pass should print `Mailer role password set.` If you skip it, the `mailer` container will crash-loop on SASL auth exactly the way `auth`/`rest`/`storage` do without §A.4.
 
 ### A.7 Bring up the rest of the stack
 
@@ -228,3 +238,7 @@ Cross-referenced against NOTE.md's 2026-08-09 entries, which have the full expla
 | A trigger on `auth.users`/`auth.mfa_factors` fails with `relation "X" does not exist`, but the table clearly exists | The function is `SECURITY DEFINER` and doesn't pin `search_path` — it's inheriting the caller's (`supabase_auth_admin`, pinned to `auth` only) instead of resolving `public` schema tables. Add `set search_path = public` to the function definition. |
 | `ALTER ROLE authenticator ...` fails with "is a reserved role, only superusers can modify it" | You're connected as `postgres`, which isn't `SUPERUSER` in this image — connect as `supabase_admin` instead |
 | GoTrue mailer fails with "unencrypted connection" | Your SMTP host doesn't support STARTTLS and isn't `localhost` — GoTrue refuses to send over plaintext to anything else. Use real SMTP with TLS, or see §A.7's local-dev workaround. |
+| `mailer` crash-loops with `password authentication failed for user "basecamp_mailer"` | `bootstrap-db-roles.sh` wasn't re-run after migrations — see §A.6b. The role exists but has no password and no LOGIN. |
+| `mailer` logs `missing required env var: MAILER_DB_PASSWORD` | Not set in `.env` — generate with `openssl rand -hex 24`, then re-run §A.6b |
+| Invites stay "Queued" in the UI and never send | Check `docker compose logs mailer --tail 30`. The worker polls every 20s, so up to a minute is normal. Persistent queueing means the container isn't running or can't reach the DB. |
+| Invite shows "Delivery failed — send the link manually" | The relay rejected it 5 times; the recorded reason is in `pending_assignments.invite_email_error`. The copyable link in the invite panel still works — delivery failure is not an onboarding blocker by design. |

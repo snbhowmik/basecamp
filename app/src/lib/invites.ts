@@ -81,6 +81,14 @@ export async function revokeInvite(id: string) {
   if (error) throw error;
 }
 
+// Clears the sent stamp so the mailer worker picks the row up again on its
+// next poll. Authorization is re-checked inside resend_invite_email()
+// (0008_invite_email.sql) because SECURITY DEFINER bypasses RLS.
+export async function resendInviteEmail(id: string) {
+  const { error } = await supabase.rpc('resend_invite_email', { p_id: id });
+  if (error) throw error;
+}
+
 export function inviteLink(token: string): string {
   return `${window.location.origin}/invite/${token}`;
 }

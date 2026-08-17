@@ -154,6 +154,23 @@ R2 supports creating API tokens limited to specific buckets. Using an account-wi
 
 ---
 
+### [2026-08-18] [DECIDED] [INFRA]
+**Invite emails are sent by a background worker — this is not the BFF that was rejected in 2026-08-10**
+
+Invites produced a `/invite/<token>` link that the inviter had to copy and send by hand. Automating that delivery needs a process that can talk SMTP, and the browser cannot.
+
+The 2026-08-10 entry below rejected a server-side component, so it's worth being precise about why this one is allowed rather than quietly contradicting it. That decision was about **creating accounts**, which requires `service_role` — a key that bypasses RLS entirely and would hand whatever holds it the ability to read and write every row in the database. The objection was to the key, not to the existence of a process.
+
+Sending a notification email needs none of that. `services/mailer` connects as `basecamp_mailer`, a role created `NOLOGIN` by `0008_invite_email.sql` with **no table privileges at all** and exactly three function grants. It cannot create a user, cannot read a request, cannot bypass RLS, holds no `service_role` key, and listens on no port — Kong has no route to it. It reads a queue and sends mail.
+
+It is also not a BFF in the sense ARCH.md §2 rules out: nothing in a client's request path passes through it. The frontend still talks to PostgREST directly. If the mailer is down, invites still work — the link still resolves, it just isn't emailed. That's the test that matters: a BFF is load-bearing for reads and writes, and this isn't.
+
+**Worst case if the container is compromised:** disclosure of pending invite tokens, which would let an attacker claim an invited role before its intended holder. Bounded and serious, but not account creation and not data access. Logged in SECURITY.md.
+
+**Delivery model:** claim-then-send, not send-then-mark. `claim_invite_emails()` stamps `invite_email_claimed_at` and increments an attempt counter inside the same statement that selects the rows (`FOR UPDATE SKIP LOCKED`), so a worker that dies mid-send doesn't leave a row that re-sends on every subsequent poll. A claim older than 5 minutes is treated as abandoned and retried; 5 failed attempts stops retrying and surfaces "send the link manually" in the UI. The copyable link never went away — it's the fallback, and the reason a mail outage isn't an onboarding outage.
+
+---
+
 ### [2026-03-01] [DECIDED] [FOUNDATION]
 **Self-hosted Supabase, not managed Supabase, not custom Keycloak+Node**
 

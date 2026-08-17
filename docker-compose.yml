@@ -203,6 +203,34 @@ services:
       - "127.0.0.1:8000:8000"
     networks: [internal]
 
+  mailer:
+    build: ./services/mailer
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      # Connects as basecamp_mailer — a role with no table privileges and
+      # three function grants (0008_invite_email.sql). Deliberately NOT
+      # supabase_admin and deliberately not holding SERVICE_ROLE_KEY: this
+      # worker must not be able to create an account or read a request.
+      MAILER_DB_HOST: db
+      MAILER_DB_PORT: 5432
+      MAILER_DB_NAME: postgres
+      MAILER_DB_USER: basecamp_mailer
+      MAILER_DB_PASSWORD: ${MAILER_DB_PASSWORD}
+      # Same relay GoTrue uses — one SMTP configuration, not two.
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+      # Base for the /invite/<token> URL in the email body.
+      SITE_URL: ${SITE_URL}
+      MAILER_POLL_SECONDS: 20
+    networks: [internal]
+    # No published port — this is a background worker, not an API. Kong has
+    # no route to it and nothing in a client request path touches it.
+
   frontend:
     image: nginx:alpine
     restart: unless-stopped

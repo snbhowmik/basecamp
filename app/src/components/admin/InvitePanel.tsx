@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { UserPlus, X, Copy, Check as CheckIcon } from 'lucide-react';
+import { UserPlus, X, Copy, Check as CheckIcon, Send } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import {
   listPriorityLevels,
@@ -9,9 +9,25 @@ import {
   listMyInvites,
   createInvite,
   revokeInvite,
+  resendInviteEmail,
   inviteLink,
 } from '../../lib/invites';
 import type { PriorityLevel, Tag, Department, Class, PendingAssignment } from '../../types';
+
+// Delivery is asynchronous — the mailer worker (services/mailer) polls every
+// ~20s. So "not sent yet" is the normal state for the first minute and is
+// deliberately not styled as a failure; only a recorded error is.
+function deliveryLabel(inv: PendingAssignment): string {
+  if (inv.invite_email_sent_at) {
+    return `Emailed ${new Date(inv.invite_email_sent_at).toLocaleString()}`;
+  }
+  if (inv.invite_email_error) {
+    return inv.invite_email_attempts >= 5
+      ? 'Delivery failed — send the link manually'
+      : `Retrying (attempt ${inv.invite_email_attempts} of 5)`;
+  }
+  return 'Queued';
+}
 
 // Who can invite whom is enforced server-side by can_invite() (0004) — rank
 // comparison plus department-tag membership, not a hardcoded role list. This
@@ -28,6 +44,7 @@ export default function InvitePanel() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState<string | null>(null);
 
   const [email, setEmail] = useState('');
   const [levelId, setLevelId] = useState('');
@@ -113,7 +130,10 @@ export default function InvitePanel() {
         regNo: regNo.trim() || null,
         year: year ? Number(year) : null,
       });
-      setSuccess(`Invited ${email}. Send them this link — no email is sent automatically yet (see NOTE.md).`);
+      // The mailer worker polls every ~20s, so the email is queued rather
+      // than sent by the time this returns. The link is still shown as a
+      // fallback for when delivery fails or the invitee never gets it.
+      setSuccess(`Invited ${email}. An invite email is queued — it usually arrives within a minute.`);
       setLastInviteLink(inviteLink(created.invite_token));
       resetForm();
       const inv = await listMyInvites();
@@ -135,6 +155,20 @@ export default function InvitePanel() {
       setInvites(invites.filter((i) => i.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revoke.');
+    }
+  };
+
+  const handleResend = async (id: string) => {
+    setResending(id);
+    setError('');
+    try {
+      await resendInviteEmail(id);
+      setSuccess('Queued for resend — it usually arrives within a minute.');
+      setInvites(await listMyInvites());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to queue the resend.');
+    } finally {
+      setResending(null);
     }
   };
 
@@ -265,7 +299,8 @@ export default function InvitePanel() {
                 <tr>
                   <th>Email</th>
                   <th>Status</th>
-                  <th>Sent</th>
+                  <th>Delivery</th>
+                  <th>Created</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -279,13 +314,26 @@ export default function InvitePanel() {
                       </span>
                     </td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      {deliveryLabel(inv)}
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                       {new Date(inv.created_at).toLocaleDateString()}
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       {!inv.consumed_at && (
-                        <button className="btn-icon danger" title="Revoke" onClick={() => handleRevoke(inv.id)}>
-                          <X size={16} />
-                        </button>
+                        <>
+                          <button
+                            className="btn-icon"
+                            title="Resend invite email"
+                            disabled={resending === inv.id}
+                            onClick={() => handleResend(inv.id)}
+                          >
+                            <Send size={16} />
+                          </button>
+                          <button className="btn-icon danger" title="Revoke" onClick={() => handleRevoke(inv.id)}>
+                            <X size={16} />
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>

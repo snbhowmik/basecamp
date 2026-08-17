@@ -63,6 +63,15 @@
 - [x] `create_department()` / `create_batch()` — each creates the scope tag *and* the row pointing at it in one transaction; two client-side inserts would orphan the tag on partial failure, and that tag is what `is_hod_of()`/`is_mentor_of()` resolve through
 - [x] Explicit `grant execute` for `my_rank()`/`is_base_level()` — now called from the browser, not just from inside policies
 
+### Invite Email Delivery (`0008_invite_email.sql`, `services/mailer/`)
+- [x] Delivery bookkeeping on `pending_assignments` — `invite_email_sent_at`, `invite_email_claimed_at`, `invite_email_attempts`, `invite_email_error`, plus a partial index over exactly the rows the worker polls
+- [x] `basecamp_mailer` role — created `NOLOGIN` with **no table privileges**, three function grants only. Password set by `bootstrap-db-roles.sh`, which must now be re-run *after* migrations (DEPLOY.md §A.6b)
+- [x] `claim_invite_emails()` — claim-then-send with `FOR UPDATE SKIP LOCKED` and a 5-minute abandoned-claim retry, so a worker dying mid-send doesn't re-send on every poll
+- [x] `resend_invite_email()` — re-queues from the UI, re-checking invite ownership internally because SECURITY DEFINER bypasses the RLS that would enforce it
+- [x] `services/mailer` — background worker, no HTTP surface, no `service_role`, `requireTLS` on the SMTP transport. See NOTE.md 2026-08-18 for why this isn't the BFF that was rejected
+- [x] Invite panel shows delivery state (Queued / Emailed / Retrying / Failed) with a resend button; the copyable link stays as the fallback
+- [!] **Not yet verified against the live stack.** The migration, the worker, and the compose service are written and the frontend typechecks, but no invite email has actually landed in an inbox yet. Until it has, treat this as unproven — see DEPLOY.md's troubleshooting rows.
+
 ### V2 — Frontend (`app/src/components/{layout,pages}/`)
 - [x] `AppShell` — top bar, role-aware tabs, user menu. Captain: Dashboard / Workflow / Invite / Accounts. Everyone else: Dashboard / Requests / (Invite if staff) / Account
 - [x] `DashboardPage` — captain sees org counts + the staff roster ("important users"); everyone else sees their own request stats and what's on their desk

@@ -27,3 +27,22 @@ alter role supabase_storage_admin with password '${POSTGRES_PASSWORD}';
 SQL
 
 echo "Role passwords set."
+
+# basecamp_mailer is created NOLOGIN by 0008_invite_email.sql (a password in
+# a migration is a password in git), so this can only run AFTER migrations.
+# Skipped silently on a fresh db where 0008 hasn't been applied yet — re-run
+# this script after apply-migrations.sh to finish the mailer setup.
+if [ -n "${MAILER_DB_PASSWORD:-}" ]; then
+  if docker compose exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db \
+      psql -U supabase_admin -d postgres -tAc \
+      "select 1 from pg_roles where rolname = 'basecamp_mailer'" | grep -q 1; then
+    docker compose exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 <<SQL
+alter role basecamp_mailer with login password '${MAILER_DB_PASSWORD}';
+SQL
+    echo "Mailer role password set."
+  else
+    echo "basecamp_mailer not found — apply migrations, then re-run this script."
+  fi
+else
+  echo "MAILER_DB_PASSWORD unset in .env — skipping mailer role."
+fi

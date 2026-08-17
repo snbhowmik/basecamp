@@ -69,6 +69,12 @@ export interface PendingAssignment {
   invite_token: string;
   created_at: string;
   consumed_at: string | null;
+  // Delivery bookkeeping — 0008_invite_email.sql. sent_at null with a
+  // non-null error means the mailer tried and failed; null/null means it
+  // hasn't picked the row up yet.
+  invite_email_sent_at: string | null;
+  invite_email_attempts: number;
+  invite_email_error: string | null;
 }
 
 export type DecisionMode = 'approval' | 'log_only';

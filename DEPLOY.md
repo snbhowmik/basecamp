@@ -96,7 +96,19 @@ GoTrue runs its own internal migrations on first connect — this is what create
 ./scripts/apply-migrations.sh
 ```
 
-Applies `supabase/migrations/*.sql` in order, each as `supabase_admin`. Does **not** touch `supabase/seed.sql` — see README.md "No Fixture Data" for why a real deployment never runs that file.
+Applies `supabase/migrations/*.sql` in order, each as `supabase_admin`, each in a single transaction. Does **not** touch `supabase/seed.sql` — see README.md "No Fixture Data" for why a real deployment never runs that file.
+
+Applied files are recorded in `basecamp_meta.schema_migrations`, so re-running only applies what's new. The ledger lives outside `public` on purpose: PostgREST exposes everything in `PGRST_DB_SCHEMAS` (just `public`), and a migrations ledger has no business being a readable API endpoint.
+
+**Upgrading a database created before that ledger existed** (anything deployed at or before `0007`): baseline it once, so already-applied files are recorded rather than re-run.
+
+```bash
+./scripts/apply-migrations.sh --baseline 0007
+```
+
+That records `0001`–`0007` as applied **without executing them** and applies everything above normally. Check that those migrations really are applied before using it — baselining a file that never ran means it never will.
+
+Without this step the script re-runs `0001` and dies on `relation "profiles" already exists`, never reaching the migration you invoked it for.
 
 ### A.6b Re-run the role bootstrap (yes, again)
 

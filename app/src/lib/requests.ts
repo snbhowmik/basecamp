@@ -86,22 +86,62 @@ export async function submitRequest(input: SubmitRequestInput): Promise<string> 
 }
 
 // Custom per-category fields — the replacement for the OD columns that used
-// to sit on `requests`. field_definitions declares them; these are the values.
+// to sit on `requests`. field_definitions declares them per category; these
+// are the values. `value` is jsonb, so a string field arrives as a JSON
+// string, not a bare one.
+export interface FieldDefinition {
+  id: string;
+  category_id: string;
+  field_key: string;
+  label: string;
+  field_type: string;
+  options: unknown;
+  is_required: boolean;
+  sort_order: number;
+}
+
+export async function listFieldDefinitions(categoryId: string): Promise<FieldDefinition[]> {
+  const { data, error } = await supabase
+    .from('field_definitions')
+    .select('*')
+    .eq('category_id', categoryId)
+    .order('sort_order');
+  if (error) throw error;
+  return (data ?? []) as FieldDefinition[];
+}
+
 export interface FieldValue {
   id: string;
   request_id: string;
-  field_definition_id: string;
-  value: string | null;
-  field_definitions?: { code: string; label: string; field_type: string } | null;
+  definition_id: string;
+  value: unknown;
+  field_definitions?: { field_key: string; label: string; field_type: string } | null;
 }
 
 export async function listFieldValues(requestId: string): Promise<FieldValue[]> {
   const { data, error } = await supabase
     .from('request_field_values')
-    .select('*, field_definitions(code, label, field_type)')
+    .select('*, field_definitions(field_key, label, field_type)')
     .eq('request_id', requestId);
   if (error) throw error;
   return (data ?? []) as FieldValue[];
+}
+
+// Written after create_and_submit_request() returns: the RPC takes only the
+// fixed columns, and the rfv_write policy lets the requester add values for a
+// request they own. There is no server-side validation against
+// field_definitions yet (TASK.md tracks it), so required-ness is enforced in
+// the form only — do not treat it as a control.
+export async function saveFieldValues(
+  requestId: string,
+  values: { definitionId: string; value: unknown }[],
+): Promise<void> {
+  const rows = values
+    .filter((v) => v.value !== '' && v.value !== null && v.value !== undefined)
+    .map((v) => ({ request_id: requestId, definition_id: v.definitionId, value: v.value }));
+  if (rows.length === 0) return;
+  const { error } = await supabase.from('request_field_values').insert(rows);
+  if (error) throw error;
 }
 
 export type DecisionAction = 'approved' | 'rejected' | 'changes_requested' | 'reviewed';

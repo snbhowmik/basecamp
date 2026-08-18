@@ -149,7 +149,7 @@ function CaptainDashboard({
                   </div>
                   <div className="detail-row">
                     <span className="detail-label">Level</span>
-                    <span className="detail-value">{a.levelName ?? '—'}</span>
+                    <span className="detail-value">{a.levelNames.join(', ') || '—'}</span>
                   </div>
                 </Fragment>
               ))}
@@ -203,10 +203,10 @@ function CaptainDashboard({
                       <div className="cell-strong">{a.full_name}</div>
                       <div className="cell-mono">{a.email}</div>
                     </td>
-                    <td>{a.levelName ?? <span className="detail-value empty">—</span>}</td>
+                    <td>{a.levelNames.length > 0 ? a.levelNames.join(', ') : <span className="detail-value empty">—</span>}</td>
                     <td>
                       <div className="chip-list">
-                        {a.tags.filter((t) => !t.startsWith('dept:') && !t.startsWith('class:')).map((t) => (
+                        {a.tags.filter((t) => !t.startsWith('org:')).map((t) => (
                           <span key={t} className="chip">{t}</span>
                         ))}
                       </div>

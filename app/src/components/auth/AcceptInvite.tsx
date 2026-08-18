@@ -131,7 +131,7 @@ export default function AcceptInvite({ token, onDone }: { token: string; onDone:
           <h2>BaseCamp</h2>
           <p>
             You've been invited as <strong>{invite.levelName}</strong>
-            {invite.departmentName ? <> in <strong>{invite.departmentName}</strong></> : null}
+            {invite.orgUnitName ? <> in <strong>{invite.orgUnitName}</strong></> : null}
             {invite.invitedByName ? <> by {invite.invitedByName}</> : null}.
           </p>
         </div>

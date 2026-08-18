@@ -8,18 +8,17 @@ import {
   cancelMfaEnroll,
   updateProfile,
   changePassword,
-  getStudentDetails,
+  getMemberDetails,
   type MfaFactorSummary,
-  type StudentDetails,
+  type MemberDetails,
 } from '../../lib/account';
 
 export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContext; onProfileChanged: () => void }) {
   const [factors, setFactors] = useState<MfaFactorSummary[]>([]);
-  const [student, setStudent] = useState<StudentDetails | null>(null);
+  const [member, setMember] = useState<MemberDetails | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [fullName, setFullName] = useState(ctx.profile.full_name);
-  const [phone, setPhone] = useState(ctx.profile.phone ?? '');
   const [profileMsg, setProfileMsg] = useState('');
   const [profileErr, setProfileErr] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
@@ -40,10 +39,10 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
       try {
         const [f, s] = await Promise.all([
           listMfaFactors(),
-          getStudentDetails(ctx.profile.id).catch(() => null),
+          getMemberDetails(ctx.profile.id).catch(() => null),
         ]);
         setFactors(f);
-        setStudent(s);
+        setMember(s);
       } finally {
         setLoading(false);
       }
@@ -56,7 +55,7 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
     setProfileErr('');
     setProfileMsg('');
     try {
-      await updateProfile({ full_name: fullName.trim(), phone: phone.trim() || null });
+      await updateProfile({ full_name: fullName.trim() });
       setProfileMsg('Profile updated.');
       onProfileChanged();
     } catch (err) {
@@ -152,20 +151,33 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
               <span className="detail-label">Role</span>
               <span className="detail-value">{ctx.isCaptain ? 'Captain' : ctx.isStaff ? 'Staff' : 'Student'}</span>
             </div>
-            {student && (
+            {member && (
               <>
                 <div className="detail-row">
-                  <span className="detail-label">Registration number</span>
-                  <span className="detail-value">{student.reg_no}</span>
+                  <span className="detail-label">
+                    {member.member_type === 'staff' ? 'FET ID' : 'Registration number'}
+                  </span>
+                  <span className="detail-value">
+                    {(member.member_type === 'staff' ? member.fet_id : member.reg_no)
+                      ?? <span className="detail-value empty">Not set</span>}
+                  </span>
                 </div>
                 <div className="detail-row">
-                  <span className="detail-label">Department</span>
-                  <span className="detail-value">{student.departments?.name ?? '—'}</span>
+                  <span className="detail-label">Org unit</span>
+                  <span className="detail-value">{member.org_units?.name ?? '—'}</span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Batch</span>
-                  <span className="detail-value">{student.classes?.name ?? <span className="detail-value empty">Not set</span>}</span>
-                </div>
+                {member.member_type === 'student' && (
+                  <>
+                    <div className="detail-row">
+                      <span className="detail-label">Batch</span>
+                      <span className="detail-value">{member.batches?.name ?? <span className="detail-value empty">Not set</span>}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Section</span>
+                      <span className="detail-value">{member.sections?.name ?? <span className="detail-value empty">Not set</span>}</span>
+                    </div>
+                  </>
+                )}
               </>
             )}
             <div className="detail-row">
@@ -183,15 +195,9 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
           <form onSubmit={saveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 520 }}>
             {profileErr && <div className="alert alert-danger">{profileErr}</div>}
             {profileMsg && <div className="alert alert-success">{profileMsg}</div>}
-            <div className="grid-cols-2">
-              <div className="form-group">
-                <label className="form-label">Full name</label>
-                <input className="form-input" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </div>
+            <div className="form-group">
+              <label className="form-label">Full name</label>
+              <input className="form-input" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
             </div>
             <div>
               <button className="btn btn-primary" type="submit" disabled={savingProfile}>

@@ -5,15 +5,15 @@ import Brand from '../ui/Brand';
 import { useMediaQuery, AUTH_PANEL_QUERY } from '../../lib/useMediaQuery';
 import {
   selfRegisterStudent,
-  listPublicDepartments,
+  listPublicOrgUnits,
   listPublicBatches,
   type PublicOption,
 } from '../../lib/invites';
 import { enrollTotp, verifyTotp } from '../../lib/wizard';
 
-// Public student self-registration — see README.md's V2 notes and
-// 0005_public_registration.sql. Creates a base-level account only; staff
-// accounts are invite-only (AcceptInvite.tsx), never through this form.
+// Public student self-registration — see schema-v2/0004_bootstrap_invites_rpcs.sql.
+// Creates a base-level account only; staff accounts are invite-only
+// (AcceptInvite.tsx), never through this form.
 export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () => void; onSwitchToLogin: () => void }) {
   const [step, setStep] = useState<'form' | 'confirm' | 'mfa'>('form');
   const [error, setError] = useState('');
@@ -23,10 +23,10 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [regNo, setRegNo] = useState('');
-  const [departments, setDepartments] = useState<PublicOption[]>([]);
-  const [departmentId, setDepartmentId] = useState('');
-  const [classes, setClasses] = useState<PublicOption[]>([]);
-  const [classId, setClassId] = useState('');
+  const [orgUnits, setOrgUnits] = useState<PublicOption[]>([]);
+  const [orgUnitId, setOrgUnitId] = useState('');
+  const [batches, setBatches] = useState<PublicOption[]>([]);
+  const [batchId, setBatchId] = useState('');
   const [catalogError, setCatalogError] = useState('');
 
   const [confirmCode, setConfirmCode] = useState('');
@@ -36,30 +36,30 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
   const [totpCode, setTotpCode] = useState('');
 
   useEffect(() => {
-    listPublicDepartments()
+    listPublicOrgUnits()
       .then((d) => {
-        setDepartments(d);
+        setOrgUnits(d);
         // An empty catalog is a real, actionable state — say so rather than
         // rendering an empty dropdown, which is exactly what made the RLS
         // bug behind this look like "nothing happened".
         if (d.length === 0) {
-          setCatalogError('No departments have been set up yet. Ask your administrator to add them before registering.');
+          setCatalogError('No programmes have been set up yet. Ask your administrator to add them before registering.');
         }
       })
       .catch((err) => {
-        setDepartments([]);
-        setCatalogError(err instanceof Error ? err.message : 'Could not load departments.');
+        setOrgUnits([]);
+        setCatalogError(err instanceof Error ? err.message : 'Could not load programmes.');
       });
   }, []);
 
   useEffect(() => {
-    if (!departmentId) {
-      setClasses([]);
-      setClassId('');
+    if (!orgUnitId) {
+      setBatches([]);
+      setBatchId('');
       return;
     }
-    listPublicBatches(departmentId).then(setClasses).catch(() => setClasses([]));
-  }, [departmentId]);
+    listPublicBatches(orgUnitId).then(setBatches).catch(() => setBatches([]));
+  }, [orgUnitId]);
 
   const run = async (fn: () => Promise<void>) => {
     setError('');
@@ -101,12 +101,18 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
       setError('Password must be at least 8 characters.');
       return;
     }
-    if (!departmentId || !regNo.trim()) {
-      setError('Department and registration number are required.');
+    if (!orgUnitId || !regNo.trim()) {
+      setError('Programme and registration number are required.');
       return;
     }
     run(async () => {
-      await selfRegisterStudent({ fullName, email, password, departmentId, classId: classId || null, regNo });
+      await selfRegisterStudent({
+        fullName, email, password,
+        orgUnitId,
+        batchId: batchId || null,
+        sectionId: null,
+        regNo,
+      });
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setStep('confirm');
@@ -187,19 +193,19 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
               </div>
               <div className="grid-cols-2">
                 <div className="form-group">
-                  <label className="form-label">Department</label>
-                  <select className="form-input" required value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+                  <label className="form-label">Programme</label>
+                  <select className="form-input" required value={orgUnitId} onChange={(e) => setOrgUnitId(e.target.value)}>
                     <option value="">Select...</option>
-                    {departments.map((d) => (
+                    {orgUnits.map((d) => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Batch</label>
-                  <select className="form-input" value={classId} onChange={(e) => setClassId(e.target.value)} disabled={!departmentId}>
+                  <select className="form-input" value={batchId} onChange={(e) => setBatchId(e.target.value)} disabled={!orgUnitId}>
                     <option value="">Select...</option>
-                    {classes.map((c) => (
+                    {batches.map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>

@@ -4,15 +4,18 @@ import { supabase } from '../../lib/supabase';
 import {
   listPriorityLevels,
   listTags,
-  listDepartments,
-  listClasses,
+  listOrgUnits,
+  listBatches,
+  listSections,
   listMyInvites,
   createInvite,
   revokeInvite,
   resendInviteEmail,
   inviteLink,
 } from '../../lib/invites';
-import type { PriorityLevel, Tag, Department, Class, PendingAssignment } from '../../types';
+import type {
+  PriorityLevel, Tag, OrgUnit, Batch, Section, MemberType, RoleKind, PendingAssignment,
+} from '../../types';
 
 // Delivery is asynchronous — the mailer worker (services/mailer) polls every
 // ~20s. So "not sent yet" is the normal state for the first minute and is
@@ -29,15 +32,16 @@ function deliveryLabel(inv: PendingAssignment): string {
   return 'Queued';
 }
 
-// Who can invite whom is enforced server-side by can_invite() (0004) — rank
-// comparison plus department-tag membership, not a hardcoded role list. This
-// component just calls my_rank() to filter the level dropdown to a sane
-// subset for UX; the real gate is the RLS policy on the insert itself.
+// Who can invite whom is enforced server-side by can_invite() — rank
+// comparison plus org-unit scoping, not a hardcoded role list. This component
+// just calls my_best_rank() to filter the level dropdown to a sane subset for
+// UX; the real gate is the RLS policy on the insert itself.
 export default function InvitePanel() {
   const [levels, setLevels] = useState<PriorityLevel[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
+  const [orgUnits, setOrgUnits] = useState<OrgUnit[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [invites, setInvites] = useState<PendingAssignment[]>([]);
   const [myRank, setMyRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,10 +53,13 @@ export default function InvitePanel() {
   const [email, setEmail] = useState('');
   const [levelId, setLevelId] = useState('');
   const [selectedTagCodes, setSelectedTagCodes] = useState<string[]>([]);
-  const [departmentId, setDepartmentId] = useState('');
-  const [classId, setClassId] = useState('');
+  const [memberType, setMemberType] = useState<MemberType>('student');
+  const [roleKind, setRoleKind] = useState<RoleKind>('academic');
+  const [orgUnitId, setOrgUnitId] = useState('');
+  const [batchId, setBatchId] = useState('');
+  const [sectionId, setSectionId] = useState('');
   const [regNo, setRegNo] = useState('');
-  const [year, setYear] = useState('');
+  const [fetId, setFetId] = useState('');
   const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -61,13 +68,22 @@ export default function InvitePanel() {
   }, []);
 
   useEffect(() => {
-    if (!departmentId) {
-      setClasses([]);
-      setClassId('');
+    if (!orgUnitId) {
+      setBatches([]);
+      setBatchId('');
       return;
     }
-    listClasses(departmentId).then(setClasses).catch(() => setClasses([]));
-  }, [departmentId]);
+    listBatches(orgUnitId).then(setBatches).catch(() => setBatches([]));
+  }, [orgUnitId]);
+
+  useEffect(() => {
+    if (!batchId) {
+      setSections([]);
+      setSectionId('');
+      return;
+    }
+    listSections(batchId).then(setSections).catch(() => setSections([]));
+  }, [batchId]);
 
   const load = async () => {
     setLoading(true);
@@ -75,13 +91,13 @@ export default function InvitePanel() {
       const [lv, tg, dp, inv, rank] = await Promise.all([
         listPriorityLevels(),
         listTags(),
-        listDepartments(),
+        listOrgUnits(),
         listMyInvites(),
-        supabase.rpc('my_rank'),
+        supabase.rpc('my_best_rank'),
       ]);
       setLevels(lv);
       setTags(tg.filter((t) => t.code !== 'admin'));
-      setDepartments(dp);
+      setOrgUnits(dp);
       setInvites(inv);
       setMyRank(typeof rank.data === 'number' ? rank.data : null);
     } catch (err) {
@@ -103,10 +119,13 @@ export default function InvitePanel() {
     setEmail('');
     setLevelId('');
     setSelectedTagCodes([]);
-    setDepartmentId('');
-    setClassId('');
+    setMemberType('student');
+    setRoleKind('academic');
+    setOrgUnitId('');
+    setBatchId('');
+    setSectionId('');
     setRegNo('');
-    setYear('');
+    setFetId('');
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -117,6 +136,17 @@ export default function InvitePanel() {
       setError('Choose a level.');
       return;
     }
+    // member_profiles enforces this pairing with a check constraint, so a
+    // mismatched invite would not fail here — it would fail at signup, on the
+    // invitee. Catch it while the inviter is still looking at the form.
+    if (memberType === 'student' && !regNo.trim()) {
+      setError('A student invite needs a registration number.');
+      return;
+    }
+    if (memberType === 'staff' && !fetId.trim()) {
+      setError('A staff invite needs a FET ID.');
+      return;
+    }
     setSubmitting(true);
     setLastInviteLink(null);
     setLinkCopied(false);
@@ -125,10 +155,13 @@ export default function InvitePanel() {
         email,
         levelId,
         tagCodes: selectedTagCodes,
-        departmentId: departmentId || null,
-        classId: classId || null,
-        regNo: regNo.trim() || null,
-        year: year ? Number(year) : null,
+        memberType,
+        roleKind,
+        orgUnitId: orgUnitId || null,
+        batchId: batchId || null,
+        sectionId: sectionId || null,
+        regNo: memberType === 'student' ? regNo.trim() : null,
+        fetId: memberType === 'staff' ? fetId.trim() : null,
       });
       // The mailer worker polls every ~20s, so the email is queued rather
       // than sent by the time this returns. The link is still shown as a
@@ -241,42 +274,71 @@ export default function InvitePanel() {
                 </button>
               ))}
             </div>
-            <span className="form-hint">Leave empty for a student invite (department below is still required for one).</span>
+            <span className="form-hint">Tags scope authority; the member type below decides what identifier this account needs.</span>
           </div>
 
           <div className="grid-cols-2">
             <div className="form-group">
-              <label className="form-label">Department (optional)</label>
-              <select className="form-input" value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
-                <option value="">No department scoping</option>
-                {departments.map((d) => (
+              <label className="form-label">Member type</label>
+              <select className="form-input" value={memberType} onChange={(e) => setMemberType(e.target.value as MemberType)}>
+                <option value="student">Student</option>
+                <option value="staff">Staff</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Role kind</label>
+              <select className="form-input" value={roleKind} onChange={(e) => setRoleKind(e.target.value as RoleKind)}>
+                <option value="academic">Academic</option>
+                <option value="club">Club</option>
+                <option value="event">Event</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid-cols-2">
+            <div className="form-group">
+              <label className="form-label">Org unit (optional)</label>
+              <select className="form-input" value={orgUnitId} onChange={(e) => setOrgUnitId(e.target.value)}>
+                <option value="">No org scoping</option>
+                {orgUnits.map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Class (optional)</label>
-              <select className="form-input" value={classId} onChange={(e) => setClassId(e.target.value)} disabled={!departmentId}>
-                <option value="">No class scoping</option>
-                {classes.map((c) => (
+              <label className="form-label">Batch (optional)</label>
+              <select className="form-input" value={batchId} onChange={(e) => setBatchId(e.target.value)} disabled={!orgUnitId}>
+                <option value="">No batch scoping</option>
+                {batches.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          {selectedTagCodes.length === 0 && departmentId && (
-            <div className="grid-cols-2">
-              <div className="form-group">
-                <label className="form-label">Registration number (optional)</label>
-                <input className="form-input" value={regNo} onChange={(e) => setRegNo(e.target.value)} placeholder="Leave blank if unknown — they can complete it later" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Year (optional)</label>
-                <input type="number" min={1} max={6} className="form-input" value={year} onChange={(e) => setYear(e.target.value)} />
-              </div>
+          <div className="grid-cols-2">
+            <div className="form-group">
+              <label className="form-label">Section (optional)</label>
+              <select className="form-input" value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!batchId}>
+                <option value="">No section scoping</option>
+                {sections.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
             </div>
-          )}
+            {memberType === 'student' ? (
+              <div className="form-group">
+                <label className="form-label">Registration number</label>
+                <input className="form-input" required value={regNo} onChange={(e) => setRegNo(e.target.value)} />
+              </div>
+            ) : (
+              <div className="form-group">
+                <label className="form-label">FET ID</label>
+                <input className="form-input" required value={fetId} onChange={(e) => setFetId(e.target.value)} />
+              </div>
+            )}
+          </div>
 
           <div>
             <button className="btn btn-primary" type="submit" disabled={submitting}>

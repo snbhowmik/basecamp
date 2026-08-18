@@ -1,6 +1,7 @@
 import type { RequestStatus } from '../../types';
 
-// Maps the real `request_status` enum (0001_schema.sql) to a label + color class.
+// Maps the real `request_status` enum (schema-v2/0002_requests.sql) to a label
+// + color class. v2 dropped `cancelled`.
 const STATUS_MAP: Record<RequestStatus, { label: string; className: string }> = {
   draft:              { label: 'Draft',             className: 'status-neutral' },
   submitted:          { label: 'Submitted',         className: 'status-progress' },
@@ -9,7 +10,6 @@ const STATUS_MAP: Record<RequestStatus, { label: string; className: string }> = 
   approved:           { label: 'Approved',          className: 'status-success' },
   rejected:           { label: 'Rejected',          className: 'status-danger' },
   reviewed:           { label: 'Reviewed',          className: 'status-success' },
-  cancelled:          { label: 'Cancelled',         className: 'status-neutral' },
   closed:             { label: 'Closed',             className: 'status-neutral' },
 };
 

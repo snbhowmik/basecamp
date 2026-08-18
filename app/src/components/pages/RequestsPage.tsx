@@ -11,6 +11,11 @@ import {
   listHistory,
   listComments,
   addComment,
+  listFieldDefinitions,
+  listFieldValues,
+  saveFieldValues,
+  type FieldDefinition,
+  type FieldValue,
   type RequestRow,
   type FirstHopCandidate,
   type ForwardTarget,
@@ -23,6 +28,33 @@ import StatusBadge from '../ui/StatusBadge';
 import Modal from '../ui/Modal';
 
 type Filter = 'all' | 'mine' | 'desk';
+
+// field_definitions.options is jsonb — a bare array for a select, anything
+// else for other types. Tolerate both shapes rather than trusting one.
+function fieldOptions(d: FieldDefinition): string[] {
+  if (Array.isArray(d.options)) return d.options.map(String);
+  return [];
+}
+
+// request_field_values.value is jsonb. Numbers go in as numbers so they sort
+// and compare properly; everything else as a JSON string.
+function coerceFieldValue(d: FieldDefinition, raw: string | undefined): unknown {
+  const v = (raw ?? '').trim();
+  if (v === '') return null;
+  if (d.field_type === 'number') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : v;
+  }
+  return v;
+}
+
+// jsonb comes back parsed; render scalars directly and anything structured as
+// JSON rather than "[object Object]".
+function renderFieldValue(v: unknown): string {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return JSON.stringify(v);
+}
 
 export default function RequestsPage({ ctx }: { ctx: UserContext }) {
   const [requests, setRequests] = useState<RequestRow[]>([]);
@@ -58,11 +90,14 @@ export default function RequestsPage({ ctx }: { ctx: UserContext }) {
     if (filter === 'desk') rows = rows.filter((r) => r.current_holder === ctx.profile.id);
     if (query.trim()) {
       const q = query.toLowerCase();
+      // Custom field values are not loaded for the list, so search covers the
+      // fixed columns only. Searching inside field values needs a server-side
+      // filter, not a client-side one over rows we do not have.
       rows = rows.filter(
         (r) =>
           r.title.toLowerCase().includes(q) ||
           r.reference_number.toLowerCase().includes(q) ||
-          (r.event_name ?? '').toLowerCase().includes(q),
+          (r.body ?? '').toLowerCase().includes(q),
       );
     }
     return rows;
@@ -149,7 +184,6 @@ export default function RequestsPage({ ctx }: { ctx: UserContext }) {
                     <td className="cell-mono">{r.reference_number}</td>
                     <td>
                       <div className="cell-strong">{r.title}</div>
-                      {r.event_name && <div className="cell-mono">{r.event_name}</div>}
                     </td>
                     <td>{r.request_categories?.name ?? '—'}</td>
                     {filter !== 'mine' && <td>{r.requester?.full_name ?? '—'}</td>}
@@ -202,25 +236,24 @@ function NewRequestModal({
 }) {
   const [categoryId, setCategoryId] = useState('');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [eventName, setEventName] = useState('');
-  const [organisedBy, setOrganisedBy] = useState('');
-  const [location, setLocation] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [travelScope, setTravelScope] = useState<'internal' | 'outstation'>('internal');
+  const [body, setBody] = useState('');
+  // The OD fields (event name, dates, travel scope, ...) are no longer columns
+  // on `requests`. They are field_definitions rows attached to a category, so
+  // the form is built from whatever the captain configured for the category
+  // the user picked — and is empty until one is picked.
+  const [fieldDefs, setFieldDefs] = useState<FieldDefinition[]>([]);
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [candidates, setCandidates] = useState<FirstHopCandidate[]>([]);
   const [firstHop, setFirstHop] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const category = categories.find((c) => c.id === categoryId);
-  const isApproval = category?.decision_mode === 'approval';
-
   useEffect(() => {
     if (!categoryId) {
       setCandidates([]);
       setFirstHop('');
+      setFieldDefs([]);
+      setFieldValues({});
       return;
     }
     listFirstHopCandidates(categoryId)
@@ -229,6 +262,12 @@ function NewRequestModal({
         setFirstHop(c[0]?.user_id ?? '');
       })
       .catch(() => setCandidates([]));
+    listFieldDefinitions(categoryId)
+      .then((d) => {
+        setFieldDefs(d);
+        setFieldValues({});
+      })
+      .catch(() => setFieldDefs([]));
   }, [categoryId]);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -238,24 +277,26 @@ function NewRequestModal({
       setError('Pick a category.');
       return;
     }
-    if (endDate && startDate && endDate < startDate) {
-      setError('End date must be on or after the start date.');
+    const missing = fieldDefs.filter((d) => d.is_required && !(fieldValues[d.id] ?? '').trim());
+    if (missing.length > 0) {
+      setError(`Required: ${missing.map((d) => d.label).join(', ')}.`);
       return;
     }
     setSubmitting(true);
     try {
-      await submitRequest({
+      const requestId = await submitRequest({
         categoryId,
         title,
-        description,
+        body,
         firstHop: firstHop || null,
-        travelScope: isApproval ? travelScope : null,
-        eventName,
-        organisedBy,
-        eventLocation: location,
-        startDate: startDate || null,
-        endDate: endDate || null,
       });
+      // Values are a second write: create_and_submit_request() takes only the
+      // fixed columns. If this fails the request still exists, submitted and
+      // missing its details — surfaced rather than swallowed.
+      await saveFieldValues(
+        requestId,
+        fieldDefs.map((d) => ({ definitionId: d.id, value: coerceFieldValue(d, fieldValues[d.id]) })),
+      );
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not submit the request.');
@@ -287,7 +328,7 @@ function NewRequestModal({
           <option value="">Select a category...</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}{c.decision_mode === 'log_only' ? ' (log only)' : ''}
+              {c.name}
             </option>
           ))}
         </select>
@@ -305,46 +346,37 @@ function NewRequestModal({
 
       <div className="form-group">
         <label className="form-label">Details</label>
-        <textarea className="form-input" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Anything the approver needs to know" />
+        <textarea className="form-input" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Anything the approver needs to know" />
       </div>
 
-      <div className="grid-cols-2">
-        <div className="form-group">
-          <label className="form-label">Event name</label>
-          <input className="form-input" value={eventName} onChange={(e) => setEventName(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Organised by</label>
-          <input className="form-input" value={organisedBy} onChange={(e) => setOrganisedBy(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="grid-cols-2">
-        <div className="form-group">
-          <label className="form-label">Location</label>
-          <input className="form-input" value={location} onChange={(e) => setLocation(e.target.value)} />
-        </div>
-        {isApproval && (
-          <div className="form-group">
-            <label className="form-label">Travel scope</label>
-            <select className="form-input" value={travelScope} onChange={(e) => setTravelScope(e.target.value as 'internal' | 'outstation')}>
-              <option value="internal">Internal</option>
-              <option value="outstation">Outstation</option>
+      {fieldDefs.map((d) => (
+        <div className="form-group" key={d.id}>
+          <label className="form-label">{d.label}{d.is_required ? ' *' : ''}</label>
+          {d.field_type === 'select' ? (
+            <select
+              className="form-input"
+              value={fieldValues[d.id] ?? ''}
+              onChange={(e) => setFieldValues({ ...fieldValues, [d.id]: e.target.value })}
+            >
+              <option value="">Select...</option>
+              {fieldOptions(d).map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
-          </div>
-        )}
-      </div>
-
-      <div className="grid-cols-2">
-        <div className="form-group">
-          <label className="form-label">Start date</label>
-          <input type="date" className="form-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          ) : d.field_type === 'textarea' ? (
+            <textarea
+              className="form-input"
+              value={fieldValues[d.id] ?? ''}
+              onChange={(e) => setFieldValues({ ...fieldValues, [d.id]: e.target.value })}
+            />
+          ) : (
+            <input
+              className="form-input"
+              type={d.field_type === 'date' ? 'date' : d.field_type === 'number' ? 'number' : 'text'}
+              value={fieldValues[d.id] ?? ''}
+              onChange={(e) => setFieldValues({ ...fieldValues, [d.id]: e.target.value })}
+            />
+          )}
         </div>
-        <div className="form-group">
-          <label className="form-label">End date</label>
-          <input type="date" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        </div>
-      </div>
+      ))}
 
       {categoryId && (
         <div className="form-group">
@@ -384,6 +416,7 @@ function RequestDetailModal({
   onChanged: () => void;
 }) {
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [fieldValues, setFieldValues] = useState<FieldValue[]>([]);
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [note, setNote] = useState('');
   const [commentBody, setCommentBody] = useState('');
@@ -400,6 +433,7 @@ function RequestDetailModal({
   useEffect(() => {
     listHistory(request.id).then(setHistory).catch(() => setHistory([]));
     listComments(request.id).then(setComments).catch(() => setComments([]));
+    listFieldValues(request.id).then(setFieldValues).catch(() => setFieldValues([]));
   }, [request.id]);
 
   useEffect(() => {
@@ -494,36 +528,18 @@ function RequestDetailModal({
           <span className="detail-label">Requester</span>
           <span className="detail-value">{request.requester?.full_name ?? '—'}</span>
         </div>
-        {request.event_name && (
-          <div className="detail-row">
-            <span className="detail-label">Event</span>
-            <span className="detail-value">{request.event_name}</span>
+        {fieldValues.map((fv) => (
+          <div className="detail-row" key={fv.id}>
+            <span className="detail-label">{fv.field_definitions?.label ?? fv.field_definitions?.field_key ?? 'Field'}</span>
+            <span className="detail-value">{renderFieldValue(fv.value)}</span>
           </div>
-        )}
-        {request.event_location && (
-          <div className="detail-row">
-            <span className="detail-label">Location</span>
-            <span className="detail-value">{request.event_location}</span>
-          </div>
-        )}
-        {request.travel_scope && (
-          <div className="detail-row">
-            <span className="detail-label">Travel</span>
-            <span className="detail-value" style={{ textTransform: 'capitalize' }}>{request.travel_scope}</span>
-          </div>
-        )}
-        {(request.start_date || request.end_date) && (
-          <div className="detail-row">
-            <span className="detail-label">Dates</span>
-            <span className="detail-value">{request.start_date ?? '?'} → {request.end_date ?? '?'}</span>
-          </div>
-        )}
+        ))}
       </div>
 
-      {request.description && (
+      {request.body && (
         <div className="form-group">
           <span className="detail-label">Details</span>
-          <p style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{request.description}</p>
+          <p style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{request.body}</p>
         </div>
       )}
 

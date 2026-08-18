@@ -8,7 +8,7 @@ import {
   verifyTotp,
   addAllowedDomains,
   completeOrgSetup,
-  type DraftDepartment,
+  type DraftOrgUnit,
   type DraftPriorityLevel,
   type DraftTag,
 } from '../../lib/wizard';
@@ -55,9 +55,13 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
   // Step 4 — org
   const [levels, setLevels] = useState<DraftPriorityLevel[]>(DEFAULT_LEVELS);
   const [levelInput, setLevelInput] = useState('');
-  const [departments, setDepartments] = useState<DraftDepartment[]>([]);
-  const [deptName, setDeptName] = useState('');
-  const [deptCode, setDeptCode] = useState('');
+  // The wizard collects faculty-level units only. Programmes hang off a
+  // faculty (org_units.parent_id) and are added by the captain afterwards,
+  // where there is a parent to pick — the wizard has no tree UI and should
+  // not grow one just to seed the org.
+  const [orgUnits, setOrgUnits] = useState<DraftOrgUnit[]>([]);
+  const [unitName, setUnitName] = useState('');
+  const [unitCode, setUnitCode] = useState('');
   const [extraTags, setExtraTags] = useState<DraftTag[]>([]);
   const [tagCode, setTagCode] = useState('');
   const [tagLabel, setTagLabel] = useState('');
@@ -193,11 +197,14 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     }
   };
 
-  const addDepartment = () => {
-    if (deptName.trim() && deptCode.trim()) {
-      setDepartments([...departments, { name: deptName.trim(), code: deptCode.trim().toLowerCase() }]);
-      setDeptName('');
-      setDeptCode('');
+  const addOrgUnit = () => {
+    if (unitName.trim() && unitCode.trim()) {
+      setOrgUnits([
+        ...orgUnits,
+        { name: unitName.trim(), code: unitCode.trim().toLowerCase(), unitType: 'faculty' },
+      ]);
+      setUnitName('');
+      setUnitCode('');
     }
   };
 
@@ -222,8 +229,9 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     run(async () => {
       await completeOrgSetup({
         captainUserId: captainUser.id,
+        captainEmail: email.trim(),
         levels,
-        departments,
+        orgUnits,
         extraTags,
         firstCategoryName: firstCategoryName.trim() || 'OD Request',
       });
@@ -425,7 +433,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
             <div className="wizard-body">
               <div>
                 <h1 className="page-title">Configure the organisation</h1>
-                <p className="page-subtitle">Step 4 of 4 — priority levels, departments, tags, and the first request category.</p>
+                <p className="page-subtitle">Step 4 of 4 — priority levels, faculties, tags, and the first request category.</p>
               </div>
 
               <div className="form-group">
@@ -453,24 +461,25 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
               </div>
 
               <div className="form-group">
-                <label className="form-label">Departments</label>
+                <label className="form-label">Faculties / Schools</label>
                 <div className="chip-list">
-                  {departments.map((d) => (
-                    <span key={d.code} className="chip">
-                      {d.name} ({d.code})
-                      <button type="button" onClick={() => setDepartments(departments.filter((x) => x.code !== d.code))}>
+                  {orgUnits.map((u) => (
+                    <span key={u.code} className="chip">
+                      {u.name} ({u.code})
+                      <button type="button" onClick={() => setOrgUnits(orgUnits.filter((x) => x.code !== u.code))}>
                         <X size={12} />
                       </button>
                     </span>
                   ))}
                 </div>
                 <div className="grid-cols-2">
-                  <input className="form-input" value={deptName} onChange={(e) => setDeptName(e.target.value)} placeholder="Department name" />
+                  <input className="form-input" value={unitName} onChange={(e) => setUnitName(e.target.value)} placeholder="Faculty / school name" />
                   <div className="repeatable-row">
-                    <input className="form-input" value={deptCode} onChange={(e) => setDeptCode(e.target.value)} placeholder="code (e.g. cs)" />
-                    <button type="button" className="btn btn-secondary" onClick={addDepartment}><Plus size={16} /></button>
+                    <input className="form-input" value={unitCode} onChange={(e) => setUnitCode(e.target.value)} placeholder="code (e.g. cs)" />
+                    <button type="button" className="btn btn-secondary" onClick={addOrgUnit}><Plus size={16} /></button>
                   </div>
                 </div>
+                <span className="form-hint">Programmes sit under a faculty and are added afterwards, signed in as captain.</span>
               </div>
 
               <div className="form-group">
@@ -497,7 +506,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
               <div className="form-group">
                 <label className="form-label">First request category</label>
                 <input className="form-input" value={firstCategoryName} onChange={(e) => setFirstCategoryName(e.target.value)} />
-                <span className="form-hint">Created as an approval-mode category. More categories, custom fields, departments, and accounts are all created by hand afterward, signed in as captain — nothing else is seeded.</span>
+                <span className="form-hint">Created as an approval-mode category. More categories, custom fields, programmes, and accounts are all created by hand afterward, signed in as captain — nothing else is seeded.</span>
               </div>
             </div>
             <div className="wizard-footer">

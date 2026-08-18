@@ -81,7 +81,7 @@ export default function AccountsPage() {
                       <div className="cell-strong">{a.full_name}</div>
                       <div className="cell-mono">{a.email}</div>
                     </td>
-                    <td>{a.levelName ?? <span className="detail-value empty">—</span>}</td>
+                    <td>{a.levelNames.length > 0 ? a.levelNames.join(', ') : <span className="detail-value empty">—</span>}</td>
                     <td>
                       <div className="chip-list">
                         {a.tags.length === 0 && <span className="detail-value empty">—</span>}

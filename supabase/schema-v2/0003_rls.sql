@@ -124,12 +124,108 @@ create policy member_profiles_read_staff on member_profiles for select
 create policy member_profiles_read_admin on member_profiles for select
   to authenticated using (has_tag('admin'));
 
--- A student may maintain their own record, but not their verified CGPA and
--- not their placement in the org. Which columns they may actually change is
--- enforced by update_own_cgpa() below, not by this policy — RLS gates rows,
--- so the write path is an RPC that owns the column rules.
+-- A student may maintain their own record. RLS gates the ROW, not the
+-- columns — so this policy alone would let them set their own CGPA, stamp
+-- their own verification, or move themselves into another programme. The
+-- column rules live in the trigger below, which is the only thing standing
+-- between "may edit my row" and "may edit anything on my row".
 create policy member_profiles_update_self on member_profiles for update
   to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create policy member_profiles_update_staff on member_profiles for update
+  to authenticated using (
+    has_tag('admin')
+    or (org_unit_id is not null and my_rank_in(org_unit_id) is not null)
+  );
+
+-- ============================================================
+-- Column-level rules for member_profiles (PRD-V2 §9.3)
+-- ============================================================
+-- Postgres RLS cannot express "this user may write column A but not column
+-- B", so this trigger does. It is the enforcement point for the whole CGPA
+-- lifecycle: collection windows, the verification lock, and the rule that
+-- academic data is written only in an academic capacity.
+create or replace function enforce_member_profile_writes()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_is_self  boolean := old.user_id = auth.uid();
+  v_is_staff boolean := has_tag('admin')
+                        or (old.org_unit_id is not null and my_rank_in(old.org_unit_id) is not null
+                            and my_rank_in(old.org_unit_id) < coalesce((
+                              select min(pl.rank) from role_assignments ra
+                              join priority_levels pl on pl.id = ra.level_id
+                              where ra.user_id = old.user_id
+                                and assignment_is_current(ra.valid_from, ra.valid_until)), 2147483647));
+  v_window_open boolean;
+begin
+  -- Placement and identity are never self-service. A student moving
+  -- themselves into another programme would inherit that programme's
+  -- visibility, which is an authorization change wearing a profile edit.
+  if v_is_self and not v_is_staff then
+    if new.org_unit_id is distinct from old.org_unit_id
+       or new.batch_id  is distinct from old.batch_id
+       or new.section_id is distinct from old.section_id
+       or new.member_type is distinct from old.member_type
+       or new.reg_no is distinct from old.reg_no
+       or new.fet_id is distinct from old.fet_id
+       or new.is_complete is distinct from old.is_complete then
+      raise exception 'Placement and identity fields are set by staff, not by you.';
+    end if;
+
+    -- Nobody verifies their own CGPA.
+    if new.cgpa_verified_by is distinct from old.cgpa_verified_by
+       or new.cgpa_verified_at is distinct from old.cgpa_verified_at then
+      raise exception 'CGPA verification is recorded by a mentor.';
+    end if;
+
+    if new.cgpa is distinct from old.cgpa or new.cgpa_proof_key is distinct from old.cgpa_proof_key then
+      -- Once a mentor has verified it, the student cannot change it at all,
+      -- window open or not. They ask a human instead.
+      if old.cgpa_verified_by is not null then
+        raise exception 'This CGPA has been verified. Ask your mentor to change it.';
+      end if;
+
+      select exists (
+        select 1 from cgpa_windows w
+        where now() between w.opens_at and w.closes_at
+          and (w.org_unit_id is null
+               or (old.org_unit_id is not null and in_org_subtree(w.org_unit_id, old.org_unit_id)))
+      ) into v_window_open;
+
+      if not v_window_open then
+        raise exception 'CGPA submission is closed right now.';
+      end if;
+
+      new.cgpa_updated_at := now();
+    end if;
+
+  elsif v_is_staff then
+    -- Academic data is written in an academic capacity. The same person
+    -- acting as a club coordinator holds the rank but not the authority
+    -- (PRD-V2 §10) — this is where the recorded capacity becomes a rule.
+    if (new.cgpa is distinct from old.cgpa
+        or new.cgpa_verified_by is distinct from old.cgpa_verified_by
+        or new.org_unit_id is distinct from old.org_unit_id
+        or new.batch_id is distinct from old.batch_id
+        or new.section_id is distinct from old.section_id)
+       and not (holds_kind('academic') or has_tag('admin')) then
+      raise exception 'Academic records can only be changed in an academic role.';
+    end if;
+
+    if new.cgpa is distinct from old.cgpa then
+      new.cgpa_updated_at := now();
+    end if;
+
+  else
+    raise exception 'Not allowed to modify this profile.';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger member_profiles_column_rules before update on member_profiles
+  for each row execute function enforce_member_profile_writes();
 
 -- Tier 1: identity plus counts, for anyone who shares a request with them.
 -- Deliberately returns no CGPA at all rather than nulling it, so a future

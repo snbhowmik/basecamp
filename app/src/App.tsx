@@ -3,6 +3,7 @@ import { isSetupComplete } from './lib/wizard';
 import { signOut } from './lib/auth';
 import { loadUserContext, type UserContext } from './lib/context';
 import SetupWizard from './components/wizard/SetupWizard';
+import LevelsSetup from './components/setup/LevelsSetup';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import AcceptInvite from './components/auth/AcceptInvite';
@@ -14,7 +15,7 @@ import AccountsPage from './components/pages/AccountsPage';
 import WorkflowPage from './components/pages/WorkflowPage';
 import InvitePanel from './components/admin/InvitePanel';
 
-type Screen = 'loading' | 'wizard' | 'login' | 'register' | 'invite' | 'app';
+type Screen = 'loading' | 'wizard' | 'levels' | 'login' | 'register' | 'invite' | 'app';
 
 // Minimal path routing — no router dependency for a handful of flat routes.
 // nginx/frontend.conf serves index.html for all of them so a direct visit
@@ -32,11 +33,19 @@ function App() {
 
   const bootstrap = useCallback(async () => {
     try {
-      if (!(await isSetupComplete())) {
-        setScreen('wizard');
+      const setupDone = await isSetupComplete();
+      const loaded = await loadUserContext();
+
+      // Setup is two phases now, and "incomplete" no longer implies "no
+      // account yet". The wizard creates the captain; the levels page is what
+      // finishes setup, and it needs the captain's session to run — so which
+      // screen to show depends on whether anyone is signed in, not just on
+      // is_bootstrapping().
+      if (!setupDone) {
+        setCtx(loaded);
+        setScreen(loaded ? 'levels' : 'wizard');
         return;
       }
-      const loaded = await loadUserContext();
       if (!loaded) {
         setScreen('login');
         return;
@@ -100,6 +109,7 @@ function App() {
   if (screen === 'invite' && inviteToken) return <AcceptInvite token={inviteToken} onDone={goHome} />;
   if (screen === 'register') return <RegisterForm onDone={goHome} onSwitchToLogin={goHome} />;
   if (screen === 'wizard') return <SetupWizard onComplete={() => window.location.reload()} />;
+  if (screen === 'levels') return <LevelsSetup mode="setup" onDone={() => window.location.reload()} />;
 
   if (screen === 'loading') {
     return (
@@ -117,6 +127,7 @@ function App() {
         {route === '/invite' && <InvitePanel />}
         {route === '/accounts' && <AccountsPage />}
         {route === '/workflow' && <WorkflowPage />}
+        {route === '/levels' && <LevelsSetup mode="manage" onDone={bootstrap} />}
         {route === '/account' && <AccountPage ctx={ctx} onProfileChanged={bootstrap} />}
       </AppShell>
     );

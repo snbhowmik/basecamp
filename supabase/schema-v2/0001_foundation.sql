@@ -113,6 +113,13 @@ create table priority_levels (
   created_at  timestamptz not null default now()
 );
 
+-- The role tag a level resolves through -- 'hod' for Head of Department, and
+-- so on. Deliberately nullable: the captain names all levels up front during
+-- setup but is not forced to invent a tag for each one on the spot, and a
+-- level with no tag is a normal state rather than an unfinished one. Added
+-- after the table so the reference to tags (declared below) resolves.
+alter table priority_levels add column tag_id uuid;
+
 -- At most one base level, enforced by the database rather than by care.
 create unique index priority_levels_one_base on priority_levels ((true)) where is_base;
 
@@ -133,6 +140,11 @@ create table tags (
   created_at    timestamptz not null default now()
 );
 create index tags_parent on tags (parent_tag_id) where parent_tag_id is not null;
+
+-- priority_levels.tag_id is declared above (the table is defined before tags);
+-- the reference is attached here, now that tags exists.
+alter table priority_levels
+  add constraint priority_levels_tag_id_fkey foreign key (tag_id) references tags(id);
 
 create table user_tags (
   user_id    uuid not null references profiles(id) on delete cascade,

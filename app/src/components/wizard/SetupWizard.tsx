@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Plus, X, ShieldCheck, Check, MailCheck } from 'lucide-react';
+import { Plus, X, ShieldCheck, MailCheck } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import {
@@ -7,25 +7,10 @@ import {
   enrollTotp,
   verifyTotp,
   addAllowedDomains,
-  completeOrgSetup,
-  type DraftOrgUnit,
-  type DraftPriorityLevel,
-  type DraftTag,
+  ensureDomainAllowed,
 } from '../../lib/wizard';
 
-// A starting suggestion only, freely edited/removed below — priority levels
-// here are ranks of authority, not fixed named roles (a Dean of IST and a
-// Dean of TRP are different accounts at the same level, distinguished by
-// tags/department, not by separate levels — see README.md).
-const DEFAULT_LEVELS: DraftPriorityLevel[] = [
-  { name: 'Dean / Principal' },
-  { name: 'Head of Department' },
-  { name: 'Coordinator' },
-  { name: 'Mentor / Class Advisor' },
-  { name: 'Student' },
-];
-
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 export default function SetupWizard({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState<Step>(1);
@@ -36,7 +21,6 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [captainUser, setCaptainUser] = useState<User | null>(null);
   // True once signUp() succeeds but returns no session — GOTRUE_MAILER_AUTOCONFIRM
   // is "false" in any real deployment, so signup requires the captain to click
   // the email confirmation link before a session (and MFA enrollment) exists.
@@ -51,21 +35,6 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
   // Step 3 — domains
   const [domains, setDomains] = useState<string[]>([]);
   const [domainInput, setDomainInput] = useState('');
-
-  // Step 4 — org
-  const [levels, setLevels] = useState<DraftPriorityLevel[]>(DEFAULT_LEVELS);
-  const [levelInput, setLevelInput] = useState('');
-  // The wizard collects faculty-level units only. Programmes hang off a
-  // faculty (org_units.parent_id) and are added by the captain afterwards,
-  // where there is a parent to pick — the wizard has no tree UI and should
-  // not grow one just to seed the org.
-  const [orgUnits, setOrgUnits] = useState<DraftOrgUnit[]>([]);
-  const [unitName, setUnitName] = useState('');
-  const [unitCode, setUnitCode] = useState('');
-  const [extraTags, setExtraTags] = useState<DraftTag[]>([]);
-  const [tagCode, setTagCode] = useState('');
-  const [tagLabel, setTagLabel] = useState('');
-  const [firstCategoryName, setFirstCategoryName] = useState('OD Request');
 
   const run = async (fn: () => Promise<void>) => {
     setError('');
@@ -84,8 +53,9 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
   // email confirmation link and come back (real deployment). Resumes at
   // step 2, or skips ahead to step 3 if MFA was already completed in an
   // earlier attempt.
-  const resumeFromSession = async (user: User) => {
-    setCaptainUser(user);
+  // The captain's own id is not tracked here any more: setup_levels() resolves
+  // it from auth.uid() when the levels page runs.
+  const resumeFromSession = async (_user: User) => {
     setAwaitingConfirmation(false);
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal?.currentLevel === 'aal2') {
@@ -182,68 +152,28 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     }
   };
 
+  // Last step. The captain's own domain is registered here rather than before
+  // signup: in v2 allowed_login_domains is covered by the config write policy,
+  // which needs can_bootstrap() and therefore a session. The first signup
+  // bypasses the domain check entirely, so nothing needed it earlier.
   const handleDomainsSubmit = (e: FormEvent) => {
     e.preventDefault();
     run(async () => {
+      await ensureDomainAllowed(email.trim());
       await addAllowedDomains(domains);
-      setStep(4);
-    });
-  };
-
-  const addLevel = () => {
-    if (levelInput.trim()) {
-      setLevels([...levels, { name: levelInput.trim() }]);
-      setLevelInput('');
-    }
-  };
-
-  const addOrgUnit = () => {
-    if (unitName.trim() && unitCode.trim()) {
-      setOrgUnits([
-        ...orgUnits,
-        { name: unitName.trim(), code: unitCode.trim().toLowerCase(), unitType: 'faculty' },
-      ]);
-      setUnitName('');
-      setUnitCode('');
-    }
-  };
-
-  const addTag = () => {
-    if (tagCode.trim() && tagLabel.trim()) {
-      setExtraTags([...extraTags, { code: tagCode.trim(), label: tagLabel.trim() }]);
-      setTagCode('');
-      setTagLabel('');
-    }
-  };
-
-  const handleOrgSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!captainUser) {
-      setError('Captain account was lost — please restart the wizard.');
-      return;
-    }
-    if (levels.length === 0) {
-      setError('Add at least one priority level.');
-      return;
-    }
-    run(async () => {
-      await completeOrgSetup({
-        captainUserId: captainUser.id,
-        captainEmail: email.trim(),
-        levels,
-        orgUnits,
-        extraTags,
-        firstCategoryName: firstCategoryName.trim() || 'OD Request',
-      });
       onComplete();
     });
   };
+
+
+
+
 
   return (
     <div className="wizard-wrapper">
       <div className="wizard-card">
         <div className="wizard-steps">
-          {[1, 2, 3, 4].map((n) => (
+          {[1, 2, 3].map((n) => (
             <div key={n} className={`wizard-step-dot ${step === n ? 'active' : step > n ? 'done' : ''}`} />
           ))}
         </div>
@@ -302,7 +232,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
             <div className="wizard-body">
               <div>
                 <h1 className="page-title">Create the captain account</h1>
-                <p className="page-subtitle">Step 1 of 4 — the captain is the only account created outside the normal sign-up flow. Every other account (Dean, HOD, Mentor, Student, ...) is created by hand afterward, inside the app.</p>
+                <p className="page-subtitle">Step 1 of 3 — the captain is the only account created outside the normal sign-up flow. Every other account (Dean, HOD, Mentor, Student, ...) is created by hand afterward, inside the app.</p>
               </div>
               <div className="form-group">
                 <label className="form-label">Full name</label>
@@ -332,7 +262,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
             <div className="wizard-body">
               <div>
                 <h1 className="page-title">Enroll multi-factor authentication</h1>
-                <p className="page-subtitle">Step 2 of 4 — scan this QR code with an authenticator app, then enter the 6-digit code.</p>
+                <p className="page-subtitle">Step 2 of 3 — scan this QR code with an authenticator app, then enter the 6-digit code.</p>
               </div>
               {qrCode && (
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -391,7 +321,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
             <div className="wizard-body">
               <div>
                 <h1 className="page-title">Allowed sign-up domains</h1>
-                <p className="page-subtitle">Step 3 of 4 — only these email domains will be able to register. {email.split('@')[1]} is already allowed (your captain account).</p>
+                <p className="page-subtitle">Step 3 of 3 — only these email domains will be able to register. {email.split('@')[1]} is already allowed (your captain account).</p>
               </div>
               <div className="form-group">
                 <label className="form-label">Add another domain</label>
@@ -422,102 +352,12 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
             <div className="wizard-footer">
               <span />
               <button className="btn btn-primary" type="submit" disabled={submitting}>
-                {submitting ? 'Saving...' : 'Continue'}
+                {submitting ? 'Saving...' : 'Finish setup'}
               </button>
             </div>
           </form>
         )}
 
-        {step === 4 && (
-          <form onSubmit={handleOrgSubmit}>
-            <div className="wizard-body">
-              <div>
-                <h1 className="page-title">Configure the organisation</h1>
-                <p className="page-subtitle">Step 4 of 4 — priority levels, faculties, tags, and the first request category.</p>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Priority levels (top to bottom)</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {levels.map((l, i) => (
-                    <div key={i} className="card" style={{ padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>{i + 1}. {l.name}</span>
-                      <button type="button" className="close-btn" onClick={() => setLevels(levels.filter((_, idx) => idx !== i))}>
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="repeatable-row">
-                  <input
-                    className="form-input"
-                    value={levelInput}
-                    onChange={(e) => setLevelInput(e.target.value)}
-                    placeholder="e.g. Club Coordinator"
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLevel(); } }}
-                  />
-                  <button type="button" className="btn btn-secondary" onClick={addLevel}><Plus size={16} /></button>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Faculties / Schools</label>
-                <div className="chip-list">
-                  {orgUnits.map((u) => (
-                    <span key={u.code} className="chip">
-                      {u.name} ({u.code})
-                      <button type="button" onClick={() => setOrgUnits(orgUnits.filter((x) => x.code !== u.code))}>
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="grid-cols-2">
-                  <input className="form-input" value={unitName} onChange={(e) => setUnitName(e.target.value)} placeholder="Faculty / school name" />
-                  <div className="repeatable-row">
-                    <input className="form-input" value={unitCode} onChange={(e) => setUnitCode(e.target.value)} placeholder="code (e.g. cs)" />
-                    <button type="button" className="btn btn-secondary" onClick={addOrgUnit}><Plus size={16} /></button>
-                  </div>
-                </div>
-                <span className="form-hint">Programmes sit under a faculty and are added afterwards, signed in as captain.</span>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Additional tags (optional)</label>
-                <div className="chip-list">
-                  {extraTags.map((t) => (
-                    <span key={t.code} className="chip">
-                      {t.label} ({t.code})
-                      <button type="button" onClick={() => setExtraTags(extraTags.filter((x) => x.code !== t.code))}>
-                        <X size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="grid-cols-2">
-                  <input className="form-input" value={tagLabel} onChange={(e) => setTagLabel(e.target.value)} placeholder="Label (e.g. Club Coordinator)" />
-                  <div className="repeatable-row">
-                    <input className="form-input" value={tagCode} onChange={(e) => setTagCode(e.target.value)} placeholder="code (e.g. club_coordinator)" />
-                    <button type="button" className="btn btn-secondary" onClick={addTag}><Plus size={16} /></button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">First request category</label>
-                <input className="form-input" value={firstCategoryName} onChange={(e) => setFirstCategoryName(e.target.value)} />
-                <span className="form-hint">Created as an approval-mode category. More categories, custom fields, programmes, and accounts are all created by hand afterward, signed in as captain — nothing else is seeded.</span>
-              </div>
-            </div>
-            <div className="wizard-footer">
-              <span />
-              <button className="btn btn-primary" type="submit" disabled={submitting}>
-                {submitting ? 'Finishing setup...' : 'Finish Setup'}
-                <Check size={16} />
-              </button>
-            </div>
-          </form>
-        )}
       </div>
     </div>
   );

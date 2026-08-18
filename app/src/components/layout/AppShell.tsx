@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { LayoutDashboard, Inbox, UserPlus, Users, GitBranch, UserCircle, LogOut, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Inbox, UserPlus, Users, GitBranch, UserCircle, LogOut, ChevronDown, Layers } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
 import Brand from '../ui/Brand';
 
@@ -9,6 +9,7 @@ export type Route =
   | '/invite'
   | '/accounts'
   | '/workflow'
+  | '/levels'
   | '/account';
 
 interface Tab {
@@ -25,9 +26,11 @@ export function tabsFor(ctx: UserContext): Tab[] {
   if (ctx.isCaptain) {
     return [
       { route: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { route: '/levels', label: 'Levels', icon: Layers },
       { route: '/workflow', label: 'Workflow', icon: GitBranch },
       { route: '/invite', label: 'Invite', icon: UserPlus },
       { route: '/accounts', label: 'Accounts', icon: Users },
+      { route: '/account', label: 'Account', icon: UserCircle },
     ];
   }
   const tabs: Tab[] = [

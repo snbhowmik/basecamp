@@ -18,6 +18,9 @@ export interface PriorityLevel {
   description: string | null;
   is_base: boolean;
   is_active: boolean;
+  // The role tag this level resolves through ('hod', 'mentor', ...). Null is
+  // a normal state: levels can be named up front and tagged later.
+  tag_id: string | null;
 }
 
 export interface Tag {

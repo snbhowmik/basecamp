@@ -1,757 +1,511 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
 /* ==========================================================
-   SRMIST BaseCamp — design system
-   Layout takes after a service-desk console: a persistent top
-   bar with product identity + section tabs, then a content
-   column of cards. Kept deliberately calm — this is a tool
-   people use many times a day, not a landing page.
+   SRMIST BaseCamp — The Countersigned Slip
+   ==========================================================
+   An approval is a countersigned document, not a chat thread.
+   The material is ruled institutional stationery: hairline rules
+   instead of card borders, small-caps field labels sitting over
+   their values, a signature strip that fills as authority is
+   added, and monospaced reference codes.
+
+   Density is handled the way a book of slips handles it — with
+   counterfoil stubs, not by rendering forty paper forms. A queue
+   is a run of stubs; opening one unfolds the full slip.
+
+   Colour discipline: the surface is ink-on-paper neutral. SRM
+   blue appears only where a control acts. Seal gold is spent
+   once, on `countersigned`, and nowhere else — the moment it
+   decorates anything, it stops meaning "verified".
    ========================================================== */
 
 :root {
-  --bg-color: #f6f7f9;
-  --surface: #ffffff;
-  --surface-alt: #fafbfc;
+  /* --- Institution -------------------------------------- */
+  --srm-blue: #154494;          /* SRM wordmark */
+  --srm-blue-deep: #0f3370;
+  --srm-blue-wash: #eef2fa;
+  --srm-gold: #c89d00;          /* seal ring — countersigned only */
+  --srm-gold-wash: #fdf8e7;
 
-  --primary: #4338ca;
-  --primary-hover: #3730a3;
-  --primary-light: rgba(67, 56, 202, 0.08);
+  /* --- Paper & ink -------------------------------------- */
+  --paper: #ffffff;
+  --paper-laid: #faf9f6;        /* faintly warm, like form stock */
+  --paper-sunk: #f2f1ed;        /* recessed wells, table headers */
 
-  --nav-bg: #16181d;
-  --nav-fg: #e7e9ee;
-  --nav-muted: #9aa1ad;
-  --nav-active: #ffffff;
+  --ink: #16161a;
+  --ink-body: #3c3d44;
+  --ink-label: #6a6c75;         /* field labels, meta */
+  --ink-faint: #94969e;
 
-  --text-main: #14161a;
-  --text-body: #3d434e;
-  --text-muted: #6b7280;
+  /* Rules are the structural element. Nothing here is a card
+     border; these are ruled lines on a form. */
+  --rule: #e2e0da;
+  --rule-strong: #cdcac2;
+  --rule-ink: #16161a;          /* the heavy rule under a masthead */
 
-  --border: #e4e7ec;
-  --border-strong: #d3d8e0;
+  /* --- Document state ----------------------------------- */
+  --state-draft: #6a6c75;
+  --state-pending: #8a5a00;
+  --state-pending-wash: #fdf6e9;
+  --state-approved: #1c6b47;
+  --state-approved-wash: #eef6f1;
+  --state-rejected: #a3271c;
+  --state-rejected-wash: #fbefee;
 
-  --success: #067647;
-  --success-bg: #ecfdf3;
-  --warning: #b54708;
-  --warning-bg: #fffaeb;
-  --danger: #b42318;
-  --danger-bg: #fef3f2;
-  --info: #175cd3;
-  --info-bg: #eff8ff;
+  /* --- Type --------------------------------------------- */
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* ui-monospace resolves to SF Mono on Apple platforms. Used for
+     reference codes, register numbers, and timestamps — data and
+     measurement, never as a "technical" costume. */
+  --font-code: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+  /* Masthead only. Matches the SRM wordmark's transitional serif. */
+  --font-head: 'Source Serif 4', Georgia, serif;
 
-  --radius: 10px;
-  --radius-lg: 14px;
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
-  --shadow-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
-  --transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+  --step--1: 0.8125rem;
+  --step-0: 0.9375rem;
+  --step-1: 1.0625rem;
+  --step-2: 1.375rem;
+  --step-3: 1.75rem;
+
+  /* --- Space -------------------------------------------- */
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+
+  /* Paper has almost no radius. 2px reads as a cut edge. */
+  --radius: 2px;
+  --radius-lg: 3px;
+
+  /* Real offset + blur. A zero-offset halo is decoration. */
+  --lift: 0 1px 2px rgba(22, 22, 26, 0.06), 0 4px 12px rgba(22, 22, 26, 0.05);
+  --lift-overlay: 0 8px 16px rgba(22, 22, 26, 0.1), 0 24px 48px rgba(22, 22, 26, 0.14);
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* --- Migration bridge ----------------------------------
+     Components still reference seven tokens from the retired
+     indigo system through inline styles. Undefined custom
+     properties fail silently — the declaration is dropped and the
+     value inherits — so these would not error, they would just
+     quietly render wrong. Aliasing them onto the slip world keeps
+     the app correct while the inline styles are removed component
+     by component. Delete this block once no .tsx references them;
+     `grep -r "var(--text-main\|--bg-color\|--border)" app/src`
+     returning nothing is the signal it has done its job. */
+  --bg-color: var(--paper-laid);
+  --surface-alt: var(--paper-sunk);
+  --border: var(--rule);
+  --primary: var(--srm-blue);
+  --primary-light: var(--srm-blue-wash);
+  --text-main: var(--ink);
+  --text-muted: var(--ink-label);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg-color);
-  color: var(--text-body);
-  line-height: 1.5;
+  margin: 0;
+  background: var(--paper-laid);
+  color: var(--ink-body);
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  font-size: 14px;
+  text-rendering: optimizeLegibility;
+  /* Slashed zero and true tabular figures: register numbers and
+     reference codes must never be ambiguous. */
+  font-feature-settings: 'cv05' 1, 'ss01' 1, 'tnum' 1;
 }
 
-h1, h2, h3 { color: var(--text-main); }
+/* ==========================================================
+   Browser surfaces — the parts we did not draw still carry the
+   design. Left at defaults these belong to no design system.
+   ========================================================== */
 
-/* Headings on dark surfaces — a direct h1/h2/h3 selector beats the panel's
-   inherited white, so those panels have to restate it. */
-.auth-side h1, .auth-side h2, .auth-side h3,
-.topbar h1, .topbar h2, .topbar h3 { color: #fff; }
+::selection { background: var(--srm-blue); color: #fff; }
 
-/* ---------- App frame ---------- */
+:root { accent-color: var(--srm-blue); caret-color: var(--srm-blue); }
 
-.app-container {
-  min-height: 100vh;
+* { scrollbar-width: thin; scrollbar-color: var(--rule-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--rule-strong);
+  border: 3px solid var(--paper-laid);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--srm-blue);
+  outline-offset: 2px;
+  border-radius: 1px;
+}
+
+a {
+  color: var(--srm-blue);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+a:hover { color: var(--srm-blue-deep); }
+
+h1, h2, h3, h4 {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+/* ==========================================================
+   Slip primitives
+   ========================================================== */
+
+/* The masthead rule. A form's letterhead sits above a heavy rule;
+   everything below it is the document body. */
+.masthead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-3);
+  border-bottom: 2px solid var(--rule-ink);
+}
+
+.masthead__title {
+  font-family: var(--font-head);
+  font-size: var(--step-3);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Reference code — right-aligned, monospaced, the way a stamped
+   serial sits on a form. This is measurement, not decoration. */
+.refcode {
+  font-family: var(--font-code);
+  font-size: var(--step--1);
+  color: var(--ink-label);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* A field block: small-caps label ruled above its value. This
+   replaces the card as the unit of composition. */
+.field {
   display: flex;
   flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--rule);
+  min-width: 0;
 }
 
-.topbar {
-  background: var(--nav-bg);
-  color: var(--nav-fg);
-  position: sticky;
-  top: 0;
-  z-index: 40;
+.field__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+
+.field__value {
+  color: var(--ink);
+  font-size: var(--step-0);
+  overflow-wrap: anywhere;
+}
+
+.field__value--code { font-family: var(--font-code); font-size: var(--step--1); }
+
+/* Fields sit in a ruled grid. On a phone the grid collapses to a
+   single column and the slip reads as one continuous run. */
+.fieldset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0 var(--sp-6);
+}
+
+/* The signature strip. Authority accumulates left to right; an
+   unsigned cell is a ruled blank, exactly as on paper. */
+.sigstrip {
   display: flex;
-  align-items: stretch;
-  padding-right: 1.25rem;
+  flex-wrap: wrap;
+  gap: var(--sp-5);
+  padding-top: var(--sp-4);
+  margin-top: var(--sp-4);
+  border-top: 1px solid var(--rule-strong);
 }
 
-.topbar-brand {
+.sigcell { min-width: 9rem; flex: 1 1 9rem; }
+
+.sigcell__mark {
+  height: 2.25rem;
+  border-bottom: 1px solid var(--rule-ink);
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0.75rem 1.5rem;
-  font-weight: 800;
-  font-size: 0.95rem;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  color: #fff;
-  min-width: 190px;
+  align-items: flex-end;
+  padding-bottom: var(--sp-1);
+  color: var(--ink);
+  font-family: var(--font-head);
+  font-size: var(--step-1);
 }
 
-.topbar-brand span { display: block; }
-.topbar-brand .brand-sub { font-weight: 600; color: var(--nav-muted); font-size: 0.85rem; }
+.sigcell__mark--blank { border-bottom-style: dashed; border-bottom-color: var(--rule-strong); }
 
-.nav-tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 0.125rem;
-  flex: 1;
-  overflow-x: auto;
+.sigcell__who {
+  margin-top: var(--sp-1);
+  font-size: 0.6875rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-label);
 }
 
-.nav-tab {
+/* Countersigned — the single sanctioned use of seal gold. */
+.countersigned {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0 1.1rem;
-  border: none;
-  background: transparent;
-  color: var(--nav-muted);
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  position: relative;
-  white-space: nowrap;
-  transition: var(--transition);
-}
-
-.nav-tab:hover { color: var(--nav-fg); background: rgba(255, 255, 255, 0.05); }
-
-.nav-tab.active {
-  color: var(--nav-active);
-  background: rgba(255, 255, 255, 0.09);
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--srm-gold);
+  border-radius: var(--radius);
+  background: var(--srm-gold-wash);
+  color: #6f5700;
+  font-size: var(--step--1);
   font-weight: 600;
 }
 
-.nav-tab.active::after {
-  content: '';
-  position: absolute;
-  left: 0.75rem;
-  right: 0.75rem;
-  bottom: 0;
-  height: 2px;
-  background: #fff;
-  border-radius: 2px 2px 0 0;
-}
-
-.topbar-user {
-  display: flex;
+/* Counterfoil stub — the queue row. A book of slips is a run of
+   stubs; this is how the world carries density without pretending
+   forty paper forms fit on one screen. */
+.stub {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.75rem;
-  position: relative;
+  gap: var(--sp-4);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms var(--ease);
 }
 
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), #6d5ce0);
-  color: #fff;
+.stub:hover { background: var(--paper-sunk); }
+.stub:last-child { border-bottom: 0; }
+
+/* The perforation: a stub is torn from the book on its left edge. */
+.stub__perf {
+  width: 3px;
+  align-self: stretch;
+  background-image: repeating-linear-gradient(
+    to bottom, var(--rule-strong) 0 3px, transparent 3px 7px
+  );
+}
+
+.stub__ref { font-family: var(--font-code); font-size: var(--step--1); color: var(--ink-label); }
+.stub__title { color: var(--ink); font-weight: 500; }
+
+/* State marks. Text + rule weight carry the state; the wash is
+   support, never the whole signal. */
+.mark {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 0.75rem;
-  flex-shrink: 0;
-}
-
-.user-trigger {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  background: transparent;
-  border: none;
-  color: var(--nav-fg);
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-  padding: 0.375rem 0.5rem;
-  border-radius: 8px;
-  transition: var(--transition);
-}
-
-.user-trigger:hover { background: rgba(255, 255, 255, 0.08); }
-
-.dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  min-width: 220px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  gap: var(--sp-2);
+  padding: 0.125rem var(--sp-2);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  padding: 0.375rem;
-  z-index: 50;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.dropdown-header {
-  padding: 0.625rem 0.75rem;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 0.375rem;
+.mark::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: none;
-  background: transparent;
-  color: var(--text-body);
-  font: inherit;
-  font-size: 0.875rem;
-  text-align: left;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: var(--transition);
-}
+.mark--draft { color: var(--state-draft); background: var(--paper-sunk); }
+.mark--pending { color: var(--state-pending); background: var(--state-pending-wash); }
+.mark--approved { color: var(--state-approved); background: var(--state-approved-wash); }
+.mark--rejected { color: var(--state-rejected); background: var(--state-rejected-wash); }
 
-.dropdown-item:hover { background: var(--bg-color); color: var(--text-main); }
-.dropdown-item.danger:hover { background: var(--danger-bg); color: var(--danger); }
-
-.main-content {
-  flex: 1;
-  padding: 1.75rem 2rem 3rem;
-  max-width: 1180px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.page-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
-.page-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; max-width: 68ch; }
-.section-title { font-size: 0.95rem; font-weight: 650; color: var(--text-main); }
-
-/* ---------- Buttons ---------- */
+/* ==========================================================
+   Controls
+   ========================================================== */
 
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.95rem;
-  border-radius: 8px;
-  font-weight: 550;
-  font-size: 0.875rem;
-  font-family: inherit;
-  cursor: pointer;
-  transition: var(--transition);
+  gap: var(--sp-2);
+  padding: 0.5rem 0.9rem;
   border: 1px solid transparent;
-  background: transparent;
-  white-space: nowrap;
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: var(--step-0);
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease);
 }
 
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-primary { background: var(--srm-blue); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--srm-blue-deep); }
 
-.btn-primary { background: var(--primary); color: #fff; box-shadow: var(--shadow-sm); }
-.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-secondary { background: var(--paper); border-color: var(--rule-strong); color: var(--ink); }
+.btn-secondary:hover:not(:disabled) { background: var(--paper-sunk); border-color: var(--ink-faint); }
 
-.btn-secondary { background: var(--surface); color: var(--text-main); border-color: var(--border-strong); }
-.btn-secondary:hover:not(:disabled) { background: var(--bg-color); }
+.btn-ghost { background: transparent; color: var(--ink-label); }
+.btn-ghost:hover:not(:disabled) { background: var(--paper-sunk); color: var(--ink); }
 
-.btn-danger { background: var(--danger); color: #fff; }
-.btn-danger:hover:not(:disabled) { filter: brightness(0.94); }
+.btn-danger { background: var(--paper); border-color: var(--state-rejected); color: var(--state-rejected); }
+.btn-danger:hover:not(:disabled) { background: var(--state-rejected-wash); }
 
-.btn-success { background: var(--success); color: #fff; }
-.btn-success:hover:not(:disabled) { filter: brightness(0.94); }
-
-.btn-sm { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
+  width: 2rem; height: 2rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink-label);
   cursor: pointer;
-  transition: var(--transition);
+  transition: background 140ms var(--ease), color 140ms var(--ease);
 }
+.btn-icon:hover:not(:disabled) { background: var(--paper-sunk); color: var(--ink); }
+.btn-icon.danger:hover:not(:disabled) { background: var(--state-rejected-wash); color: var(--state-rejected); }
+.btn-icon:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.btn-icon:hover { background: var(--bg-color); color: var(--text-main); }
-.btn-icon.danger:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
-
-/* ---------- Cards & stats ---------- */
-
-.card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.card-header {
-  padding: 0.95rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  background: var(--surface-alt);
-}
-
-.card-body { padding: 1.25rem; }
-
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 1.1rem 1.25rem;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  transition: var(--transition);
-}
-
-.stat-card:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
-
-.stat-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 9px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--primary-light);
-  color: var(--primary);
-  flex-shrink: 0;
-}
-
-.stat-label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 550;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.stat-value { font-size: 1.6rem; font-weight: 700; color: var(--text-main); line-height: 1.2; }
-
-.grid-2 {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.25rem;
-  align-items: start;
-}
-
-/* ---------- Tables ---------- */
-
-.table-container { overflow-x: auto; }
-
-table { width: 100%; border-collapse: collapse; text-align: left; }
-
-th {
-  background: var(--surface-alt);
-  padding: 0.7rem 1.25rem;
-  font-size: 0.7rem;
-  font-weight: 650;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-td {
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.875rem;
-  vertical-align: middle;
-  color: var(--text-body);
-}
-
-tbody tr:last-child td { border-bottom: none; }
-tbody tr.clickable { cursor: pointer; transition: var(--transition); }
-tbody tr.clickable:hover { background: var(--surface-alt); }
-
-.cell-strong { font-weight: 600; color: var(--text-main); }
-.cell-mono { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.8rem; color: var(--text-muted); }
-
-/* ---------- Status badges ---------- */
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
+/* Inputs are ruled writing lines, not boxes floating on a page. */
+.form-label {
+  display: block;
+  margin-bottom: var(--sp-2);
+  font-size: 0.6875rem;
   font-weight: 600;
-  border: 1px solid transparent;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--step-0);
+  transition: border-color 140ms var(--ease), box-shadow 140ms var(--ease);
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none;
+  border-color: var(--srm-blue);
+  box-shadow: 0 0 0 3px var(--srm-blue-wash);
+}
+
+.form-input::placeholder, .form-textarea::placeholder { color: var(--ink-faint); }
+.form-input:disabled, .form-select:disabled { background: var(--paper-sunk); color: var(--ink-faint); cursor: not-allowed; }
+
+/* Register numbers and reference codes are entered in mono so a
+   transposed digit is visible while typing. */
+.form-input--code { font-family: var(--font-code); letter-spacing: 0.04em; }
+
+.form-hint { margin-top: var(--sp-2); font-size: var(--step--1); color: var(--ink-label); }
+.form-error { margin-top: var(--sp-2); font-size: var(--step--1); color: var(--state-rejected); }
+
+/* ==========================================================
+   Sheet — the page surface a slip is printed on
+   ========================================================== */
+
+.sheet {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+}
+
+.sheet--flush { padding: 0; overflow: hidden; }
+
+.alert {
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid;
+  border-radius: var(--radius);
+  font-size: var(--step-0);
+}
+.alert-danger { border-color: var(--state-rejected); background: var(--state-rejected-wash); color: #7d1e15; }
+.alert-success { border-color: var(--state-approved); background: var(--state-approved-wash); color: #145035; }
+
+/* ==========================================================
+   Data table — the register spread, desktop only. Below the
+   breakpoint the same data reads as stubs.
+   ========================================================== */
+
+.ledger { width: 100%; border-collapse: collapse; font-size: var(--step-0); }
+.ledger th {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--rule-ink);
+  background: var(--paper-sunk);
+  color: var(--ink-label);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-align: left;
   white-space: nowrap;
 }
+.ledger td { padding: var(--sp-3); border-bottom: 1px solid var(--rule); color: var(--ink-body); }
+.ledger tbody tr:hover { background: var(--paper-laid); }
+.ledger td.num, .ledger th.num { font-family: var(--font-code); font-size: var(--step--1); }
 
-.status-neutral  { background: #f2f4f7; color: #414651; border-color: #e4e7ec; }
-.status-progress { background: var(--info-bg); color: var(--info); border-color: #b2ddff; }
-.status-warning  { background: var(--warning-bg); color: var(--warning); border-color: #fedf89; }
-.status-success  { background: var(--success-bg); color: var(--success); border-color: #abefc6; }
-.status-danger   { background: var(--danger-bg); color: var(--danger); border-color: #fecdca; }
+/* ==========================================================
+   Motion — one authored moment: a slip settling onto the desk.
+   Not an entrance on every element.
+   ========================================================== */
 
-/* ---------- Forms ---------- */
-
-.form-group { display: flex; flex-direction: column; gap: 0.375rem; }
-
-.form-label { font-size: 0.825rem; font-weight: 550; color: var(--text-main); }
-
-.form-hint { font-size: 0.775rem; color: var(--text-muted); line-height: 1.45; }
-
-.form-input {
-  padding: 0.55rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  font-family: inherit;
-  font-size: 0.875rem;
-  color: var(--text-main);
-  transition: var(--transition);
-  width: 100%;
+@keyframes slip-settle {
+  from { opacity: 0; transform: translateY(-6px) rotate(-0.35deg); }
+  to   { opacity: 1; transform: none; }
 }
 
-.form-input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-light);
+.settles { animation: slip-settle 320ms var(--ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-.form-input:disabled { background: var(--bg-color); color: var(--text-muted); cursor: not-allowed; }
-.form-input::placeholder { color: #98a2b3; }
+/* ==========================================================
+   Responsive — the character shift.
+   Desktop reads as a workspace: the open book, wide margins,
+   many stubs visible. Mobile reads as a fast route: one slip,
+   full width, the action always reachable by thumb.
+   ========================================================== */
 
-textarea.form-input { resize: vertical; min-height: 90px; line-height: 1.55; }
-select.form-input { cursor: pointer; }
+.shell { max-width: 76rem; margin: 0 auto; padding: var(--sp-6) var(--sp-5) var(--sp-7); }
 
-.grid-cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; width: 100%; }
-
-@media (max-width: 560px) {
-  .grid-cols-2 { grid-template-columns: 1fr; }
-  .main-content { padding: 1.25rem 1rem 2.5rem; }
-  .topbar-brand { min-width: auto; padding: 0.75rem 1rem; }
+@media (max-width: 48rem) {
+  :root { --step-3: 1.5rem; --step-2: 1.25rem; }
+  .shell { padding: var(--sp-4) var(--sp-4) var(--sp-6); }
+  .sheet { padding: var(--sp-4); border-left: 0; border-right: 0; border-radius: 0; margin-inline: calc(var(--sp-4) * -1); }
+  .fieldset-grid { grid-template-columns: 1fr; gap: 0; }
+  .masthead { flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+  .ledger thead { display: none; }
 }
-
-.repeatable-row { display: flex; gap: 0.5rem; align-items: center; }
-
-.chip-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.3rem 0.65rem;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  font-size: 0.8rem;
-  font-family: inherit;
-  color: var(--text-body);
-}
-
-.chip button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  padding: 0;
-}
-
-/* ---------- Detail list (account / request detail) ---------- */
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.25rem 2rem;
-}
-
-.detail-row { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
-.detail-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 550; text-transform: uppercase; letter-spacing: 0.04em; }
-.detail-value { font-size: 0.9rem; color: var(--text-main); font-weight: 500; word-break: break-word; }
-.detail-value.empty { color: #98a2b3; font-weight: 400; }
-
-/* ---------- Alerts ---------- */
-
-.alert { padding: 0.7rem 0.95rem; border-radius: 8px; font-size: 0.85rem; border: 1px solid transparent; line-height: 1.5; }
-.alert-danger  { background: var(--danger-bg); color: var(--danger); border-color: #fecdca; }
-.alert-success { background: var(--success-bg); color: var(--success); border-color: #abefc6; }
-.alert-info    { background: var(--info-bg); color: var(--info); border-color: #b2ddff; }
-.alert-warning { background: var(--warning-bg); color: var(--warning); border-color: #fedf89; }
-
-/* ---------- Empty & loading ---------- */
-
-.empty-state {
-  padding: 3.5rem 2rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.6rem;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-}
-
-.empty-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: var(--bg-color);
-  color: var(--text-muted);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 0.25rem;
-}
-
-.empty-title { font-size: 0.95rem; font-weight: 600; color: var(--text-main); }
-
-.loading-spinner {
-  width: 28px;
-  height: 28px;
-  border: 2.5px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ---------- Modal ---------- */
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(16, 24, 40, 0.55);
-  backdrop-filter: blur(3px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 60;
-  padding: 1.25rem;
-  animation: fadeIn 0.15s ease-out;
-}
-
-.modal-content {
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 520px;
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  max-height: 90vh;
-}
-
-.modal-header {
-  padding: 1.1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.modal-title { font-size: 1.05rem; font-weight: 650; }
-
-.close-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 6px;
-  display: flex;
-  transition: var(--transition);
-}
-
-.close-btn:hover { background: var(--bg-color); color: var(--text-main); }
-
-.modal-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 1.1rem; overflow-y: auto; }
-
-.modal-footer {
-  padding: 1rem 1.25rem;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  background: var(--surface-alt);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-}
-
-/* ---------- Auth & wizard ---------- */
-
-.auth-wrapper { min-height: 100vh; display: flex; }
-
-.auth-side {
-  flex: 1;
-  background: linear-gradient(150deg, #2e2a86 0%, #16143f 100%);
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  padding: 4rem;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
-}
-
-@media (min-width: 1024px) { .auth-side { display: flex; } }
-
-.auth-side-content { position: relative; z-index: 10; max-width: 460px; }
-
-.auth-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-color);
-  padding: 2rem 1.25rem;
-}
-
-.bg-pattern {
-  position: absolute;
-  inset: 0;
-  opacity: 0.14;
-  background-image: radial-gradient(#fff 1px, transparent 1px);
-  background-size: 22px 22px;
-  pointer-events: none;
-}
-
-.auth-card {
-  background: var(--surface);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  padding: 2.25rem;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: var(--shadow-lg);
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.auth-header { text-align: center; margin-bottom: 1.75rem; }
-
-.auth-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--primary), #6d5ce0);
-  color: #fff;
-  margin-bottom: 0.9rem;
-  font-weight: 800;
-  font-size: 1.15rem;
-}
-
-.auth-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.35rem; letter-spacing: -0.02em; }
-.auth-subtitle { color: var(--text-muted); font-size: 0.875rem; }
-
-.auth-form { display: flex; flex-direction: column; gap: 1rem; }
-.auth-form .btn-primary { margin-top: 0.25rem; padding: 0.65rem; font-size: 0.925rem; }
-
-.auth-link { color: var(--primary); font-weight: 550; cursor: pointer; }
-.auth-link:hover { text-decoration: underline; }
-
-.auth-footer { text-align: center; margin-top: 1.5rem; color: var(--text-muted); font-size: 0.85rem; }
-
-.wizard-wrapper {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-color);
-  padding: 2rem 1.25rem;
-}
-
-.wizard-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 620px;
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-}
-
-.wizard-steps { display: flex; gap: 0.4rem; padding: 1.25rem 1.75rem 0; }
-
-.wizard-step-dot { flex: 1; height: 3px; border-radius: 999px; background: var(--border); transition: var(--transition); }
-.wizard-step-dot.active { background: var(--primary); }
-.wizard-step-dot.done { background: var(--success); }
-
-.wizard-body { padding: 1.75rem; display: flex; flex-direction: column; gap: 1.25rem; }
-
-.wizard-footer {
-  padding: 1.15rem 1.75rem;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  background: var(--surface-alt);
-}
-
-/* ---------- Misc ---------- */
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-  background: var(--surface-alt);
-}
-
-.filter-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-
-.timeline { display: flex; flex-direction: column; gap: 0.9rem; }
-
-.timeline-item { display: flex; gap: 0.75rem; align-items: flex-start; }
-
-.timeline-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--primary);
-  margin-top: 0.4rem;
-  flex-shrink: 0;
-}
-
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }

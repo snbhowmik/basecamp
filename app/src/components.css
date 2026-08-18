@@ -1,0 +1,489 @@
+/* ==========================================================
+   SRMIST BaseCamp — component vocabulary, in the Slip world
+   ==========================================================
+   The class names below are the existing API between components
+   and styles. The names are inherited; the material is not —
+   every one is rebuilt here. A `.card` is a sheet of form stock
+   ruled at its head, not a floating panel. A `.status-badge` is
+   a state mark, not a coloured pill. A `.stat-card` is a reading
+   off a register, not a hero-metric tile.
+   ========================================================== */
+
+/* --- Shell ---------------------------------------------- */
+
+.app-container { min-height: 100vh; display: flex; flex-direction: column; background: var(--paper-laid); }
+.main-content { flex: 1; }
+
+/* The topbar is the letterhead: institution mark, then a heavy
+   rule. Paper-coloured, not dark console chrome — a form does not
+   have a black header. */
+/* Brand, nav, and user sit as siblings in one header row. The
+   padding formula gives a full-bleed rule across the viewport
+   while holding the contents to the same 76rem measure as the
+   page below it — no inner wrapper element required. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-5);
+  padding-inline: max(var(--sp-5), (100% - 76rem) / 2);
+  background: var(--paper);
+  border-bottom: 2px solid var(--rule-ink);
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-block: var(--sp-3);
+  flex: none;
+}
+
+.topbar-brand img, .auth-logo img { display: block; height: 2rem; width: auto; }
+
+.topbar-brand strong {
+  font-family: var(--font-head);
+  font-size: var(--step-1);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-label);
+  font-weight: 600;
+}
+
+.nav-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-1);
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-tabs::-webkit-scrollbar { display: none; }
+
+.nav-tabs button, .nav-tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  background: none;
+  font: inherit;
+  font-size: var(--step-0);
+  font-weight: 500;
+  color: var(--ink-label);
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 140ms var(--ease), border-color 140ms var(--ease);
+}
+.nav-tabs button:hover, .nav-tabs a:hover { color: var(--ink); }
+.nav-tabs .active { color: var(--srm-blue); border-bottom-color: var(--srm-blue); }
+
+.topbar-user { margin-left: auto; display: flex; align-items: center; gap: var(--sp-2); position: relative; }
+
+.user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  font: inherit;
+  color: var(--ink-body);
+  cursor: pointer;
+}
+.user-trigger:hover { background: var(--paper-sunk); }
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--srm-blue);
+  color: #fff;
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  right: 0;
+  min-width: 13rem;
+  background: var(--paper);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--lift-overlay);
+  z-index: 40;
+  overflow: hidden;
+}
+.dropdown-header { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--rule); }
+.dropdown-header strong { display: block; color: var(--ink); font-size: var(--step-0); }
+.dropdown-header span { font-size: var(--step--1); color: var(--ink-label); }
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--step-0);
+  color: var(--ink-body);
+  text-align: left;
+  cursor: pointer;
+}
+.dropdown-item:hover { background: var(--paper-sunk); color: var(--ink); }
+.dropdown-item.danger { color: var(--state-rejected); }
+.dropdown-item.danger:hover { background: var(--state-rejected-wash); }
+
+/* --- Page furniture -------------------------------------- */
+
+.page-header { margin-bottom: var(--sp-5); padding-bottom: var(--sp-3); border-bottom: 2px solid var(--rule-ink); }
+.page-title { font-family: var(--font-head); font-size: var(--step-3); font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }
+.page-subtitle { margin-top: var(--sp-1); color: var(--ink-label); font-size: var(--step-0); }
+
+.section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-label);
+  margin-bottom: var(--sp-3);
+}
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
+.filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+
+/* --- Sheets (inherited name: card) ------------------------ */
+
+.card { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg); }
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--rule-ink);
+}
+.card-header h2, .card-header h3 { font-size: var(--step-1); font-weight: 600; }
+.card-body { padding: var(--sp-5); }
+
+/* Counts are readings off a register: label ruled above a
+   monospaced figure. Deliberately not the hero-metric tile —
+   no icon, no accent, no borrowed elevation. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0 var(--sp-5);
+  margin-bottom: var(--sp-5);
+  border-top: 1px solid var(--rule-ink);
+}
+.stat-card { padding: var(--sp-4) 0; border-bottom: 1px solid var(--rule); }
+.stat-icon { display: none; }
+.stat-label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-label); }
+.stat-value {
+  margin-top: var(--sp-1);
+  font-family: var(--font-code);
+  font-size: var(--step-3);
+  font-weight: 500;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Ledger tables ---------------------------------------- */
+
+.table-container { width: 100%; overflow-x: auto; }
+.table-container table { width: 100%; border-collapse: collapse; font-size: var(--step-0); }
+.table-container th {
+  padding: var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--rule-ink);
+  background: var(--paper-sunk);
+  color: var(--ink-label);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+}
+.table-container td { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--rule); color: var(--ink-body); }
+.table-container tbody tr:last-child td { border-bottom: 0; }
+.table-container tbody tr:hover { background: var(--paper-laid); }
+.clickable { cursor: pointer; }
+.cell-mono { font-family: var(--font-code); font-size: var(--step--1); font-variant-numeric: tabular-nums; }
+.cell-strong { color: var(--ink); font-weight: 500; }
+
+/* --- State marks (inherited name: status-badge) ----------- */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.125rem var(--sp-2);
+  border-radius: var(--radius);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.status-badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.status-neutral { color: var(--state-draft); background: var(--paper-sunk); }
+.status-progress { color: var(--state-pending); background: var(--state-pending-wash); }
+.status-warning { color: var(--state-pending); background: var(--state-pending-wash); }
+.status-success { color: var(--state-approved); background: var(--state-approved-wash); }
+.status-danger { color: var(--state-rejected); background: var(--state-rejected-wash); }
+
+/* --- Detail: a slip field block --------------------------- */
+
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0 var(--sp-6); }
+.detail-row { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-3) 0; border-bottom: 1px solid var(--rule); min-width: 0; }
+.detail-label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-label); }
+.detail-value { color: var(--ink); overflow-wrap: anywhere; }
+
+/* --- Chips ------------------------------------------------ */
+
+.chip-list { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0.125rem var(--sp-2);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper);
+  font-family: var(--font-code);
+  font-size: var(--step--1);
+  color: var(--ink-body);
+}
+
+/* --- Forms ------------------------------------------------ */
+
+.form-group { margin-bottom: var(--sp-4); }
+.grid-2, .grid-cols-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--sp-4); }
+.repeatable-row { display: flex; align-items: center; gap: var(--sp-2); }
+.repeatable-row .form-input { flex: 1; }
+
+.btn-sm { padding: 0.3rem 0.6rem; font-size: var(--step--1); }
+.btn-success { background: var(--state-approved); color: #fff; border-color: transparent; }
+.btn-success:hover:not(:disabled) { background: #17553a; }
+
+.alert-warning { border-color: var(--state-pending); background: var(--state-pending-wash); color: #7a4f00; }
+
+/* --- Modal ------------------------------------------------ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+  background: rgba(22, 22, 26, 0.42);
+  backdrop-filter: blur(2px);
+  animation: fade-in 160ms var(--ease) both;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-content {
+  width: min(46rem, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--lift-overlay);
+  animation: slip-settle 260ms var(--ease) both;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 2px solid var(--rule-ink);
+}
+.modal-title { font-family: var(--font-head); font-size: var(--step-2); font-weight: 600; color: var(--ink); }
+.modal-body { padding: var(--sp-5); overflow-y: auto; }
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+  border-top: 1px solid var(--rule);
+}
+.close-btn {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--ink-label);
+  cursor: pointer;
+}
+.close-btn:hover { background: var(--paper-sunk); color: var(--ink); }
+
+/* --- Timeline: the audit trail ---------------------------- */
+/* Time-held reads as visible length rather than a timestamp
+   string — the one discipline kept from the Labanotation
+   challenger the direction beat. */
+
+.timeline { position: relative; padding-left: var(--sp-5); }
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: var(--sp-2);
+  bottom: var(--sp-2);
+  width: 1px;
+  background: var(--rule-strong);
+}
+.timeline-item { position: relative; padding-bottom: var(--sp-4); }
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-dot {
+  position: absolute;
+  left: calc(var(--sp-5) * -1);
+  top: 0.4rem;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1px solid var(--rule-ink);
+}
+.timeline-item.active .timeline-dot { background: var(--srm-blue); border-color: var(--srm-blue); }
+
+/* --- Empty states: a blank form, not an illustration ------- */
+
+.empty, .empty-state {
+  padding: var(--sp-7) var(--sp-5);
+  text-align: center;
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius-lg);
+  color: var(--ink-label);
+}
+.empty-icon { color: var(--ink-faint); margin-bottom: var(--sp-3); }
+.empty-title { display: block; color: var(--ink); font-weight: 600; margin-bottom: var(--sp-1); }
+
+/* --- Loading ---------------------------------------------- */
+
+.loading-spinner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--rule-strong);
+  border-top-color: var(--srm-blue);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- Auth and wizard: the blank form before it is filled --- */
+
+.auth-wrapper { min-height: 100vh; display: grid; grid-template-columns: 1fr; background: var(--paper-laid); }
+
+.auth-side {
+  display: none;
+  position: relative;
+  padding: var(--sp-7) var(--sp-6);
+  background: var(--srm-blue);
+  color: #fff;
+  overflow: hidden;
+}
+.auth-side-content { position: relative; z-index: 1; max-width: 24rem; }
+.auth-side-content > img { margin-bottom: var(--sp-6); }
+.auth-side-content h2 {
+  color: #fff;
+  font-family: var(--font-head);
+  font-size: var(--step-3);
+  line-height: 1.15;
+  margin-bottom: var(--sp-3);
+}
+/* Tinted from the ground's own hue rather than a flat grey — grey
+   on a saturated field reads as dirty. */
+.auth-side-content p { color: #ccd6ea; line-height: 1.6; }
+
+/* Ruled form stock. At 0.07 alpha on a 2rem pitch this read as
+   banding rather than ruling — the lines competed with the content
+   instead of sitting under it. Halved the alpha, widened the pitch,
+   and faded the field out toward the foot so the panel has a
+   direction instead of an even wash. */
+.bg-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.035) 0 1px,
+    transparent 1px 2.75rem
+  );
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+}
+
+.auth-content { display: grid; place-items: center; padding: var(--sp-6) var(--sp-4); }
+.auth-card { width: min(26rem, 100%); }
+.auth-header { margin-bottom: var(--sp-5); }
+.auth-logo { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-5); }
+.auth-title { font-family: var(--font-head); font-size: var(--step-2); font-weight: 600; color: var(--ink); }
+.auth-subtitle { margin-top: var(--sp-1); color: var(--ink-label); font-size: var(--step-0); }
+.auth-form { display: flex; flex-direction: column; gap: var(--sp-4); }
+.auth-footer { margin-top: var(--sp-5); padding-top: var(--sp-4); border-top: 1px solid var(--rule); font-size: var(--step-0); color: var(--ink-label); }
+.auth-link { font-weight: 500; }
+
+.wizard-wrapper { min-height: 100vh; display: grid; place-items: start center; padding: var(--sp-6) var(--sp-4) var(--sp-7); background: var(--paper-laid); }
+.wizard-card {
+  width: min(40rem, 100%);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--lift);
+}
+
+/* Steps are ruled tick marks along the head of the form. */
+.wizard-steps { display: flex; gap: var(--sp-1); padding: var(--sp-4) var(--sp-5); border-bottom: 2px solid var(--rule-ink); }
+.wizard-steps > * { flex: 1; height: 3px; border-radius: 99px; background: var(--rule-strong); }
+.wizard-steps > .active, .wizard-steps > .done { background: var(--srm-blue); }
+.wizard-body { padding: var(--sp-5); }
+.wizard-footer { display: flex; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5); border-top: 1px solid var(--rule); }
+
+@media (min-width: 60rem) {
+  .auth-wrapper { grid-template-columns: 1fr 1fr; }
+  .auth-side { display: block; }
+}
+
+@media (max-width: 48rem) {
+  /* Touch targets. On the phone this is the fast ticketing route —
+     a 36px primary action is a miss with a thumb, and WCAG 2.1 AA
+     is binding on this project. Controls grow; type does not. */
+  .btn, .form-input, .form-select, .btn-icon, .close-btn, .dropdown-item {
+    min-height: 2.75rem;
+  }
+  .btn { padding-inline: var(--sp-4); }
+  .btn-sm { min-height: 2.25rem; }
+  .nav-tabs button, .nav-tabs a { min-height: 2.75rem; }
+
+  .topbar { padding-inline: var(--sp-4); gap: var(--sp-3); }
+  .card-body, .card-header, .modal-body, .modal-header, .modal-footer,
+  .wizard-body, .wizard-steps, .wizard-footer { padding-inline: var(--sp-4); }
+  .detail-grid { grid-template-columns: 1fr; gap: 0; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .modal-content { max-height: 92vh; width: 100%; }
+}

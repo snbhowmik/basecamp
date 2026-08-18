@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { signIn } from '../../lib/auth';
+import Brand from '../ui/Brand';
 
 interface LoginFormProps {
   onLoggedIn: () => void;
@@ -75,18 +76,15 @@ export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormP
       <div className="auth-side">
         <div className="bg-pattern" />
         <div className="auth-side-content">
-          <h2 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', lineHeight: 1.2 }}>
-            SRMIST BaseCamp
-          </h2>
-          <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
-            A request and ticketing platform, self-hosted and configured for your organisation.
-          </p>
+          <Brand variant="white" height={44} />
+          <h2>SRMIST BaseCamp</h2>
+          <p>A request and ticketing platform, self-hosted and configured for your organisation.</p>
         </div>
       </div>
       <div className="auth-content">
         <div className="auth-card">
           <div className="auth-header">
-            <div className="auth-logo">B</div>
+            <div className="auth-logo"><Brand height={34} /></div>
             <h1 className="auth-title">{factorId ? 'Verify your identity' : 'Welcome back'}</h1>
             <p className="auth-subtitle">
               {factorId ? 'Enter the 6-digit code from your authenticator app.' : 'Sign in to continue.'}

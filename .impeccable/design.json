@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-18T00:00:00Z",
+  "title": "Design System: SRMIST BaseCamp",
+  "extensions": {
+    "colorMeta": {
+      "institute-indigo": {
+        "role": "primary",
+        "displayName": "Institute Indigo",
+        "canonical": "#4338ca",
+        "tonalRamp": ["#14103f", "#211a66", "#2f2591", "#3c2fb8", "#4338ca", "#6d5ce0", "#9b8ef0", "#d6d0fa"]
+      },
+      "institute-indigo-hover": { "role": "primary", "displayName": "Institute Indigo Hover", "canonical": "#3730a3" },
+      "institute-indigo-light": { "role": "primary", "displayName": "Institute Indigo Light (8% wash)", "canonical": "rgba(67, 56, 202, 0.08)" },
+      "console-violet-accent": { "role": "secondary", "displayName": "Console Violet Accent", "canonical": "#6d5ce0" },
+      "auth-violet-start": { "role": "secondary", "displayName": "Auth Violet", "canonical": "#2e2a86" },
+      "auth-navy-end": { "role": "secondary", "displayName": "Auth Navy", "canonical": "#16143f" },
+      "canvas": { "role": "neutral", "displayName": "Canvas", "canonical": "#f6f7f9" },
+      "surface": { "role": "neutral", "displayName": "Surface", "canonical": "#ffffff" },
+      "surface-subtle": { "role": "neutral", "displayName": "Surface Subtle", "canonical": "#fafbfc" },
+      "console-ink": { "role": "neutral", "displayName": "Console Ink", "canonical": "#16181d" },
+      "console-fg": { "role": "neutral", "displayName": "Console Fg", "canonical": "#e7e9ee" },
+      "console-muted": { "role": "neutral", "displayName": "Console Muted", "canonical": "#9aa1ad" },
+      "ink-strong": {
+        "role": "neutral",
+        "displayName": "Ink Strong",
+        "canonical": "#14161a",
+        "tonalRamp": ["#0a0b0d", "#14161a", "#2a2d33", "#3d434e", "#6b7280", "#9aa1ad", "#d3d8e0", "#f6f7f9"]
+      },
+      "ink-body": { "role": "neutral", "displayName": "Ink Body", "canonical": "#3d434e" },
+      "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#6b7280" },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#e4e7ec" },
+      "hairline-strong": { "role": "neutral", "displayName": "Hairline Strong", "canonical": "#d3d8e0" },
+      "status-success": { "role": "status", "displayName": "Status Success", "canonical": "#067647" },
+      "status-success-bg": { "role": "status", "displayName": "Status Success Bg", "canonical": "#ecfdf3" },
+      "status-warning": { "role": "status", "displayName": "Status Warning", "canonical": "#b54708" },
+      "status-warning-bg": { "role": "status", "displayName": "Status Warning Bg", "canonical": "#fffaeb" },
+      "status-danger": { "role": "status", "displayName": "Status Danger", "canonical": "#b42318" },
+      "status-danger-bg": { "role": "status", "displayName": "Status Danger Bg", "canonical": "#fef3f2" },
+      "status-info": { "role": "status", "displayName": "Status Info", "canonical": "#175cd3" },
+      "status-info-bg": { "role": "status", "displayName": "Status Info Bg", "canonical": "#eff8ff" }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Page titles — one per screen." },
+      "title": { "displayName": "Title", "purpose": "Section and modal titles." },
+      "body": { "displayName": "Body", "purpose": "The system's working text size — tables, forms, buttons, alerts." },
+      "label": { "displayName": "Label", "purpose": "Uppercase field names — stat labels, table headers, detail-row labels. Never used for values." }
+    },
+    "shadows": [
+      { "name": "ambient", "value": "0 1px 2px rgba(16, 24, 40, 0.05)", "purpose": "Resting state for cards, stat-cards, and primary buttons." },
+      { "name": "lifted", "value": "0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04)", "purpose": "Hover state for stat-cards." },
+      { "name": "overlay", "value": "0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03)", "purpose": "Dropdowns, modals, auth card, wizard card — anything floating above the page." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "all 0.16s cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default transition for hover/focus/active state changes across buttons, tabs, inputs, cards." },
+      { "name": "ease-modal-fade", "value": "0.15s ease-out", "purpose": "Modal overlay fade-in." },
+      { "name": "ease-panel-rise", "value": "0.22s-0.3s cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Modal content and auth-card slide-up-and-fade entrance." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "560px", "purpose": "Below this: tighter content padding, topbar-brand collapses to auto-width." },
+      { "name": "auth-desktop", "value": "1024px", "purpose": "At and above this: the auth/wizard gradient side panel becomes visible." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one call-to-action style in the system. Used for the single most important action on a screen or dialog.",
+      "html": "<button class=\"ds-btn-primary\">Approve Request</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.95rem; border-radius: 8px; border: 1px solid transparent; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 550; font-size: 0.875rem; background: #4338ca; color: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); cursor: pointer; transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { background: #3730a3; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.08); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral action alongside a primary button — Cancel, Back, secondary options.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.95rem; border-radius: 8px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 550; font-size: 0.875rem; background: #ffffff; color: #14161a; border: 1px solid #d3d8e0; cursor: pointer; transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-secondary:hover { background: #f6f7f9; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "A request or item's current state — pill-shaped, color-coded, never solid-filled.",
+      "html": "<span class=\"ds-badge ds-badge-success\">Approved</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.75rem; font-weight: 650; border: 1px solid transparent; white-space: nowrap; } .ds-badge-success { background: #ecfdf3; color: #067647; border-color: #abefc6; } .ds-badge-danger { background: #fef3f2; color: #b42318; border-color: #fecdca; } .ds-badge-warning { background: #fffaeb; color: #b54708; border-color: #fedf89; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The primary content container — flat at rest, 1px hairline border, optional subtle header strip.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\">Recent Requests</div><div class=\"ds-card-body\">Card content goes here.</div></div>",
+      "css": ".ds-card { background: #ffffff; border-radius: 10px; border: 1px solid #e4e7ec; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); overflow: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-card-header { padding: 0.95rem 1.25rem; border-bottom: 1px solid #e4e7ec; background: #fafbfc; font-weight: 650; font-size: 0.95rem; color: #14161a; } .ds-card-body { padding: 1.25rem; font-size: 0.875rem; color: #3d434e; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "form-input",
+      "description": "Standard text field — hairline border at rest, indigo border + glow on focus.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Enter register number\" />",
+      "css": ".ds-input { padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid #d3d8e0; background: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.875rem; color: #14161a; width: 100%; transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-input::placeholder { color: #98a2b3; } .ds-input:focus { outline: none; border-color: #4338ca; box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.08); }"
+    },
+    {
+      "name": "Navigation Tab",
+      "kind": "nav",
+      "refersTo": "nav-tab",
+      "description": "Top-bar section tab — muted at rest, white with an underline when active, sits on the dark console-ink bar.",
+      "html": "<div style=\"background:#16181d; padding: 0 0.5rem; display:inline-flex;\"><button class=\"ds-nav-tab ds-nav-tab-active\">Dashboard</button><button class=\"ds-nav-tab\">Requests</button></div>",
+      "css": ".ds-nav-tab { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.9rem 1.1rem; border: none; background: transparent; color: #9aa1ad; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; position: relative; white-space: nowrap; transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-nav-tab:hover { color: #e7e9ee; background: rgba(255, 255, 255, 0.05); } .ds-nav-tab-active { color: #ffffff; background: rgba(255, 255, 255, 0.09); font-weight: 600; } .ds-nav-tab-active::after { content: ''; position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0; height: 2px; background: #fff; border-radius: 2px 2px 0 0; }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "A removable tag — used for selected tags, categories, or filter values.",
+      "html": "<span class=\"ds-chip\">Cyber Security<button aria-label=\"Remove\">&times;</button></span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.3rem 0.65rem; border-radius: 999px; background: #ffffff; border: 1px solid #d3d8e0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.8rem; color: #3d434e; } .ds-chip button { border: none; background: transparent; cursor: pointer; color: #6b7280; display: flex; align-items: center; padding: 0; font-size: 1rem; line-height: 1; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Institute Console",
+    "overview": "BaseCamp is the operating console for a university's request-and-approval process — MFA-gated logins, priority-level routing, and signed decisions on students' academic and travel records. It reads like an institutional system of record, not a product marketing site: a persistent dark top bar with product identity and section tabs, a calm neutral canvas below, and content organized into flat cards with a single restrained accent. Nothing here is trying to sell or delight on first glance; it is trying to be legible and trustworthy on the two-hundredth glance, because staff and students open it many times a day under real stakes — an approval, an MFA challenge, a certificate that has to be right.\n\nThe palette stays almost entirely neutral (grays from near-white canvas to near-black text) with exactly one accent — Institute Indigo — reserved for primary actions, active navigation state, and focus rings. Status color (success/warning/danger/info) is the only other color family, and it is purely functional: it appears on badges and alerts, never as decoration. The one moment of visual richness is the auth/wizard side panel, where a deep indigo-to-navy gradient and a soft dot pattern mark the entry points (login, registration, first-boot wizard) as distinct from the working console beyond them.\n\nTypography is a single family (Inter) carrying the entire hierarchy through weight and size, not through display flourishes — there is no oversized hero type anywhere in the system, because there is no landing-page moment to earn.",
+    "keyCharacteristics": [
+      "One accent color (Institute Indigo) used sparingly against an almost-monochrome neutral field",
+      "Flat cards at rest; shadow appears only where something is genuinely raised (dropdowns, modals, hover)",
+      "A dark top bar as the one fixed, always-visible piece of chrome — everything else lives in a light, calm canvas",
+      "Small, consistent radii (8–14px) and a single restrained 0.16s transition timing throughout",
+      "Status color is functional only — reserved for badges, alerts, and state, never for emphasis or decoration"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Institute Indigo is the only color in the system that means \"act here.\" It never appears as a background fill for informational content — only on primary buttons, active state, and focus. If a screen has more than one indigo element competing for attention, that's a bug, not a style choice.", "section": "colors" },
+      { "name": "The Ink Ramp Rule", "body": "The three text neutrals (Ink Strong → Ink Body → Ink Muted) form one implicit tonal ramp, continuing through Console Muted, Hairline Strong, and Canvas at the light end. A new gray should slot into this existing ramp rather than introducing an unrelated gray.", "section": "colors" },
+      { "name": "The One-Family Rule", "body": "Every weight from body copy to page headlines comes from Inter. A second typeface would read as a second product; hierarchy is weight and size, not family-switching.", "section": "typography" },
+      { "name": "The Real-Stacking Rule", "body": "Shadow depth must correspond to actual z-index/overlay behavior. A flat card never borrows the overlay shadow to look \"important\" — importance is expressed through the one-accent color rule and typography, not borrowed elevation.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep Institute Indigo to primary actions, active state, and focus only — treat any other use as a mistake to fix, not a variant to add.",
+      "Do use the existing Ink Ramp (Ink Strong → Ink Body → Ink Muted → Console Muted → Hairline Strong → Canvas) for any new neutral instead of introducing a new gray.",
+      "Do scale shadow to real stacking order — flat for resting cards, shadow-lg only for things that actually overlay the page (modals, dropdowns).",
+      "Do keep all UI copy in Inter at the four established sizes (headline/title/body/label); don't introduce a new size between them without a real hierarchy need."
+    ],
+    "donts": [
+      "Don't use Institute Indigo as a background fill for informational or decorative content — it must always mean \"this is actionable.\"",
+      "Don't add a second accent color. Status color (success/warning/danger/info) exists only for state, not for visual variety.",
+      "Don't give a resting card a heavy shadow to make it feel \"important\" — importance comes from the one-accent rule and typography, not borrowed elevation.",
+      "Don't introduce display/hero-sized type anywhere in the console. This system has no landing-page moment to earn; the largest text in the app is the 1.4rem page title."
+    ]
+  }
+}

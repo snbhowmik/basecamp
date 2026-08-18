@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { LayoutDashboard, Inbox, UserPlus, Users, GitBranch, UserCircle, LogOut, ChevronDown } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
+import Brand from '../ui/Brand';
 
 export type Route =
   | '/dashboard'
@@ -77,7 +78,7 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
     <div className="app-container">
       <header className="topbar">
         <div className="topbar-brand">
-          <span>SRMIST</span>
+          <Brand height={30} />
           <span className="brand-sub">BaseCamp</span>
         </div>
 
@@ -102,8 +103,8 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
           {menuOpen && (
             <div className="dropdown">
               <div className="dropdown-header">
-                <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{ctx.profile.full_name}</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ctx.profile.email}</div>
+                <strong>{ctx.profile.full_name}</strong>
+                <span>{ctx.profile.email}</span>
               </div>
               <button className="dropdown-item" onClick={() => { setMenuOpen(false); onNavigate('/account'); }}>
                 <UserCircle size={16} /> My account

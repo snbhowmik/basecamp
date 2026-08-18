@@ -1,0 +1,21 @@
+{
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "source serif 4",
+        "createdAt": "2026-08-18T15:05:40.373Z",
+        "reason": "user confirmed: asked for Inter + SF Mono + a third face of my choice; Source Serif 4 matches the SRM wordmark's transitional serif. DESIGN.md still documents the incumbent indigo world being replaced and is rewritten at finish."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-08-18T15:08:41.571Z",
+        "reason": "user confirmed: explicitly pinned Inter for the bulk of the UI. Operate-mode console where a workhorse UI face is the correct register; distinctiveness carried by Source Serif 4 masthead and the slip grammar."
+      }
+    ]
+  }
+}

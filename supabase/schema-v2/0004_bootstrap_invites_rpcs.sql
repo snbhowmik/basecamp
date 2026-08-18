@@ -88,8 +88,11 @@ returns trigger language plpgsql security definer set search_path = public as $$
 declare
   v_domain text := lower(split_part(new.email, '@', 2));
 begin
-  -- The captain is created before any domain or invite exists.
-  if is_bootstrapping() then
+  -- The captain is created before any domain or invite exists. Only the very
+  -- first account may take this path: once a profile exists, every later
+  -- signup needs an allowed domain and an open invitation, even if setup was
+  -- abandoned before an admin tag was ever granted.
+  if is_bootstrapping() and not exists (select 1 from profiles) then
     return new;
   end if;
 

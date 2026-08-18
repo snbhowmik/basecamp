@@ -429,6 +429,19 @@ returns boolean language sql security definer stable set search_path = public as
   );
 $$;
 
+-- Authorization predicate for the bootstrap window. is_bootstrapping() only
+-- reports that setup is unfinished, which is safe to expose but must never be
+-- the thing that grants write access: any account that existed during the
+-- window would inherit full config rights. This additionally pins the window
+-- to the first account created, so the captain -- and nobody who signs up
+-- after them -- can configure the instance.
+create or replace function can_bootstrap()
+returns boolean language sql security definer stable set search_path = public as $$
+  select is_bootstrapping()
+     and auth.uid() is not null
+     and auth.uid() = (select p.id from profiles p order by p.created_at, p.id limit 1);
+$$;
+
 grant execute on function my_best_rank(), my_rank_in(uuid), has_tag(text),
   has_tag_or_ancestor(text), is_lowest_level(), has_mfa(), holds_kind(text),
-  is_bootstrapping(), in_org_subtree(uuid, uuid) to authenticated;
+  is_bootstrapping(), can_bootstrap(), in_org_subtree(uuid, uuid) to authenticated;

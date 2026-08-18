@@ -288,11 +288,12 @@ begin
     execute format('alter table %I enable row level security', t);
     execute format('alter table %I force row level security', t);
     execute format('create policy %I on %I for select to authenticated using (true)', t || '_read', t);
-    -- Bootstrap-or-admin: is_bootstrapping() is true only until the first
-    -- admin tag exists, which is the window the setup wizard runs in.
+    -- Bootstrap-or-admin: can_bootstrap() is true only for the first account
+    -- created, and only until the first admin tag exists -- the window the
+    -- setup wizard runs in.
     execute format(
-      'create policy %I on %I for all to authenticated using (has_tag(''admin'') or is_bootstrapping()) '
-      'with check (has_tag(''admin'') or is_bootstrapping())', t || '_write', t);
+      'create policy %I on %I for all to authenticated using (has_tag(''admin'') or can_bootstrap()) '
+      'with check (has_tag(''admin'') or can_bootstrap())', t || '_write', t);
   end loop;
 end
 $$;
@@ -314,8 +315,8 @@ begin
     execute format('alter table %I force row level security', t);
     execute format('create policy %I on %I for select to authenticated using (true)', t || '_read', t);
     execute format(
-      'create policy %I on %I for all to authenticated using (has_tag(''admin'') or is_bootstrapping()) '
-      'with check (has_tag(''admin'') or is_bootstrapping())', t || '_write', t);
+      'create policy %I on %I for all to authenticated using (has_tag(''admin'') or can_bootstrap()) '
+      'with check (has_tag(''admin'') or can_bootstrap())', t || '_write', t);
   end loop;
 end
 $$;

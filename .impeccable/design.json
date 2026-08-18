@@ -1,64 +1,149 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-18T00:00:00Z",
+  "generatedAt": "2026-08-18T00:00:00.000Z",
   "title": "Design System: SRMIST BaseCamp",
   "extensions": {
     "colorMeta": {
-      "institute-indigo": {
+      "srm-blue": {
         "role": "primary",
-        "displayName": "Institute Indigo",
-        "canonical": "#4338ca",
-        "tonalRamp": ["#14103f", "#211a66", "#2f2591", "#3c2fb8", "#4338ca", "#6d5ce0", "#9b8ef0", "#d6d0fa"]
+        "displayName": "SRM Wordmark Blue",
+        "canonical": "#154494",
+        "tonalRamp": ["#08183a", "#0b2255", "#0f3370", "#154494", "#2a5cb0", "#5b85cc", "#9db9e3", "#eef2fa"]
       },
-      "institute-indigo-hover": { "role": "primary", "displayName": "Institute Indigo Hover", "canonical": "#3730a3" },
-      "institute-indigo-light": { "role": "primary", "displayName": "Institute Indigo Light (8% wash)", "canonical": "rgba(67, 56, 202, 0.08)" },
-      "console-violet-accent": { "role": "secondary", "displayName": "Console Violet Accent", "canonical": "#6d5ce0" },
-      "auth-violet-start": { "role": "secondary", "displayName": "Auth Violet", "canonical": "#2e2a86" },
-      "auth-navy-end": { "role": "secondary", "displayName": "Auth Navy", "canonical": "#16143f" },
-      "canvas": { "role": "neutral", "displayName": "Canvas", "canonical": "#f6f7f9" },
-      "surface": { "role": "neutral", "displayName": "Surface", "canonical": "#ffffff" },
-      "surface-subtle": { "role": "neutral", "displayName": "Surface Subtle", "canonical": "#fafbfc" },
-      "console-ink": { "role": "neutral", "displayName": "Console Ink", "canonical": "#16181d" },
-      "console-fg": { "role": "neutral", "displayName": "Console Fg", "canonical": "#e7e9ee" },
-      "console-muted": { "role": "neutral", "displayName": "Console Muted", "canonical": "#9aa1ad" },
-      "ink-strong": {
+      "srm-blue-deep": {
+        "role": "primary",
+        "displayName": "Blue Deep",
+        "canonical": "#0f3370",
+        "tonalRamp": ["#061128", "#0a1f47", "#0f3370", "#154494", "#2a5cb0", "#5b85cc", "#9db9e3", "#e6ecf7"]
+      },
+      "srm-blue-wash": {
+        "role": "primary",
+        "displayName": "Blue Wash",
+        "canonical": "#eef2fa",
+        "tonalRamp": ["#0f3370", "#215096", "#4573b5", "#7699cd", "#a5bee0", "#cbdaef", "#eef2fa", "#f8fafd"]
+      },
+      "srm-gold": {
+        "role": "secondary",
+        "displayName": "Seal Gold",
+        "canonical": "#c89d00",
+        "tonalRamp": ["#3a2d00", "#574400", "#6f5700", "#8f7100", "#c89d00", "#e5bf3a", "#f2d98a", "#fdf8e7"]
+      },
+      "srm-gold-wash": {
+        "role": "secondary",
+        "displayName": "Gold Wash",
+        "canonical": "#fdf8e7",
+        "tonalRamp": ["#6f5700", "#8f7100", "#c89d00", "#dfb725", "#eed473", "#f7e9b4", "#fdf8e7", "#fffdf6"]
+      },
+      "paper": {
         "role": "neutral",
-        "displayName": "Ink Strong",
-        "canonical": "#14161a",
-        "tonalRamp": ["#0a0b0d", "#14161a", "#2a2d33", "#3d434e", "#6b7280", "#9aa1ad", "#d3d8e0", "#f6f7f9"]
+        "displayName": "Paper",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#16161a", "#3c3d44", "#6a6c75", "#94969e", "#cdcac2", "#e2e0da", "#f2f1ed", "#ffffff"]
       },
-      "ink-body": { "role": "neutral", "displayName": "Ink Body", "canonical": "#3d434e" },
-      "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#6b7280" },
-      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "#e4e7ec" },
-      "hairline-strong": { "role": "neutral", "displayName": "Hairline Strong", "canonical": "#d3d8e0" },
-      "status-success": { "role": "status", "displayName": "Status Success", "canonical": "#067647" },
-      "status-success-bg": { "role": "status", "displayName": "Status Success Bg", "canonical": "#ecfdf3" },
-      "status-warning": { "role": "status", "displayName": "Status Warning", "canonical": "#b54708" },
-      "status-warning-bg": { "role": "status", "displayName": "Status Warning Bg", "canonical": "#fffaeb" },
-      "status-danger": { "role": "status", "displayName": "Status Danger", "canonical": "#b42318" },
-      "status-danger-bg": { "role": "status", "displayName": "Status Danger Bg", "canonical": "#fef3f2" },
-      "status-info": { "role": "status", "displayName": "Status Info", "canonical": "#175cd3" },
-      "status-info-bg": { "role": "status", "displayName": "Status Info Bg", "canonical": "#eff8ff" }
+      "paper-laid": {
+        "role": "neutral",
+        "displayName": "Laid Paper",
+        "canonical": "#faf9f6",
+        "tonalRamp": ["#1c1b17", "#3a382f", "#5a574a", "#7e7a6a", "#a9a596", "#cdcac2", "#e8e6e0", "#faf9f6"]
+      },
+      "paper-sunk": {
+        "role": "neutral",
+        "displayName": "Sunk Paper",
+        "canonical": "#f2f1ed",
+        "tonalRamp": ["#1a1a16", "#36352e", "#545248", "#787566", "#a4a193", "#c9c6bd", "#e2e0da", "#f2f1ed"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#16161a",
+        "tonalRamp": ["#0a0a0c", "#16161a", "#26262c", "#3c3d44", "#6a6c75", "#94969e", "#c6c7cc", "#eceded"]
+      },
+      "ink-body": {
+        "role": "neutral",
+        "displayName": "Body Ink",
+        "canonical": "#3c3d44",
+        "tonalRamp": ["#0a0a0c", "#16161a", "#2a2b31", "#3c3d44", "#5a5c64", "#8a8c94", "#b8bac1", "#e6e7ea"]
+      },
+      "ink-label": {
+        "role": "neutral",
+        "displayName": "Label Ink",
+        "canonical": "#6a6c75",
+        "tonalRamp": ["#101116", "#20222a", "#34363e", "#4c4e57", "#6a6c75", "#94969e", "#c0c2c8", "#eaebee"]
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Faint Ink",
+        "canonical": "#94969e",
+        "tonalRamp": ["#16161a", "#2c2e35", "#454750", "#5f616a", "#7b7d86", "#94969e", "#c2c4ca", "#eef0f2"]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline Rule",
+        "canonical": "#e2e0da",
+        "tonalRamp": ["#1c1b17", "#38362e", "#575447", "#7a7666", "#a5a191", "#cdcac2", "#e2e0da", "#f5f4f0"]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Rule",
+        "canonical": "#cdcac2",
+        "tonalRamp": ["#1a1915", "#34322b", "#524f44", "#747062", "#9e9a8c", "#cdcac2", "#e2e0da", "#f3f2ee"]
+      },
+      "rule-ink": {
+        "role": "neutral",
+        "displayName": "Masthead Rule",
+        "canonical": "#16161a",
+        "tonalRamp": ["#0a0a0c", "#16161a", "#26262c", "#3c3d44", "#6a6c75", "#94969e", "#c6c7cc", "#eceded"]
+      },
+      "state-draft": {
+        "role": "tertiary",
+        "displayName": "Draft Grey",
+        "canonical": "#6a6c75",
+        "tonalRamp": ["#101116", "#20222a", "#34363e", "#4c4e57", "#6a6c75", "#94969e", "#c0c2c8", "#f2f1ed"]
+      },
+      "state-pending": {
+        "role": "tertiary",
+        "displayName": "Pending Amber",
+        "canonical": "#8a5a00",
+        "tonalRamp": ["#2a1b00", "#452c00", "#5f3d00", "#8a5a00", "#b57700", "#dda43a", "#eecb90", "#fdf6e9"]
+      },
+      "state-approved": {
+        "role": "tertiary",
+        "displayName": "Approved Green",
+        "canonical": "#1c6b47",
+        "tonalRamp": ["#07200f", "#0d3a25", "#17553a", "#1c6b47", "#2f8f63", "#5cb28c", "#9ed3ba", "#eef6f1"]
+      },
+      "state-rejected": {
+        "role": "tertiary",
+        "displayName": "Rejected Red",
+        "canonical": "#a3271c",
+        "tonalRamp": ["#2e0a06", "#4d130d", "#7d1e15", "#a3271c", "#c8462f", "#dd7a67", "#eeb0a3", "#fbefee"]
+      }
     },
     "typographyMeta": {
-      "headline": { "displayName": "Headline", "purpose": "Page titles — one per screen." },
-      "title": { "displayName": "Title", "purpose": "Section and modal titles." },
-      "body": { "displayName": "Body", "purpose": "The system's working text size — tables, forms, buttons, alerts." },
-      "label": { "displayName": "Label", "purpose": "Uppercase field names — stat labels, table headers, detail-row labels. Never used for values." }
+      "masthead": { "displayName": "Masthead", "purpose": "Document titles only — page headers, letterhead title, auth panel headline. Source Serif 4, chosen to match the SRM wordmark's transitional serif. Drops to 1.5rem below 48rem." },
+      "headline": { "displayName": "Headline", "purpose": "Modal titles and the auth card title. Drops to 1.25rem below 48rem." },
+      "title": { "displayName": "Title", "purpose": "Card and section headers, brand lockup wordmark. Inter." },
+      "body": { "displayName": "Body", "purpose": "All running text, inputs, buttons, table cells, nav tabs. Ships slashed zero and tabular figures globally." },
+      "body-small": { "displayName": "Body Small", "purpose": "Hints, errors, dropdown meta, small buttons." },
+      "code": { "displayName": "Code", "purpose": "Reference codes, register numbers, timestamps, chips, numeric table cells. Measurement, never a technical costume on prose." },
+      "label": { "displayName": "Field Label", "purpose": "The small-caps 0.6875rem uppercase label: every field label, form label, section title, table header, stat label, signature attribution. A real ramp step, not drift." }
     },
     "shadows": [
-      { "name": "ambient", "value": "0 1px 2px rgba(16, 24, 40, 0.05)", "purpose": "Resting state for cards, stat-cards, and primary buttons." },
-      { "name": "lifted", "value": "0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04)", "purpose": "Hover state for stat-cards." },
-      { "name": "overlay", "value": "0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03)", "purpose": "Dropdowns, modals, auth card, wizard card — anything floating above the page." }
+      { "name": "lift", "value": "0 1px 2px rgba(22, 22, 26, 0.06), 0 4px 12px rgba(22, 22, 26, 0.05)", "purpose": "The setup wizard card — the one standing sheet in an otherwise empty viewport." },
+      { "name": "lift-overlay", "value": "0 8px 16px rgba(22, 22, 26, 0.1), 0 24px 48px rgba(22, 22, 26, 0.14)", "purpose": "Modals and the account dropdown — surfaces literally above the page." },
+      { "name": "focus-glow", "value": "0 0 0 3px #eef2fa", "purpose": "Input focus, paired with an SRM-blue stroke. The only non-elevation shadow in the system." }
     ],
     "motion": [
-      { "name": "ease-standard", "value": "all 0.16s cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default transition for hover/focus/active state changes across buttons, tabs, inputs, cards." },
-      { "name": "ease-modal-fade", "value": "0.15s ease-out", "purpose": "Modal overlay fade-in." },
-      { "name": "ease-panel-rise", "value": "0.22s-0.3s cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Modal content and auth-card slide-up-and-fade entrance." }
+      { "name": "ease", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "The system's only easing curve — every transition and animation." },
+      { "name": "slip-settle", "value": "@keyframes slip-settle { from { opacity: 0; transform: translateY(-6px) rotate(-0.35deg); } to { opacity: 1; transform: none; } } — 320ms both", "purpose": "The single authored entrance: a slip settling onto a desk. Reused by the modal at 260ms. Never staggered down a list." },
+      { "name": "state-transition", "value": "140ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Hover and focus colour/border transitions on every control." },
+      { "name": "fade-in", "value": "@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } } — 160ms both", "purpose": "The modal scrim only." },
+      { "name": "reduced-motion", "value": "@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }", "purpose": "Global honour of the reduced-motion preference." }
     ],
     "breakpoints": [
-      { "name": "mobile", "value": "560px", "purpose": "Below this: tighter content padding, topbar-brand collapses to auto-width." },
-      { "name": "auth-desktop", "value": "1024px", "purpose": "At and above this: the auth/wizard gradient side panel becomes visible." }
+      { "name": "phone-max", "value": "48rem" },
+      { "name": "auth-split-min", "value": "60rem" },
+      { "name": "measure", "value": "76rem" }
     ]
   },
   "components": [
@@ -66,86 +151,132 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one call-to-action style in the system. Used for the single most important action on a screen or dialog.",
-      "html": "<button class=\"ds-btn-primary\">Approve Request</button>",
-      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.95rem; border-radius: 8px; border: 1px solid transparent; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 550; font-size: 0.875rem; background: #4338ca; color: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); cursor: pointer; transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-primary:hover { background: #3730a3; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.08); }"
+      "description": "The acting control. The only element that carries filled SRM blue.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Approve request</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.9rem; border: 1px solid transparent; border-radius: 2px; font-family: Inter, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 0.9375rem; font-weight: 500; line-height: 1.2; cursor: pointer; transition: background 140ms cubic-bezier(0.16,1,0.3,1), border-color 140ms cubic-bezier(0.16,1,0.3,1), color 140ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-primary { background: #154494; color: #fff; } .ds-btn-primary:hover { background: #0f3370; } .ds-btn-primary:focus-visible { outline: 2px solid #154494; outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "Neutral action alongside a primary button — Cancel, Back, secondary options.",
-      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
-      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.95rem; border-radius: 8px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 550; font-size: 0.875rem; background: #ffffff; color: #14161a; border: 1px solid #d3d8e0; cursor: pointer; transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-secondary:hover { background: #f6f7f9; }"
+      "description": "Paper with a ruled stroke — the default non-committal action.",
+      "html": "<button class=\"ds-btn-secondary\">Send back</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.9rem; border: 1px solid #cdcac2; border-radius: 2px; background: #fff; color: #16161a; font-family: Inter, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 0.9375rem; font-weight: 500; line-height: 1.2; cursor: pointer; transition: background 140ms cubic-bezier(0.16,1,0.3,1), border-color 140ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-secondary:hover { background: #f2f1ed; border-color: #94969e; } .ds-btn-secondary:focus-visible { outline: 2px solid #154494; outline-offset: 2px; }"
     },
     {
-      "name": "Status Badge",
-      "kind": "chip",
-      "refersTo": "status-badge",
-      "description": "A request or item's current state — pill-shaped, color-coded, never solid-filled.",
-      "html": "<span class=\"ds-badge ds-badge-success\">Approved</span>",
-      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.75rem; font-weight: 650; border: 1px solid transparent; white-space: nowrap; } .ds-badge-success { background: #ecfdf3; color: #067647; border-color: #abefc6; } .ds-badge-danger { background: #fef3f2; color: #b42318; border-color: #fecdca; } .ds-badge-warning { background: #fffaeb; color: #b54708; border-color: #fedf89; }"
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive actions are outlined in rejected red, never filled.",
+      "html": "<button class=\"ds-btn-danger\">Reject</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.5rem 0.9rem; border: 1px solid #a3271c; border-radius: 2px; background: #fff; color: #a3271c; font-family: Inter, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 0.9375rem; font-weight: 500; line-height: 1.2; cursor: pointer; transition: background 140ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-danger:hover { background: #fbefee; } .ds-btn-danger:focus-visible { outline: 2px solid #154494; outline-offset: 2px; }"
     },
     {
-      "name": "Card",
-      "kind": "card",
-      "refersTo": "card",
-      "description": "The primary content container — flat at rest, 1px hairline border, optional subtle header strip.",
-      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\">Recent Requests</div><div class=\"ds-card-body\">Card content goes here.</div></div>",
-      "css": ".ds-card { background: #ffffff; border-radius: 10px; border: 1px solid #e4e7ec; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); overflow: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; } .ds-card-header { padding: 0.95rem 1.25rem; border-bottom: 1px solid #e4e7ec; background: #fafbfc; font-weight: 650; font-size: 0.95rem; color: #14161a; } .ds-card-body { padding: 1.25rem; font-size: 0.875rem; color: #3d434e; }"
-    },
-    {
-      "name": "Text Input",
+      "name": "Ruled Text Input",
       "kind": "input",
-      "refersTo": "form-input",
-      "description": "Standard text field — hairline border at rest, indigo border + glow on focus.",
-      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Enter register number\" />",
-      "css": ".ds-input { padding: 0.55rem 0.75rem; border-radius: 8px; border: 1px solid #d3d8e0; background: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.875rem; color: #14161a; width: 100%; transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-input::placeholder { color: #98a2b3; } .ds-input:focus { outline: none; border-color: #4338ca; box-shadow: 0 0 0 3px rgba(67, 56, 202, 0.08); }"
+      "refersTo": "input",
+      "description": "A ruled writing line with its small-caps label above it. Never a placeholder in place of a label.",
+      "html": "<div class=\"ds-field-group\"><label class=\"ds-form-label\" for=\"ds-reg\">Register number</label><input id=\"ds-reg\" class=\"ds-form-input ds-form-input-code\" value=\"RA2211003010492\" /><p class=\"ds-form-hint\">As printed on your ID card.</p></div>",
+      "css": ".ds-field-group { max-width: 22rem; } .ds-form-label { display: block; margin-bottom: 0.5rem; font-family: Inter, -apple-system, sans-serif; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #6a6c75; } .ds-form-input { width: 100%; padding: 0.5rem 0.65rem; border: 1px solid #cdcac2; border-radius: 2px; background: #fff; color: #16161a; font-family: Inter, -apple-system, sans-serif; font-size: 0.9375rem; transition: border-color 140ms cubic-bezier(0.16,1,0.3,1), box-shadow 140ms cubic-bezier(0.16,1,0.3,1); } .ds-form-input-code { font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', monospace; letter-spacing: 0.04em; } .ds-form-input:focus { outline: none; border-color: #154494; box-shadow: 0 0 0 3px #eef2fa; } .ds-form-input::placeholder { color: #94969e; } .ds-form-hint { margin: 0.5rem 0 0; font-family: Inter, sans-serif; font-size: 0.8125rem; color: #6a6c75; }"
     },
     {
-      "name": "Navigation Tab",
+      "name": "Letterhead Navigation",
       "kind": "nav",
       "refersTo": "nav-tab",
-      "description": "Top-bar section tab — muted at rest, white with an underline when active, sits on the dark console-ink bar.",
-      "html": "<div style=\"background:#16181d; padding: 0 0.5rem; display:inline-flex;\"><button class=\"ds-nav-tab ds-nav-tab-active\">Dashboard</button><button class=\"ds-nav-tab\">Requests</button></div>",
-      "css": ".ds-nav-tab { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.9rem 1.1rem; border: none; background: transparent; color: #9aa1ad; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; position: relative; white-space: nowrap; transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1); } .ds-nav-tab:hover { color: #e7e9ee; background: rgba(255, 255, 255, 0.05); } .ds-nav-tab-active { color: #ffffff; background: rgba(255, 255, 255, 0.09); font-weight: 600; } .ds-nav-tab-active::after { content: ''; position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0; height: 2px; background: #fff; border-radius: 2px 2px 0 0; }"
+      "description": "The topbar is the letterhead: paper ground closed by a 2px ink rule, with the active tab underlined in SRM blue.",
+      "html": "<header class=\"ds-topbar\"><div class=\"ds-topbar-brand\"><strong>BaseCamp</strong><span class=\"ds-brand-sub\">SRMIST</span></div><nav class=\"ds-nav-tabs\"><a class=\"ds-nav-tab ds-active\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"9\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"5\"/><rect x=\"14\" y=\"12\" width=\"7\" height=\"9\"/><rect x=\"3\" y=\"16\" width=\"7\" height=\"5\"/></svg>Dashboard</a><a class=\"ds-nav-tab\" href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/></svg>Requests</a></nav></header>",
+      "css": ".ds-topbar { display: flex; align-items: stretch; gap: 1.5rem; padding-inline: 1.5rem; background: #fff; border-bottom: 2px solid #16161a; font-family: Inter, -apple-system, sans-serif; } .ds-topbar-brand { display: flex; align-items: center; gap: 0.75rem; padding-block: 0.75rem; flex: none; } .ds-topbar-brand strong { font-family: 'Source Serif 4', Georgia, serif; font-size: 1.0625rem; font-weight: 600; color: #16161a; letter-spacing: -0.01em; } .ds-brand-sub { font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: #6a6c75; font-weight: 600; } .ds-nav-tabs { display: flex; align-items: stretch; gap: 0.25rem; } .ds-nav-tab { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem; border-bottom: 2px solid transparent; margin-bottom: -2px; font-size: 0.9375rem; font-weight: 500; color: #6a6c75; text-decoration: none; cursor: pointer; transition: color 140ms cubic-bezier(0.16,1,0.3,1), border-color 140ms cubic-bezier(0.16,1,0.3,1); } .ds-nav-tab:hover { color: #16161a; } .ds-nav-tab.ds-active { color: #154494; border-bottom-color: #154494; } .ds-nav-tab:focus-visible { outline: 2px solid #154494; outline-offset: 2px; }"
     },
     {
-      "name": "Chip",
+      "name": "State Mark",
       "kind": "chip",
-      "refersTo": "chip",
-      "description": "A removable tag — used for selected tags, categories, or filter values.",
-      "html": "<span class=\"ds-chip\">Cyber Security<button aria-label=\"Remove\">&times;</button></span>",
-      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.3rem 0.65rem; border-radius: 999px; background: #ffffff; border: 1px solid #d3d8e0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.8rem; color: #3d434e; } .ds-chip button { border: none; background: transparent; cursor: pointer; color: #6b7280; display: flex; align-items: center; padding: 0; font-size: 1rem; line-height: 1; }"
+      "refersTo": "mark-approved",
+      "description": "Replaces the coloured status pill. An uppercase word plus a currentColor dot; the wash is support, never the whole signal.",
+      "html": "<span class=\"ds-mark ds-mark-pending\">Pending</span> <span class=\"ds-mark ds-mark-approved\">Approved</span> <span class=\"ds-mark ds-mark-rejected\">Rejected</span> <span class=\"ds-mark ds-mark-draft\">Draft</span>",
+      "css": ".ds-mark { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.125rem 0.5rem; border-radius: 2px; font-family: Inter, -apple-system, sans-serif; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; white-space: nowrap; } .ds-mark::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; } .ds-mark-draft { color: #6a6c75; background: #f2f1ed; } .ds-mark-pending { color: #8a5a00; background: #fdf6e9; } .ds-mark-approved { color: #1c6b47; background: #eef6f1; } .ds-mark-rejected { color: #a3271c; background: #fbefee; }"
+    },
+    {
+      "name": "Counterfoil Stub",
+      "kind": "custom",
+      "refersTo": "stub",
+      "description": "The queue row and the answer to density: a perforated stub carrying a mono reference code, a title, and a state mark. Opening one unfolds the full slip.",
+      "html": "<div class=\"ds-stub-book\"><button class=\"ds-stub\"><span class=\"ds-stub-perf\"></span><span class=\"ds-stub-main\"><span class=\"ds-stub-ref\">OD-2026-00418</span><span class=\"ds-stub-title\">Hackathon travel — Chennai</span></span><span class=\"ds-mark ds-mark-pending\">Pending</span></button><button class=\"ds-stub\"><span class=\"ds-stub-perf\"></span><span class=\"ds-stub-main\"><span class=\"ds-stub-ref\">OD-2026-00417</span><span class=\"ds-stub-title\">Certificate log — IEEE workshop</span></span><span class=\"ds-mark ds-mark-approved\">Approved</span></button></div>",
+      "css": ".ds-stub-book { background: #fff; border: 1px solid #e2e0da; border-radius: 3px; overflow: hidden; } .ds-stub { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem; width: 100%; padding: 0.75rem 1rem; border: 0; border-bottom: 1px solid #e2e0da; background: transparent; font-family: Inter, -apple-system, sans-serif; font-size: 0.9375rem; color: #16161a; text-align: left; cursor: pointer; transition: background 140ms cubic-bezier(0.16,1,0.3,1); } .ds-stub:hover { background: #f2f1ed; } .ds-stub:last-child { border-bottom: 0; } .ds-stub:focus-visible { outline: 2px solid #154494; outline-offset: -2px; } .ds-stub-perf { width: 3px; align-self: stretch; min-height: 2.25rem; background-image: repeating-linear-gradient(to bottom, #cdcac2 0 3px, transparent 3px 7px); } .ds-stub-main { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; } .ds-stub-ref { font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', monospace; font-size: 0.8125rem; color: #6a6c75; } .ds-stub-title { color: #16161a; font-weight: 500; } .ds-mark { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.125rem 0.5rem; border-radius: 2px; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; white-space: nowrap; } .ds-mark::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; } .ds-mark-pending { color: #8a5a00; background: #fdf6e9; } .ds-mark-approved { color: #1c6b47; background: #eef6f1; }"
+    },
+    {
+      "name": "Slip Sheet with Field Block",
+      "kind": "card",
+      "refersTo": "sheet",
+      "description": "The unit of composition: a masthead with a right-aligned mono reference code over a ruled grid of label-above-value fields.",
+      "html": "<section class=\"ds-sheet ds-settles\"><div class=\"ds-masthead\"><h2 class=\"ds-masthead-title\">On-Duty Request</h2><span class=\"ds-refcode\">OD-2026-00418</span></div><div class=\"ds-fieldset-grid\"><div class=\"ds-field\"><span class=\"ds-field-label\">Applicant</span><span class=\"ds-field-value\">A. Nandhini</span></div><div class=\"ds-field\"><span class=\"ds-field-label\">Register number</span><span class=\"ds-field-value ds-field-value-code\">RA2211003010492</span></div><div class=\"ds-field\"><span class=\"ds-field-label\">Department</span><span class=\"ds-field-value\">Computer Science &amp; Engineering</span></div><div class=\"ds-field\"><span class=\"ds-field-label\">Submitted</span><span class=\"ds-field-value ds-field-value-code\">2026-08-14 09:12</span></div></div></section>",
+      "css": ".ds-sheet { background: #fff; border: 1px solid #e2e0da; border-radius: 3px; padding: 1.5rem; font-family: Inter, -apple-system, sans-serif; } .ds-masthead { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 2px solid #16161a; } .ds-masthead-title { margin: 0; font-family: 'Source Serif 4', Georgia, serif; font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em; color: #16161a; line-height: 1.2; } .ds-refcode { font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', monospace; font-size: 0.8125rem; color: #6a6c75; letter-spacing: 0.02em; white-space: nowrap; } .ds-fieldset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0 2rem; } .ds-field { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem 0; border-bottom: 1px solid #e2e0da; min-width: 0; } .ds-field-label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #6a6c75; } .ds-field-value { color: #16161a; font-size: 0.9375rem; overflow-wrap: anywhere; } .ds-field-value-code { font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', monospace; font-size: 0.8125rem; font-variant-numeric: tabular-nums; } @keyframes ds-slip-settle { from { opacity: 0; transform: translateY(-6px) rotate(-0.35deg); } to { opacity: 1; transform: none; } } .ds-settles { animation: ds-slip-settle 320ms cubic-bezier(0.16, 1, 0.3, 1) both; }"
+    },
+    {
+      "name": "Signature Strip",
+      "kind": "custom",
+      "refersTo": "countersigned",
+      "description": "Authority accumulates left to right; an unsigned cell is a dashed ruled blank. The countersigned mark is the system's single use of seal gold.",
+      "html": "<div class=\"ds-sigstrip\"><div class=\"ds-sigcell\"><div class=\"ds-sigcell-mark\">R. Balaji</div><div class=\"ds-sigcell-who\">Mentor</div></div><div class=\"ds-sigcell\"><div class=\"ds-sigcell-mark\">S. Kavitha</div><div class=\"ds-sigcell-who\">HOD, CSE</div></div><div class=\"ds-sigcell\"><div class=\"ds-sigcell-mark ds-sigcell-mark-blank\"></div><div class=\"ds-sigcell-who\">Dean — awaiting</div></div><div class=\"ds-sigcell ds-sigcell-seal\"><span class=\"ds-countersigned\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"8\" r=\"6\"/><path d=\"M15.477 12.89 17 22l-5-3-5 3 1.523-9.11\"/></svg>Countersigned</span></div></div>",
+      "css": ".ds-sigstrip { display: flex; flex-wrap: wrap; gap: 1.5rem; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid #cdcac2; font-family: Inter, -apple-system, sans-serif; } .ds-sigcell { min-width: 9rem; flex: 1 1 9rem; } .ds-sigcell-mark { height: 2.25rem; border-bottom: 1px solid #16161a; display: flex; align-items: flex-end; padding-bottom: 0.25rem; color: #16161a; font-family: 'Source Serif 4', Georgia, serif; font-size: 1.0625rem; } .ds-sigcell-mark-blank { border-bottom-style: dashed; border-bottom-color: #cdcac2; } .ds-sigcell-who { margin-top: 0.25rem; font-size: 0.6875rem; letter-spacing: 0.09em; text-transform: uppercase; color: #6a6c75; } .ds-sigcell-seal { display: flex; align-items: flex-end; } .ds-countersigned { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.75rem; border: 1px solid #c89d00; border-radius: 2px; background: #fdf8e7; color: #6f5700; font-size: 0.8125rem; font-weight: 600; }"
+    },
+    {
+      "name": "Register Reading",
+      "kind": "custom",
+      "refersTo": "field-label",
+      "description": "A count read off a register: uppercase label above a monospaced tabular figure. Deliberately not a hero-metric tile — no icon, no accent, no elevation.",
+      "html": "<div class=\"ds-stat-grid\"><div class=\"ds-stat-card\"><div class=\"ds-stat-label\">Awaiting you</div><div class=\"ds-stat-value\">14</div></div><div class=\"ds-stat-card\"><div class=\"ds-stat-label\">Approved this week</div><div class=\"ds-stat-value\">126</div></div><div class=\"ds-stat-card\"><div class=\"ds-stat-label\">Sent back</div><div class=\"ds-stat-value\">3</div></div></div>",
+      "css": ".ds-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 0 1.5rem; border-top: 1px solid #16161a; font-family: Inter, -apple-system, sans-serif; } .ds-stat-card { padding: 1rem 0; border-bottom: 1px solid #e2e0da; } .ds-stat-label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: #6a6c75; } .ds-stat-value { margin-top: 0.25rem; font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', monospace; font-size: 1.75rem; font-weight: 500; color: #16161a; font-variant-numeric: tabular-nums; }"
     }
   ],
   "narrative": {
-    "northStar": "The Institute Console",
-    "overview": "BaseCamp is the operating console for a university's request-and-approval process — MFA-gated logins, priority-level routing, and signed decisions on students' academic and travel records. It reads like an institutional system of record, not a product marketing site: a persistent dark top bar with product identity and section tabs, a calm neutral canvas below, and content organized into flat cards with a single restrained accent. Nothing here is trying to sell or delight on first glance; it is trying to be legible and trustworthy on the two-hundredth glance, because staff and students open it many times a day under real stakes — an approval, an MFA challenge, a certificate that has to be right.\n\nThe palette stays almost entirely neutral (grays from near-white canvas to near-black text) with exactly one accent — Institute Indigo — reserved for primary actions, active navigation state, and focus rings. Status color (success/warning/danger/info) is the only other color family, and it is purely functional: it appears on badges and alerts, never as decoration. The one moment of visual richness is the auth/wizard side panel, where a deep indigo-to-navy gradient and a soft dot pattern mark the entry points (login, registration, first-boot wizard) as distinct from the working console beyond them.\n\nTypography is a single family (Inter) carrying the entire hierarchy through weight and size, not through display flourishes — there is no oversized hero type anywhere in the system, because there is no landing-page moment to earn.",
+    "northStar": "The Countersigned Slip",
+    "overview": "BaseCamp is a book of institutional slips, not a ticket console. Every approval is a document with named fields, a reference code, and a signature strip that fills as authority is added. Structure comes from ruled lines, the way it does on real form stock — the hairline rule under a field, the heavy rule under a masthead, the dashed rule under a signature nobody has given yet. Nothing floats. Nothing glows. The surface is warm white form stock carrying ink neutrals, and colour arrives only when it has a job: institution blue where a control acts, seal gold once, on the countersigned state.\n\nThe system is dense but never crowded, because density is handled the way a book of slips handles it — with counterfoil stubs. A queue is a run of perforated stubs, each one a reference code, a title, and a state mark; opening one unfolds the whole slip. This is what lets the app hold hundreds of requests without pretending forty paper forms fit on a screen, and it is why the card-list-with-pill pattern is absent by construction rather than by taste.\n\nTwo anti-references are confirmed and binding: the SaaS ticket console (grey card list plus coloured status pill) and the friendly-campus-app pastel alternative. Both are refused. Desktop reads as a workspace — the open book, wide margins, many stubs visible at once. Mobile reads as a fast route — one slip, full bleed, controls grown to a thumb-sized 2.75rem while type stays exactly where it is.",
     "keyCharacteristics": [
-      "One accent color (Institute Indigo) used sparingly against an almost-monochrome neutral field",
-      "Flat cards at rest; shadow appears only where something is genuinely raised (dropdowns, modals, hover)",
-      "A dark top bar as the one fixed, always-visible piece of chrome — everything else lives in a light, calm canvas",
-      "Small, consistent radii (8–14px) and a single restrained 0.16s transition timing throughout",
-      "Status color is functional only — reserved for badges, alerts, and state, never for emphasis or decoration"
+      "Rules, not borders: hairlines and heavy rules carry all structure",
+      "Small-caps field labels (0.6875rem, 0.09em tracking) ruled above their values",
+      "Monospaced reference codes, register numbers, timestamps, and figures",
+      "Ink-on-paper neutrals; blue only on acting controls; gold exactly once",
+      "2–3px radius — a cut paper edge, not a rounded scale",
+      "Counterfoil stubs instead of cards for density",
+      "One authored motion moment: a slip settling onto a desk"
     ],
     "rules": [
-      { "name": "The One Accent Rule", "body": "Institute Indigo is the only color in the system that means \"act here.\" It never appears as a background fill for informational content — only on primary buttons, active state, and focus. If a screen has more than one indigo element competing for attention, that's a bug, not a style choice.", "section": "colors" },
-      { "name": "The Ink Ramp Rule", "body": "The three text neutrals (Ink Strong → Ink Body → Ink Muted) form one implicit tonal ramp, continuing through Console Muted, Hairline Strong, and Canvas at the light end. A new gray should slot into this existing ramp rather than introducing an unrelated gray.", "section": "colors" },
-      { "name": "The One-Family Rule", "body": "Every weight from body copy to page headlines comes from Inter. A second typeface would read as a second product; hierarchy is weight and size, not family-switching.", "section": "typography" },
-      { "name": "The Real-Stacking Rule", "body": "Shadow depth must correspond to actual z-index/overlay behavior. A flat card never borrows the overlay shadow to look \"important\" — importance is expressed through the one-accent color rule and typography, not borrowed elevation.", "section": "elevation" }
+      { "name": "The Single Seal Rule", "body": "Seal gold appears exactly once in the product, on `countersigned`. The moment it decorates a heading, a highlight, or a second badge, it stops meaning \"verified\" and the rule is broken.", "section": "colors" },
+      { "name": "The Acting-Control Rule", "body": "SRM blue marks something that acts or something that is current. If an element neither performs an action nor indicates the user's present position, it is ink and rule, not blue.", "section": "colors" },
+      { "name": "The Ink-First State Rule", "body": "A state is legible in text and rule weight before colour is applied. Every state mark carries an uppercase word and a 5px dot in `currentColor`; the wash is never the whole signal.", "section": "colors" },
+      { "name": "The Serif-For-Documents Rule", "body": "Source Serif 4 names documents and nothing else — mastheads, page titles, modal and auth titles, and the signature mark. It never sets body copy, labels, or controls.", "section": "typography" },
+      { "name": "The Mono-Is-Measurement Rule", "body": "Monospace means data you might have to check character by character: reference codes, register numbers, timestamps, counts. It is never a \"technical\" costume on prose.", "section": "typography" },
+      { "name": "The Label-Over-Value Rule", "body": "A field is a 0.6875rem uppercase label ruled above its value, never a label beside its value and never a placeholder standing in for a label.", "section": "typography" },
+      { "name": "The Full-Bleed Rule, Held Measure Rule", "body": "Structural rules cross the full viewport; content stays on the 76rem measure. Never let a band-separating rule stop at the content edge.", "section": "layout" },
+      { "name": "The Rule-Not-Gap Rule", "body": "Rows in a field grid are separated by a 1px rule, not by vertical gap. Column gap only.", "section": "layout" },
+      { "name": "The Two-Shadow Rule", "body": "Shadows exist only for surfaces that are literally above the page: modals, dropdowns, and the standalone wizard card. Sheets, cards, stubs, stat readings, and inputs are flat.", "section": "elevation" },
+      { "name": "The One Settle Rule", "body": "`slip-settle` is the system's only authored entrance. It plays when a slip or modal arrives. It is not a per-section reveal, and it is never chained down a list.", "section": "elevation" }
     ],
     "dos": [
-      "Do keep Institute Indigo to primary actions, active state, and focus only — treat any other use as a mistake to fix, not a variant to add.",
-      "Do use the existing Ink Ramp (Ink Strong → Ink Body → Ink Muted → Console Muted → Hairline Strong → Canvas) for any new neutral instead of introducing a new gray.",
-      "Do scale shadow to real stacking order — flat for resting cards, shadow-lg only for things that actually overlay the page (modals, dropdowns).",
-      "Do keep all UI copy in Inter at the four established sizes (headline/title/body/label); don't introduce a new size between them without a real hierarchy need."
+      "Do build composition out of ruled field blocks: a 0.6875rem uppercase label above its value, closed by a 1px hairline.",
+      "Do open every document band with the 2px `rule-ink` masthead rule — page header, card header, modal header, table head.",
+      "Do set every reference code, register number, timestamp, and count in monospace with tabular figures.",
+      "Do carry queue density with counterfoil stubs; open a stub to unfold the full slip.",
+      "Do put the primary action in the signature strip, where a signature would go.",
+      "Do keep radius at 2px for controls and 3px for surfaces — a cut edge.",
+      "Do state a document state in an uppercase word plus a dot before any colour is applied.",
+      "Do grow controls to a 2.75rem minimum target below 48rem while leaving type sizes alone.",
+      "Do theme browser surfaces from the palette — selection, caret, `accent-color`, scrollbars, focus rings, underline offset, tabular numerals.",
+      "Do draw icons as 14–18px line SVGs sitting beside a label, never carrying meaning alone."
     ],
     "donts": [
-      "Don't use Institute Indigo as a background fill for informational or decorative content — it must always mean \"this is actionable.\"",
-      "Don't add a second accent color. Status color (success/warning/danger/info) exists only for state, not for visual variety.",
-      "Don't give a resting card a heavy shadow to make it feel \"important\" — importance comes from the one-accent rule and typography, not borrowed elevation.",
-      "Don't introduce display/hero-sized type anywhere in the console. This system has no landing-page moment to earn; the largest text in the app is the 1.4rem page title."
+      "Don't spend seal gold on anything but `countersigned`. One use, product-wide.",
+      "Don't use SRM blue on anything that neither acts nor marks the user's current position.",
+      "Don't ship the coloured status pill or the grey card list; a state is a mark on a document.",
+      "Don't nest cards, or give a stub, stat reading, or field block a border, shadow, or radius.",
+      "Don't build hero-metric tiles: a count is a label over a monospaced figure with no icon.",
+      "Don't add a shadow to anything that is not literally above the page (modal, dropdown, wizard card).",
+      "Don't use a zero-offset halo shadow; every shadow here has a real offset and blur.",
+      "Don't add a second entrance animation or stagger `slip-settle` down a list.",
+      "Don't reference the migration-bridge tokens (`--bg-color`, `--surface-alt`, `--border`, `--primary`, `--primary-light`, `--text-main`, `--text-muted`) in new work — they are deprecated aliases scheduled for deletion.",
+      "Don't set body copy, labels, or controls in Source Serif 4, and don't set prose in monospace.",
+      "Don't use a placeholder in place of a field label.",
+      "Don't style spacing with inline `style` props; every measure comes from the seven-step scale in a stylesheet."
     ]
   }
 }

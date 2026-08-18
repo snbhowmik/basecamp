@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import Brand from '../ui/Brand';
+import { useMediaQuery, AUTH_PANEL_QUERY } from '../../lib/useMediaQuery';
 import {
   selfRegisterStudent,
   listPublicDepartments,
@@ -132,21 +134,28 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
     });
   };
 
+  const wideEnoughForPanel = useMediaQuery(AUTH_PANEL_QUERY);
+
   return (
     <div className="auth-wrapper">
       <div className="auth-side">
         <div className="bg-pattern" />
         <div className="auth-side-content">
-          <h2 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', lineHeight: 1.2 }}>SRMIST BaseCamp</h2>
-          <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
+          <h2>BaseCamp</h2>
+          <p>
             Student registration. Staff and faculty accounts are set up by invitation instead.
           </p>
+        </div>
+        <div className="auth-side-mark">
+          <Brand variant="white" height={40} />
         </div>
       </div>
       <div className="auth-content">
         <div className="auth-card" style={{ maxWidth: 480 }}>
           <div className="auth-header">
-            <div className="auth-logo">B</div>
+            {!wideEnoughForPanel && (
+              <div className="auth-logo"><Brand height={34} /></div>
+            )}
             <h1 className="auth-title">
               {step === 'form' ? 'Create your account' : step === 'confirm' ? 'Check your email' : 'Enroll multi-factor authentication'}
             </h1>
@@ -267,7 +276,7 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
 
           {step === 'form' && (
             <div className="auth-footer">
-              Already have an account? <span className="auth-link" onClick={onSwitchToLogin}>Sign in</span>
+              Already have an account? <button type="button" className="auth-link" onClick={onSwitchToLogin}>Sign in</button>
             </div>
           )}
         </div>

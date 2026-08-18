@@ -77,9 +77,13 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
   return (
     <div className="app-container">
       <header className="topbar">
+        {/* The mark identifies the organisation; the product is always
+            BaseCamp. Once organisations are configurable this logo and
+            the org name become instance settings — the wordmark does not. */}
         <div className="topbar-brand">
-          <Brand height={30} />
-          <span className="brand-sub">BaseCamp</span>
+          <Brand height={28} />
+          <span className="brand-divider" aria-hidden="true" />
+          <strong>BaseCamp</strong>
         </div>
 
         <nav className="nav-tabs">

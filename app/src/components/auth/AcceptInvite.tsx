@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import Brand from '../ui/Brand';
+import { useMediaQuery, AUTH_PANEL_QUERY } from '../../lib/useMediaQuery';
 import { getInviteByToken, acceptInvite, type InviteDetails } from '../../lib/invites';
 import { enrollTotp, verifyTotp } from '../../lib/wizard';
 
@@ -119,23 +121,30 @@ export default function AcceptInvite({ token, onDone }: { token: string; onDone:
     );
   }
 
+  const wideEnoughForPanel = useMediaQuery(AUTH_PANEL_QUERY);
+
   return (
     <div className="auth-wrapper">
       <div className="auth-side">
         <div className="bg-pattern" />
         <div className="auth-side-content">
-          <h2 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', lineHeight: 1.2 }}>SRMIST BaseCamp</h2>
-          <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
+          <h2>BaseCamp</h2>
+          <p>
             You've been invited as <strong>{invite.levelName}</strong>
             {invite.departmentName ? <> in <strong>{invite.departmentName}</strong></> : null}
             {invite.invitedByName ? <> by {invite.invitedByName}</> : null}.
           </p>
         </div>
+        <div className="auth-side-mark">
+          <Brand variant="white" height={40} />
+        </div>
       </div>
       <div className="auth-content">
         <div className="auth-card" style={{ maxWidth: 480 }}>
           <div className="auth-header">
-            <div className="auth-logo">B</div>
+            {!wideEnoughForPanel && (
+              <div className="auth-logo"><Brand height={34} /></div>
+            )}
             <h1 className="auth-title">
               {step === 'form' ? 'Complete your account' : step === 'confirm' ? 'Check your email' : 'Enroll multi-factor authentication'}
             </h1>

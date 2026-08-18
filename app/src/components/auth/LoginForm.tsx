@@ -3,6 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { signIn } from '../../lib/auth';
 import Brand from '../ui/Brand';
+import { useMediaQuery, AUTH_PANEL_QUERY } from '../../lib/useMediaQuery';
 
 interface LoginFormProps {
   onLoggedIn: () => void;
@@ -71,20 +72,29 @@ export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormP
     }
   };
 
+  const wideEnoughForPanel = useMediaQuery(AUTH_PANEL_QUERY);
+
   return (
     <div className="auth-wrapper">
       <div className="auth-side">
         <div className="bg-pattern" />
         <div className="auth-side-content">
-          <Brand variant="white" height={44} />
-          <h2>SRMIST BaseCamp</h2>
-          <p>A request and ticketing platform, self-hosted and configured for your organisation.</p>
+          <h2>BaseCamp</h2>
+          <p>A request and ticketing platform. Track less. Manage better — built for your organisation.</p>
+        </div>
+        <div className="auth-side-mark">
+          <Brand variant="white" height={40} />
         </div>
       </div>
       <div className="auth-content">
         <div className="auth-card">
           <div className="auth-header">
-            <div className="auth-logo"><Brand height={34} /></div>
+            {/* Only rendered below the panel breakpoint. On desktop the
+                blue panel already carries the mark, so this one is not
+                merely hidden — it is never requested. */}
+            {!wideEnoughForPanel && (
+              <div className="auth-logo"><Brand height={34} /></div>
+            )}
             <h1 className="auth-title">{factorId ? 'Verify your identity' : 'Welcome back'}</h1>
             <p className="auth-subtitle">
               {factorId ? 'Enter the 6-digit code from your authenticator app.' : 'Sign in to continue.'}
@@ -119,7 +129,7 @@ export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormP
                 {loading ? 'Signing in...' : 'Sign In'} <ArrowRight size={18} />
               </button>
               <div className="auth-footer" style={{ marginTop: 0 }}>
-                Student? <span className="auth-link" onClick={onSwitchToRegister}>Register here</span>
+                Student? <button type="button" className="auth-link" onClick={onSwitchToRegister}>Register here</button>
               </div>
             </form>
           ) : (

@@ -147,7 +147,7 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
           </p>
         </div>
         <div className="auth-side-mark">
-          <Brand variant="white" height={40} />
+          <Brand variant="white" height={58} />
         </div>
       </div>
       <div className="auth-content">

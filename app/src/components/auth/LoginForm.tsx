@@ -83,7 +83,7 @@ export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormP
           <p>A request and ticketing platform. Track less. Manage better — built for your organisation.</p>
         </div>
         <div className="auth-side-mark">
-          <Brand variant="white" height={40} />
+          <Brand variant="white" height={58} />
         </div>
       </div>
       <div className="auth-content">

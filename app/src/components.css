@@ -460,8 +460,28 @@
 
 .auth-content { display: grid; place-items: center; padding: var(--sp-6) var(--sp-4); }
 .auth-card { width: min(26rem, 100%); }
-.auth-header { margin-bottom: var(--sp-5); }
-.auth-logo { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-5); }
+
+/* Title block reads left, institution mark sits right of it — the way a
+   form names itself on the left and carries the issuing body's seal in
+   the opposite corner. The mark spans both text rows so it optically
+   centres against the block rather than hanging off the first line.
+   On desktop the mark is not rendered at all (the blue panel carries
+   it), and the second column simply collapses to zero. */
+.auth-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  column-gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.auth-title, .auth-subtitle { grid-column: 1; }
+.auth-logo {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: flex;
+  align-items: center;
+}
 .auth-title { font-family: var(--font-head); font-size: var(--step-2); font-weight: 600; color: var(--ink); }
 .auth-subtitle { margin-top: var(--sp-1); color: var(--ink-label); font-size: var(--step-0); }
 .auth-form { display: flex; flex-direction: column; gap: var(--sp-4); }

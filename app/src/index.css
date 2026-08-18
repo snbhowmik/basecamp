@@ -447,8 +447,8 @@ h1, h2, h3, h4 {
   border-radius: var(--radius);
   font-size: var(--step-0);
 }
-.alert-danger { border-color: var(--state-rejected); background: var(--state-rejected-wash); color: #7d1e15; }
-.alert-success { border-color: var(--state-approved); background: var(--state-approved-wash); color: #145035; }
+.alert-danger { border-color: var(--state-rejected); background: var(--state-rejected-wash); color: var(--state-rejected); }
+.alert-success { border-color: var(--state-approved); background: var(--state-approved-wash); color: var(--state-approved); }
 
 /* ==========================================================
    Data table — the register spread, desktop only. Below the

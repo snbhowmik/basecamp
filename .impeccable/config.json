@@ -15,6 +15,12 @@
         "value": "inter",
         "createdAt": "2026-08-18T15:08:41.571Z",
         "reason": "user confirmed: explicitly pinned Inter for the bulk of the UI. Operate-mode console where a workhorse UI face is the correct register; distinctiveness carried by Source Serif 4 masthead and the slip grammar."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#000",
+        "createdAt": "2026-08-18T15:53:01.976Z",
+        "reason": "mask-image alpha stop in .bg-pattern, not a rendered colour: only the alpha channel of a mask gradient is read, and #000 is the conventional fully-opaque value. Never paints."
       }
     ]
   }

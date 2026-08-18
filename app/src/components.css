@@ -297,7 +297,7 @@
 .btn-success { background: var(--state-approved); color: #fff; border-color: transparent; }
 .btn-success:hover:not(:disabled) { background: #17553a; }
 
-.alert-warning { border-color: var(--state-pending); background: var(--state-pending-wash); color: #7a4f00; }
+.alert-warning { border-color: var(--state-pending); background: var(--state-pending-wash); color: var(--state-pending); }
 
 /* --- Modal ------------------------------------------------ */
 

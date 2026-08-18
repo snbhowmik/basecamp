@@ -285,6 +285,26 @@ create unique index rcr_per_participant on request_check_results (request_id, ch
 create unique index rcr_per_request on request_check_results (request_id, check_id)
   where participant_id is null;
 
+-- Values are typed jsonb and validated against their definition in the
+-- application layer. Postgres cannot enforce "this jsonb matches that row's
+-- field_type" without a per-row trigger doing dynamic type checks, so this
+-- is an accepted tradeoff rather than an oversight — and the validation is
+-- still owed (v1 shipped without it; SECURITY.md tracks it).
+--
+-- Declared here rather than beside field_definitions in v1's layout because
+-- it needs `requests` to exist. It is also the table v1 shipped with NO RLS
+-- at all — see the enumerated check at the end of 0003_rls.sql, which now
+-- fails the migration rather than letting that recur.
+create table request_field_values (
+  id           uuid primary key default gen_random_uuid(),
+  request_id   uuid not null references requests(id) on delete cascade,
+  definition_id uuid not null references field_definitions(id) on delete cascade,
+  value        jsonb,
+  created_at   timestamptz not null default now(),
+  unique (request_id, definition_id)
+);
+create index rfv_request on request_field_values (request_id);
+
 -- ============================================================
 -- COMMENTS
 -- ============================================================

@@ -70,7 +70,8 @@
 - [x] `resend_invite_email()` — re-queues from the UI, re-checking invite ownership internally because SECURITY DEFINER bypasses the RLS that would enforce it
 - [x] `services/mailer` — background worker, no HTTP surface, no `service_role`, `requireTLS` on the SMTP transport. See NOTE.md 2026-08-18 for why this isn't the BFF that was rejected
 - [x] Invite panel shows delivery state (Queued / Emailed / Retrying / Failed) with a resend button; the copyable link stays as the fallback
-- [!] **Not yet verified against the live stack.** The migration, the worker, and the compose service are written and the frontend typechecks, but no invite email has actually landed in an inbox yet. Until it has, treat this as unproven — see DEPLOY.md's troubleshooting rows.
+- [x] **Verified against the live stack 2026-08-18** — migration applied, `basecamp_mailer` connects, worker polls, invite claimed and handed to the relay, `invite_email_sent_at` stamped. rspamd scored the outbound message `-20.10/15.00` (no action) with a valid `hackerxploit.org:s=dkim` signature.
+- [!] **Delivery blocked by sender-IP reputation, not by this code.** `mx.zoho.in` rejected with `554 5.7.1 ... detected as Spam` **in reply to RCPT TO** — before the body was transmitted, so no template change affects it. Root cause: `152.53.18.209` is on Spamhaus XBL (`zen.spamhaus.org` → `127.0.0.4`), commonly inherited from an IP's previous tenant. Fix is delisting + confirming the relay isn't open; see DEPLOY.md's troubleshooting rows. The copyable invite link remains the working fallback, which is why it was kept.
 
 ### V2 — Frontend (`app/src/components/{layout,pages}/`)
 - [x] `AppShell` — top bar, role-aware tabs, user menu. Captain: Dashboard / Workflow / Invite / Accounts. Everyone else: Dashboard / Requests / (Invite if staff) / Account

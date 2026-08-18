@@ -4,16 +4,17 @@ import type { PriorityLevel } from '../types';
 // Priority levels are the authority ladder. They are created once, from the
 // dashboard, by the captain — not seeded, and not part of the signup wizard.
 //
-// The captain is NOT a level. They are identified by the 'admin' tag and sit
-// above the ladder entirely, because has_tag('admin') is load-bearing across
-// every policy in 0003_rls.sql. They are additionally given the top level so
-// that rank-based logic (my_best_rank, can_invite) has something to compare
-// against, but their authority does not come from it.
+// The captain gets their own reserved rung at the top, created automatically
+// by setup_levels() — the captain never types it. Their authority still comes
+// from the 'admin' tag (has_tag('admin') is load-bearing across 0003_rls.sql);
+// the rung exists so rank comparisons place them above the highest named
+// level. Sharing a rank with Dean meant can_invite's `rank > mine` test
+// excluded Dean, so the captain could not invite one.
 //
-// Levels are append-only. Rank 1 is the highest authority; the lowest is
-// flagged is_base, which is what self-registration and is_lowest_level()
-// resolve through — not max(rank), which breaks the moment a level is added
-// below the base one (SECURITY.md R-27).
+// Ranks are sparse (10, 20, 30 ...). The lowest level is flagged is_base,
+// which is what self-registration and is_lowest_level() resolve through — not
+// max(rank), which breaks the moment a level is added below the base one
+// (SECURITY.md R-27).
 
 export interface DraftLevel {
   name: string;
@@ -44,11 +45,26 @@ export async function completeLevelSetup(drafts: DraftLevel[]): Promise<void> {
   if (error) throw error;
 }
 
-// Append-only addition after setup. The new level lands at the bottom and
-// takes is_base with it, atomically — see append_level() for why that has to
-// happen in the same transaction.
+// Append at the bottom of the ladder. The new level takes is_base with it,
+// atomically — see append_level() for why that has to happen in the same
+// transaction. To add a level in the middle, use insertLevelAfter().
 export async function appendLevel(draft: DraftLevel): Promise<string> {
   const { data, error } = await supabase.rpc('append_level', {
+    p_name: draft.name.trim(),
+    p_tag_code: draft.tagCode.trim().toLowerCase() || null,
+    p_tag_label: draft.tagLabel.trim() || null,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+// Insert between two existing levels. Ranks are allocated sparsely (10, 20,
+// 30 ...) precisely so this can take the midpoint of a gap without moving any
+// existing level — in-flight tickets resolve authority through a level's rank,
+// so renumbering would change what they mean.
+export async function insertLevelAfter(afterLevelId: string, draft: DraftLevel): Promise<string> {
+  const { data, error } = await supabase.rpc('insert_level_after', {
+    p_after_level_id: afterLevelId,
     p_name: draft.name.trim(),
     p_tag_code: draft.tagCode.trim().toLowerCase() || null,
     p_tag_label: draft.tagLabel.trim() || null,

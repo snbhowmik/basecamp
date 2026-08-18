@@ -101,7 +101,11 @@ create trigger auth_mfa_factor_changed
 
 create table priority_levels (
   id          uuid primary key default gen_random_uuid(),
-  rank        int  not null unique,          -- 1 = highest authority
+  -- Sparse by design: ranks are allocated 10, 20, 30 ... so a level can later
+  -- be inserted between two existing ones without renumbering. Renumbering
+  -- would move levels that in-flight tickets already reference. Lower number =
+  -- higher authority.
+  rank        int  not null unique,
   name        text not null,
   description text,
   -- Explicit, not inferred. v1 derived "is this the student level?" from
@@ -109,6 +113,11 @@ create table priority_levels (
   -- base one (SECURITY.md R-27). Making it data means a restructure that
   -- forgets to move the flag fails loudly instead of misclassifying users.
   is_base     boolean not null default false,
+  -- The captain's own rung, created automatically and never typed by a human.
+  -- Reserved levels cannot be renamed, appended after, or deleted: the ladder's
+  -- top must not depend on someone remembering to add it, spelling it right,
+  -- or putting it first.
+  is_reserved boolean not null default false,
   is_active   boolean not null default true,
   created_at  timestamptz not null default now()
 );

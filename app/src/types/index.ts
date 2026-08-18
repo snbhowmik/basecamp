@@ -17,6 +17,8 @@ export interface PriorityLevel {
   name: string;
   description: string | null;
   is_base: boolean;
+  // The captain's own rung, created automatically. Never editable.
+  is_reserved: boolean;
   is_active: boolean;
   // The role tag this level resolves through ('hod', 'mentor', ...). Null is
   // a normal state: levels can be named up front and tagged later.

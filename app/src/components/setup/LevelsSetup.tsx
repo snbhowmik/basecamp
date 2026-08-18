@@ -1,13 +1,19 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Plus, X, ArrowUp, ArrowDown, Check, Lock } from 'lucide-react';
-import { listLevels, completeLevelSetup, appendLevel, type DraftLevel } from '../../lib/levels';
+import {
+  listLevels, completeLevelSetup, appendLevel, insertLevelAfter, type DraftLevel,
+} from '../../lib/levels';
 import type { PriorityLevel, Tag } from '../../types';
 import { listTags } from '../../lib/invites';
 
-// The authority ladder. Rank 1 is the highest; the lowest is the base level
-// that students sit at. The captain is NOT on this ladder — they are the
-// 'admin' tag and sit above it — so the list below starts at whatever the
-// captain calls their top rung (Dean, Principal, Director, ...).
+// The authority ladder. Lower rank number = higher authority; the lowest level
+// is the base one that students sit at.
+//
+// The captain does NOT type their own rung. setup_levels() creates it
+// automatically above everything here, so the list below starts at whatever
+// the captain calls their highest *named* level (Dean, Principal, Director).
+// Requiring them to type "Admin" means it can be forgotten, misspelled, or
+// ordered wrongly, and the top of the ladder should not depend on that.
 //
 // Nothing here is seeded. v1 shipped a prefilled Dean/HOD/Coordinator/Mentor/
 // Student list in the signup wizard, which is fixture data by another name and
@@ -22,6 +28,9 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [appendDraft, setAppendDraft] = useState<DraftLevel>(emptyDraft());
+  // Which level a mid-ladder insert is anchored under, if any.
+  const [insertAfter, setInsertAfter] = useState<string | null>(null);
+  const [insertDraft, setInsertDraft] = useState<DraftLevel>(emptyDraft());
 
   useEffect(() => {
     if (mode !== 'manage') return;
@@ -79,6 +88,21 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
       .finally(() => setBusy(false));
   };
 
+  const submitInsert = (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!insertAfter || !insertDraft.name.trim()) return;
+    setBusy(true);
+    insertLevelAfter(insertAfter, insertDraft)
+      .then(async () => {
+        setInsertAfter(null);
+        setInsertDraft(emptyDraft());
+        setExisting(await listLevels());
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not insert the level.'))
+      .finally(() => setBusy(false));
+  };
+
   const tagLabelFor = (id: string | null) =>
     id ? tags.find((t) => t.id === id)?.code ?? '—' : null;
 
@@ -96,12 +120,15 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
           </div>
           <div className="card-body">
             <p className="form-hint" style={{ marginBottom: '1rem' }}>
-              Ranks are fixed once created — tickets in flight reference a level and expect its
-              position to hold still. New levels can be added at the bottom.
+              Existing levels never move. Ranks are spaced ten apart so a new level can be slotted
+              between two others by taking the gap — tickets in flight resolve authority through a
+              level's rank, so renumbering would change what they mean.
             </p>
             <div className="table-container">
               <table>
-                <thead><tr><th>Rank</th><th>Level</th><th>Tag</th><th>Base</th></tr></thead>
+                <thead>
+                  <tr><th>Rank</th><th>Level</th><th>Tag</th><th></th><th style={{ textAlign: 'right' }}>Actions</th></tr>
+                </thead>
                 <tbody>
                   {existing.map((l) => (
                     <tr key={l.id}>
@@ -112,7 +139,18 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
                           ? <span className="chip">{tagLabelFor(l.tag_id)}</span>
                           : <span className="detail-value empty">No tag yet</span>}
                       </td>
-                      <td>{l.is_base ? <span className="status-badge status-neutral">Base</span> : ''}</td>
+                      <td>
+                        {l.is_reserved && <span className="status-badge status-progress">Captain</span>}
+                        {l.is_base && <span className="status-badge status-neutral">Base</span>}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {!l.is_base && (
+                          <button type="button" className="btn btn-secondary"
+                            onClick={() => { setInsertAfter(l.id); setInsertDraft(emptyDraft()); }}>
+                            Insert below
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -121,8 +159,40 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
           </div>
         </div>
 
+        {insertAfter && (
+          <div className="card" style={{ marginBottom: '1.25rem' }}>
+            <div className="card-header">
+              <h2 className="section-title">
+                Insert below {existing.find((l) => l.id === insertAfter)?.name}
+              </h2>
+            </div>
+            <div className="card-body">
+              <form onSubmit={submitInsert} className="grid-cols-2" style={{ alignItems: 'end' }}>
+                <div className="form-group">
+                  <label className="form-label">Level name</label>
+                  <input className="form-input" required value={insertDraft.name}
+                    onChange={(e) => setInsertDraft({ ...insertDraft, name: e.target.value })}
+                    placeholder="Student Coordinator" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Tag code (optional)</label>
+                  <div className="repeatable-row">
+                    <input className="form-input" value={insertDraft.tagCode}
+                      onChange={(e) => setInsertDraft({ ...insertDraft, tagCode: e.target.value })}
+                      placeholder="student_coord" />
+                    <button className="btn btn-primary" type="submit" disabled={busy}><Plus size={15} /></button>
+                    <button className="btn btn-secondary" type="button" onClick={() => setInsertAfter(null)}>
+                      <X size={15} />
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         <div className="card">
-          <div className="card-header"><h2 className="section-title">Add a level</h2></div>
+          <div className="card-header"><h2 className="section-title">Add a level at the bottom</h2></div>
           <div className="card-body">
             <form onSubmit={submitAppend} className="grid-cols-2" style={{ alignItems: 'end' }}>
               <div className="form-group">
@@ -159,9 +229,10 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
             <div>
               <h1 className="page-title">Set up your authority levels</h1>
               <p className="page-subtitle">
-                List the ranks in your organisation, highest first. You are the captain and sit
-                above all of them, so do not add yourself. A tag is what identifies the people who
-                hold a level — you can leave it blank now and fill it in later.
+                List the ranks in your organisation, highest first — start at Dean, or whatever
+                your top role is called. Your own captain level is created automatically above all
+                of them, so do not add it. A tag identifies the people who hold a level; leave it
+                blank now and fill it in later if you would rather.
               </p>
             </div>
 

@@ -235,6 +235,91 @@ And check TASK.md's Known Gaps section — several things (attachment purge job,
 
 ---
 
+## Part C — Rebuilding the Host From a Fresh ISO
+
+Written after the 2026-08-18 Spamhaus XBL incident (see NOTE.md). Follow this when reinstalling the OS under a running deployment.
+
+> **A rebuild does not change your IP's reputation.** Spamhaus lists the address, not the operating system. If the reason for rebuilding is mail delivery, a reinstall will not fix it — delisting or a different sending path will. Rebuild for a suspected host compromise, or to restructure the box; not to fix email.
+
+### C.1 Before wiping — three things that are gone forever otherwise
+
+**Snapshot the VM.** Whatever the provider offers. Cheap insurance against a rebuild that goes wrong at 2am.
+
+**Back up Mailcow, especially the DKIM keys.** They exist only on this box, and your published `dkim._domainkey` TXT record points at them. Wipe without them and every outbound message fails DKIM — with `DMARC p=reject`, that means *all* mail bounces everywhere, not just to strict receivers.
+
+```bash
+cd ~/mailcow-dockerized
+sudo MAILCOW_BACKUP_LOCATION=/tmp/mailcow-backup ./helper-scripts/backup_and_restore.sh backup all
+```
+
+Copy that off the box. If you choose to regenerate DKIM instead, plan to update DNS immediately after the rebuild and expect delivery failures until it propagates.
+
+**Save the Cloudflare tunnel credentials** (`/etc/cloudflared/`), or accept recreating the tunnel and re-pointing DNS.
+
+### C.2 Do NOT restore the old `.env`
+
+Every secret in it should be treated as compromised — `JWT_SECRET` alone lets anyone mint a `service_role` token and read or write every row, bypassing RLS entirely. A rebuild is the natural moment to rotate. Regenerate all of them per §A.2 rather than copying the file forward.
+
+The Basecamp database holds one captain account and any pending invites — nothing worth migrating. Start clean and re-run the wizard; that is what "No Fixture Data" is for.
+
+Also clear shell history, which accumulates secrets from `sed -i` one-liners:
+
+```bash
+shred -u ~/.bash_history 2>/dev/null; history -c
+```
+
+Going forward, set secrets by editing `.env` in an editor rather than via shell commands that record the value.
+
+### C.3 Harden before anything listens
+
+Everything in §B.2, plus three gaps the 2026-08-18 audit found on the previous build:
+
+**Persistent journald.** The previous host kept logs in volatile storage, so the reboot erased every log predating it — which is precisely why the Spamhaus detection window could not be investigated.
+
+```bash
+sudo mkdir -p /var/log/journal && sudo sed -i 's/^#\?Storage=.*/Storage=persistent/' /etc/systemd/journald.conf && sudo systemctl restart systemd-journald
+```
+
+**Disable unprivileged user namespaces.** The previous kernel was flagged likely-vulnerable to CVE-2026-43284 / CVE-2026-43500, both reachable from an unprivileged namespace. This box runs internet-facing PHP on the same kernel as the student database, so a container escape is not theoretical.
+
+```bash
+echo 'kernel.unprivileged_userns_clone=0' | sudo tee /etc/sysctl.d/99-hardening.conf && sudo sysctl --system
+```
+
+Verify Docker still starts afterward — if a container needs userns, prefer blacklisting the vulnerable modules instead:
+
+```bash
+printf 'install esp4 /bin/false\ninstall esp6 /bin/false\ninstall rxrpc /bin/false\n' | sudo tee /etc/modprobe.d/99-cve-mitigations.conf
+```
+
+**Confirm the firewall is actually enforcing**, not merely installed:
+
+```bash
+sudo ufw status verbose
+```
+
+### C.4 Rebuild order
+
+1. Harden the host (§C.3 + §B.2) — before any service listens
+2. Install Docker + Compose v2
+3. Mailcow first: it needs 25/80/443/465/587/993/995. Restore the backup or configure fresh, then verify DKIM DNS matches the keys actually in use
+4. Basecamp: clone, write a **fresh** `.env` (§A.2, all new secrets), then §A.3 → §A.7 in order, including §A.6b
+5. Cloudflare tunnel (§B.5) — Basecamp needs no inbound port
+6. Run the wizard (§B.7)
+7. Request Spamhaus delisting — separately, and only after confirming the relay is not open:
+
+```bash
+docker exec mailcowdockerized-postfix-mailcow-1 postconf smtpd_relay_restrictions smtpd_recipient_restrictions
+```
+
+An open relay would explain a listing on its own and guarantees relisting if not fixed first.
+
+### C.5 Consider not co-hosting mail and the app
+
+SECURITY.md R-11/R-12 say Kong should be the only reachable service. That holds for the Basecamp stack, but not for the host: Mailcow publishes eleven ports and runs an internet-facing PHP application on the same kernel as the Postgres instance holding student records. Splitting them onto separate VPSs materially shrinks the attack surface around that data, and a rebuild is the cheapest moment to do it.
+
+---
+
 ## Troubleshooting — Symptom → Cause
 
 Cross-referenced against NOTE.md's 2026-08-09 entries, which have the full explanation for each:

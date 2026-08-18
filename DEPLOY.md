@@ -122,10 +122,23 @@ Running it twice is intentional and safe (it's idempotent). The first pass repor
 
 ### A.7 Bring up the rest of the stack
 
+**Build the frontend first.** This ordering is not cosmetic:
+
 ```bash
+(cd app && npm install && npm run build)
 docker compose up -d
 docker compose ps
 ```
+
+`docker-compose.yml`'s `frontend` service bind-mounts `./app/dist`. If that path doesn't exist when the stack starts, **Docker creates it as `root`**, and the next `npm run build` dies with `EACCES: permission denied, copyfile ... -> app/dist/favicon.ico` — an ownership problem wearing a Vite stack trace. Building first means the directory already exists, owned by you, and Docker just mounts it.
+
+If you've already hit it, delete the root-owned directory and rebuild — `chown` works too, but removing it is cleaner since nothing in there is worth keeping:
+
+```bash
+sudo rm -rf app/dist && (cd app && npm run build) && docker compose restart frontend
+```
+
+This has caught two consecutive fresh deploys (2026-08-17 and 2026-08-18), which is why it is now the first line of this step rather than a troubleshooting entry.
 
 Everything should show `Up` (Studio may show `unhealthy` — it depends on a few things not wired up yet and isn't required for the wizard; see TASK.md). If anything is crash-looping, check `docker compose logs <service> --tail 30` and cross-reference NOTE.md's 2026-08-09 entries — the ones this session hit (missing `SECRET_KEY_BASE`/`DB_ENC_KEY`/`FLY_APP_NAME` for realtime, missing `PGRST_JWT_SECRET` for storage, missing CORS plugin in Kong) are already fixed in the committed `docker-compose.yml`/`kong.yml`, but if you're on a different image version some of these env var names may have moved again.
 
@@ -335,6 +348,9 @@ Cross-referenced against NOTE.md's 2026-08-09 entries, which have the full expla
 | A trigger on `auth.users`/`auth.mfa_factors` fails with `relation "X" does not exist`, but the table clearly exists | The function is `SECURITY DEFINER` and doesn't pin `search_path` — it's inheriting the caller's (`supabase_auth_admin`, pinned to `auth` only) instead of resolving `public` schema tables. Add `set search_path = public` to the function definition. |
 | `ALTER ROLE authenticator ...` fails with "is a reserved role, only superusers can modify it" | You're connected as `postgres`, which isn't `SUPERUSER` in this image — connect as `supabase_admin` instead |
 | GoTrue mailer fails with "unencrypted connection" | Your SMTP host doesn't support STARTTLS and isn't `localhost` — GoTrue refuses to send over plaintext to anything else. Use real SMTP with TLS, or see §A.7's local-dev workaround. |
+| `npm run build` fails with `EACCES: permission denied, copyfile … app/dist/…` | Not a Vite bug. `docker compose up -d` ran before the first build, so Docker created `app/dist` as root to satisfy the `frontend` bind mount. `sudo rm -rf app/dist`, rebuild, `docker compose restart frontend` — and see §A.7 for the ordering that avoids it. |
+| Migrations fail with `relation "auth.mfa_factors" does not exist` | `auth` hasn't started yet — GoTrue creates that table on its first connect, and `0001` puts a trigger on it. Bring up `auth` (§A.5), wait for its `pop` migration lines to finish, then re-run. The failed file rolls back whole (`psql -1`) and is not recorded in the ledger, so retrying is safe with no cleanup. |
+| `bootstrap-db-roles.sh` says `MAILER_DB_PASSWORD unset in .env — skipping mailer role` | Expected on a fresh `.env` copied from `.env.example`. Generate one (`openssl rand -hex 24`), append it, and re-run **after** migrations — the role doesn't exist until `0008`. |
 | `mailer` crash-loops with `password authentication failed for user "basecamp_mailer"` | `bootstrap-db-roles.sh` wasn't re-run after migrations — see §A.6b. The role exists but has no password and no LOGIN. |
 | `mailer` logs `missing required env var: MAILER_DB_PASSWORD` | Not set in `.env` — generate with `openssl rand -hex 24`, then re-run §A.6b |
 | Invites stay "Queued" in the UI and never send | Check `docker compose logs mailer --tail 30`. The worker polls every 20s, so up to a minute is normal. Persistent queueing means the container isn't running or can't reach the DB. |

@@ -2,7 +2,19 @@
 **Basecamp v1.0.0**
 **Last Updated:** 2026-08-11
 
-> This document describes what's actually in `supabase/migrations/` and `docker-compose.yml` — not a target design. Where something here and the code disagree, the code is right and this needs updating.
+> **⚠ STALE as of 2026-08-19. This document covers `0001`–`0003` only.**
+>
+> It does not describe `0004`–`0008` (account provisioning, public
+> registration, the request lifecycle RPCs, the public catalog, invite email
+> delivery), and it predates `supabase/schema-v2/` entirely — which replaces
+> the org model, splits `my_rank()`, and reshapes identity.
+>
+> Read [HANDOFF.md](HANDOFF.md) for current state and [PRD-V2.md](PRD-V2.md)
+> for the v2 design. This file will be rewritten from the v2 schema once that
+> schema has actually been applied to a database; writing it earlier would
+> mean documenting something unproven.
+>
+> Where this and the code disagree, the code is right.
 
 ---
 

@@ -83,6 +83,18 @@ begin
 end;
 $$;
 
+-- v1 defined this function and attached it; v2 carried the function across and
+-- dropped the trigger, so profiles.mfa_enrolled was written false at signup and
+-- never updated again -- the captain's own dashboard showed MFA "Pending" after
+-- a completed, mandatory enrollment.
+--
+-- DELETE is included deliberately. The body recomputes from the factor set
+-- rather than latching true the way v1's did, so unenrolling the last verified
+-- factor correctly returns the profile to false.
+create trigger auth_mfa_factor_changed
+  after insert or update or delete on auth.mfa_factors
+  for each row execute function sync_mfa_enrolled();
+
 -- ============================================================
 -- AUTHORITY — ordered levels, not a role enum
 -- ============================================================

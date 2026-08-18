@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
-# Basecamp — apply supabase/migrations/*.sql in order, over docker compose exec.
+# Basecamp — apply $MIGRATION_DIR/*.sql in order, over docker compose exec.
 # Run after `auth` reports healthy (its own migrations create auth.mfa_factors,
-# which 0001_schema.sql depends on — see docker-compose.yml's db service
+# which 0001_foundation.sql depends on — see docker-compose.yml's db service
 # comment for why these aren't auto-mounted into docker-entrypoint-initdb.d).
+#
+# This now points at supabase/schema-v2, which is a complete replacement
+# baseline, NOT a set of migrations onto v1. It only ever runs against an
+# empty database. Applying it to the live v1 instance fails on the first file
+# (`relation "profiles" already exists`) — that is psql -1, so it rolls back
+# whole and records nothing, but it is not a migration path. To move the live
+# instance to v2 you reset it: docker compose down -v, then re-run from
+# scratch. See HANDOFF.md §3.
+#
+# The ledger keys on filename, and v2's filenames differ from v1's, so a
+# database carrying v1's ledger rows will NOT skip these — it will attempt
+# them and fail as described. Retire supabase/migrations/ once v2 is proven.
 #
 # Tracks what has already been applied in basecamp_meta.schema_migrations, so
 # this is safe to re-run and only ever applies new files. The earlier version
@@ -25,6 +37,8 @@
 #
 # Usage:
 #   ./scripts/apply-migrations.sh                 apply everything not yet applied
+#   MIGRATION_DIR=supabase/migrations ./scripts/apply-migrations.sh
+#                                                 apply the retired v1 set
 #   ./scripts/apply-migrations.sh --baseline 0007 record 0001..0007 as applied
 #                                                 WITHOUT running them — for a
 #                                                 database that predates this
@@ -32,6 +46,8 @@
 #                                                 are applied before using it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+MIGRATION_DIR="${MIGRATION_DIR:-supabase/schema-v2}"
 
 set -a
 source .env
@@ -64,7 +80,7 @@ SQL
 applied=0
 skipped=0
 
-for f in supabase/migrations/*.sql; do
+for f in "$MIGRATION_DIR"/*.sql; do
   name="$(basename "$f")"
 
   already="$(psql_quiet -c "select 1 from basecamp_meta.schema_migrations where filename = '${name}'")"

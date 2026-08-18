@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Clock, CheckCircle2, XCircle, Inbox, Users, MailPlus, ArrowRight } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
 import { listVisibleRequests, type RequestRow } from '../../lib/requests';
@@ -87,6 +87,78 @@ function CaptainDashboard({
   // people who actually run things; students are counted, not listed.
   const staff = accounts.filter((a) => a.tags.some((t) => ['admin', 'dean', 'hod', 'mentor', 'student_outreach'].includes(t)));
   const students = accounts.length - staff.length;
+
+  // A brand-new org is every deployment's first screen, and counters reading
+  // 1/1/0/0 answer "how many things exist" when the captain is asking "what
+  // do I do now". Until somebody else is in the system, lead with the path
+  // instead. Numbered because the order is real — batches need a department,
+  // and a Dean needs somewhere to be Dean of.
+  const isFreshOrg = accounts.length <= 1 && pendingInvites === 0;
+
+  if (isFreshOrg) {
+    return (
+      <>
+        <ol className="setup-path">
+          <li>
+            <span className="setup-path__n">1</span>
+            <div>
+              <strong>Create your departments and batches</strong>
+              <p>Students pick these when they register, so nobody can sign up until at least one exists.</p>
+              <button className="btn btn-primary btn-sm" onClick={() => onNavigate('/workflow')}>
+                Open Workflow <ArrowRight size={14} />
+              </button>
+            </div>
+          </li>
+          <li>
+            <span className="setup-path__n">2</span>
+            <div>
+              <strong>Invite the people above department level</strong>
+              <p>Deans and HODs. Each invitee gets a link by email and sets their own password and authenticator.</p>
+              <button className="btn btn-secondary btn-sm" onClick={() => onNavigate('/invite')}>
+                Send an invite <ArrowRight size={14} />
+              </button>
+            </div>
+          </li>
+          <li>
+            <span className="setup-path__n">3</span>
+            <div>
+              <strong>They build out the rest</strong>
+              <p>An HOD invites their own mentors; students self-register against a department and batch. You do not create those accounts yourself.</p>
+            </div>
+          </li>
+        </ol>
+
+        <div className="card">
+          <div className="card-header">
+            <h2 className="section-title">Your account</h2>
+            <button className="btn btn-secondary btn-sm" onClick={() => onNavigate('/accounts')}>
+              View all accounts <ArrowRight size={14} />
+            </button>
+          </div>
+          <div className="card-body">
+            <div className="detail-grid">
+              {accounts.map((a) => (
+                <Fragment key={a.id}>
+                  <div className="detail-row">
+                    <span className="detail-label">Name</span>
+                    <span className="detail-value">{a.full_name}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Email</span>
+                    <span className="detail-value cell-mono">{a.email}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Level</span>
+                    <span className="detail-value">{a.levelName ?? '—'}</span>
+                  </div>
+                </Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

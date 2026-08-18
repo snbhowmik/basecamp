@@ -12,7 +12,21 @@
 /* --- Shell ---------------------------------------------- */
 
 .app-container { min-height: 100vh; display: flex; flex-direction: column; background: var(--paper-laid); }
-.main-content { flex: 1; }
+
+/* The measure. Without this every page rendered flush to the viewport
+   edge — rules running the full 1900px of a desktop monitor, body text
+   starting 8px from the frame. A form has margins; so does this. */
+.main-content {
+  flex: 1;
+  width: 100%;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5) var(--sp-7);
+}
+
+@media (max-width: 48rem) {
+  .main-content { padding: var(--sp-4) var(--sp-4) var(--sp-6); }
+}
 
 /* The topbar is the letterhead: institution mark, then a heavy
    rule. Paper-coloured, not dark console chrome — a form does not
@@ -382,6 +396,49 @@
   border: 1px solid var(--rule-ink);
 }
 .timeline-item.active .timeline-dot { background: var(--srm-blue); border-color: var(--srm-blue); }
+
+/* --- Setup path ------------------------------------------- */
+/* Shown on a fresh org in place of counters that would read 1/1/0/0.
+   Numbered because the order is load-bearing — a batch needs a
+   department, a Dean needs somewhere to be Dean of — which is the
+   one case where step numbers carry information rather than
+   decorate. Ruled rows, not cards: this is a procedure printed on
+   the form, not three tiles. */
+
+.setup-path {
+  list-style: none;
+  margin: 0 0 var(--sp-6);
+  padding: 0;
+  border-top: 1px solid var(--rule-ink);
+}
+
+.setup-path li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-4);
+  padding: var(--sp-5) 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.setup-path__n {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--rule-ink);
+  border-radius: 50%;
+  font-family: var(--font-code);
+  font-size: var(--step--1);
+  color: var(--ink);
+}
+
+.setup-path strong { display: block; color: var(--ink); font-size: var(--step-1); font-weight: 600; }
+.setup-path p { margin: var(--sp-2) 0 0; color: var(--ink-label); max-width: 58ch; }
+.setup-path .btn { margin-top: var(--sp-3); }
+
+@media (max-width: 48rem) {
+  .setup-path li { gap: var(--sp-3); padding: var(--sp-4) 0; }
+}
 
 /* --- Empty states: a blank form, not an illustration ------- */
 

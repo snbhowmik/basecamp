@@ -122,7 +122,26 @@ Running it twice is intentional and safe (it's idempotent). The first pass repor
 
 ### A.7 Bring up the rest of the stack
 
-**Build the frontend first.** This ordering is not cosmetic:
+**Write `app/.env.local` before building.** It is gitignored, so it never survives a clone or a host rebuild, and Vite inlines `VITE_*` at **build** time — a missing value cannot be fixed by restarting the container, only by rebuilding.
+
+```bash
+cd app && printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_ANON_KEY=%s\n' \
+  "$(grep ^SITE_URL ../.env | cut -d= -f2)" \
+  "$(grep ^ANON_KEY ../.env | cut -d= -f2)" > .env.local && cat .env.local && cd ..
+```
+
+Reading both values out of the root `.env` keeps them from drifting. On a VPS `VITE_SUPABASE_URL` is your **real domain** (`https://basecamp.hackerxploit.org`), not `http://localhost:8000` — the browser resolves it, not the server.
+
+Get this wrong and the failure is silent: `app/src/lib/supabase.ts` throws at module load, React never mounts, and the site serves a **blank white page** with no error. To check a deployed build, fetch the bundle and look for the throw:
+
+```bash
+curl -s https://<your-domain>/ | grep -o '/assets/index-[^"]*\.js'
+# then: curl -s https://<your-domain>/assets/index-XXXX.js | grep -c "Missing VITE_SUPABASE_URL"
+```
+
+A `1` means the values were not baked in and you need to rebuild, not restart.
+
+**Then build the frontend, before bringing the stack up.** This ordering is not cosmetic:
 
 ```bash
 (cd app && npm install && npm run build)
@@ -348,6 +367,7 @@ Cross-referenced against NOTE.md's 2026-08-09 entries, which have the full expla
 | A trigger on `auth.users`/`auth.mfa_factors` fails with `relation "X" does not exist`, but the table clearly exists | The function is `SECURITY DEFINER` and doesn't pin `search_path` — it's inheriting the caller's (`supabase_auth_admin`, pinned to `auth` only) instead of resolving `public` schema tables. Add `set search_path = public` to the function definition. |
 | `ALTER ROLE authenticator ...` fails with "is a reserved role, only superusers can modify it" | You're connected as `postgres`, which isn't `SUPERUSER` in this image — connect as `supabase_admin` instead |
 | GoTrue mailer fails with "unencrypted connection" | Your SMTP host doesn't support STARTTLS and isn't `localhost` — GoTrue refuses to send over plaintext to anything else. Use real SMTP with TLS, or see §A.7's local-dev workaround. |
+| Site serves a **blank white page**, no error, no console output beyond a thrown Error | `app/.env.local` is missing or wrong, so `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` were never inlined at build time and `supabase.ts` throws before React mounts. It is gitignored, so a clone or host rebuild never has it. Write it (§A.7), then **rebuild** — restarting the container cannot fix an inlined value. |
 | `npm run build` fails with `EACCES: permission denied, copyfile … app/dist/…` | Not a Vite bug. `docker compose up -d` ran before the first build, so Docker created `app/dist` as root to satisfy the `frontend` bind mount. `sudo rm -rf app/dist`, rebuild, `docker compose restart frontend` — and see §A.7 for the ordering that avoids it. |
 | Migrations fail with `relation "auth.mfa_factors" does not exist` | `auth` hasn't started yet — GoTrue creates that table on its first connect, and `0001` puts a trigger on it. Bring up `auth` (§A.5), wait for its `pop` migration lines to finish, then re-run. The failed file rolls back whole (`psql -1`) and is not recorded in the ledger, so retrying is safe with no cleanup. |
 | `bootstrap-db-roles.sh` says `MAILER_DB_PASSWORD unset in .env — skipping mailer role` | Expected on a fresh `.env` copied from `.env.example`. Generate one (`openssl rand -hex 24`), append it, and re-run **after** migrations — the role doesn't exist until `0008`. |

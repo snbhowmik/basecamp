@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { MemberType } from '../types';
 
 // Account self-service. MFA re-enrollment here covers the "I still have my
 // session but lost/changed my authenticator app" case — the user proves
@@ -61,7 +62,9 @@ export async function cancelMfaEnroll(factorId: string) {
   await supabase.auth.mfa.unenroll({ factorId });
 }
 
-export async function updateProfile(fields: { full_name?: string; phone?: string | null }) {
+// v2's profiles table has no phone column — full_name is the only
+// self-editable field left here.
+export async function updateProfile(fields: { full_name?: string }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not signed in.');
   const { error } = await supabase.from('profiles').update(fields).eq('id', user.id);
@@ -73,22 +76,52 @@ export async function changePassword(newPassword: string) {
   if (error) throw error;
 }
 
-export interface StudentDetails {
-  reg_no: string;
-  year: number;
-  department_id: string;
-  class_id: string | null;
+// v2 folded students and staff into member_profiles, discriminated by
+// member_type. A student carries reg_no + batch/section; a staff member
+// carries fet_id. Both hang off the same org_unit.
+export interface MemberDetails {
+  user_id: string;
+  member_type: MemberType;
+  reg_no: string | null;
+  fet_id: string | null;
+  org_unit_id: string | null;
+  batch_id: string | null;
+  section_id: string | null;
+  cgpa: number | null;
+  cgpa_verified_at: string | null;
   is_complete: boolean;
-  departments?: { name: string } | null;
-  classes?: { name: string } | null;
+  org_units?: { name: string } | null;
+  batches?: { name: string } | null;
+  sections?: { name: string } | null;
 }
 
-export async function getStudentDetails(userId: string): Promise<StudentDetails | null> {
+export async function getMemberDetails(userId: string): Promise<MemberDetails | null> {
   const { data, error } = await supabase
-    .from('student_profiles')
-    .select('*, departments(name), classes(name)')
+    .from('member_profiles')
+    .select('*, org_units(name), batches(name), sections(name)')
     .eq('user_id', userId)
     .maybeSingle();
   if (error) throw error;
-  return data as StudentDetails | null;
+  return data as MemberDetails | null;
+}
+
+// The person card behind PRD-V2 §9 — one round trip, already joined and
+// counted server-side.
+export interface MemberCard {
+  user_id: string;
+  full_name: string;
+  reg_no: string | null;
+  fet_id: string | null;
+  org_unit_name: string | null;
+  batch_name: string | null;
+  section_name: string | null;
+  tech_count: number;
+  non_tech_count: number;
+}
+
+export async function getMemberCard(userId: string): Promise<MemberCard | null> {
+  const { data, error } = await supabase.rpc('get_member_card', { p_user_id: userId });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return (row ?? null) as MemberCard | null;
 }

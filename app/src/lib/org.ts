@@ -1,37 +1,76 @@
 import { supabase } from './supabase';
-import type { Department, Class, RequestType, RequestCategory, Profile } from '../types';
+import type { OrgUnit, OrgUnitType, Batch, Section, RequestType, RequestCategory, Profile } from '../types';
 
-// Departments and batches. Creation goes through the RPCs in
-// 0006_requests_and_org.sql rather than direct inserts, because each one
-// also has to create the scope tag that is_hod_of()/is_mentor_of() resolve
-// through — two client-side inserts would leave orphans on partial failure.
+// The org tree: org_units (faculty → programme) → batches → sections.
+// Creation goes through the RPCs in schema-v2/0005_org_rpcs.sql rather than
+// direct inserts, because an org unit also has to create the scope tag that
+// the relationship checks resolve through — two client-side inserts would
+// leave orphans on partial failure.
 
-export async function listDepartments(): Promise<Department[]> {
-  const { data, error } = await supabase.from('departments').select('*').order('name');
+export async function listOrgUnits(): Promise<OrgUnit[]> {
+  const { data, error } = await supabase.from('org_units').select('*').order('name');
   if (error) throw error;
   return data ?? [];
 }
 
-export async function createDepartment(name: string, code: string): Promise<string> {
-  const { data, error } = await supabase.rpc('create_department', { p_name: name, p_code: code });
-  if (error) throw error;
-  return data as string;
-}
-
-export async function listAllBatches(): Promise<Class[]> {
-  const { data, error } = await supabase.from('classes').select('*').order('year', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function createBatch(departmentId: string, name: string, year: number): Promise<string> {
-  const { data, error } = await supabase.rpc('create_batch', {
-    p_department_id: departmentId,
+export async function createOrgUnit(
+  name: string,
+  code: string,
+  unitType: OrgUnitType,
+  parentId: string | null = null,
+  campus: string | null = null,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('create_org_unit', {
     p_name: name,
-    p_year: year,
+    p_code: code,
+    p_unit_type: unitType,
+    p_parent_id: parentId,
+    p_campus: campus,
   });
   if (error) throw error;
   return data as string;
+}
+
+export async function listAllBatches(): Promise<Batch[]> {
+  const { data, error } = await supabase
+    .from('batches')
+    .select('*')
+    .order('start_year', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+// v2 batches span a range (start_year..end_year) rather than carrying a single
+// `year`, and an optional reg_no_prefix that reg_no_matches_batch() validates
+// self-registering students against (PRD-V2 §8.2).
+export async function createBatch(
+  orgUnitId: string,
+  name: string,
+  startYear: number,
+  endYear: number,
+  mode = 'FT',
+  regNoPrefix: string | null = null,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('create_batch', {
+    p_org_unit_id: orgUnitId,
+    p_name: name,
+    p_start_year: startYear,
+    p_end_year: endYear,
+    p_mode: mode,
+    p_reg_no_prefix: regNoPrefix,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function listSections(batchId: string): Promise<Section[]> {
+  const { data, error } = await supabase
+    .from('sections')
+    .select('*')
+    .eq('batch_id', batchId)
+    .order('name');
+  if (error) throw error;
+  return data ?? [];
 }
 
 // ------------------------------------------------------------------
@@ -56,17 +95,29 @@ export async function listCategories(): Promise<RequestCategory[]> {
   return data ?? [];
 }
 
-export async function createRequestType(code: string, name: string) {
-  const { error } = await supabase.from('request_types').insert({ code: code.trim().toLowerCase(), name: name.trim() });
+// decision_mode moved from request_categories onto the type in v2 — every
+// category under a type shares its mode.
+export async function createRequestType(
+  code: string,
+  name: string,
+  decisionMode: 'approval' | 'log_only' = 'approval',
+) {
+  const { error } = await supabase.from('request_types').insert({
+    code: code.trim().toLowerCase(),
+    name: name.trim(),
+    decision_mode: decisionMode,
+  });
   if (error) throw error;
 }
 
+// v2 dropped request_categories.code and moved decision_mode to the type.
+// `classification` ('tech' | 'non_tech') is new and drives the tech/non-tech
+// counts on a person card (PRD-V2 §9).
 export interface CreateCategoryInput {
   requestTypeId: string;
   parentId: string | null;
-  code: string;
   name: string;
-  decisionMode: 'approval' | 'log_only';
+  classification: 'tech' | 'non_tech' | null;
   retainAttachments: boolean;
 }
 
@@ -74,9 +125,8 @@ export async function createCategory(input: CreateCategoryInput) {
   const { error } = await supabase.from('request_categories').insert({
     request_type_id: input.requestTypeId,
     parent_id: input.parentId,
-    code: input.code.trim().toLowerCase(),
     name: input.name.trim(),
-    decision_mode: input.decisionMode,
+    classification: input.classification,
     retain_attachments_after_close: input.retainAttachments,
   });
   if (error) throw error;
@@ -121,28 +171,40 @@ export async function deleteFirstHopOption(id: string) {
 }
 
 // ------------------------------------------------------------------
-// Accounts overview (captain). profiles_read_staff in 0002 lets any
-// non-base-level user read profiles, so this is a plain select.
+// Accounts overview (captain). The profiles read policy lets any
+// non-lowest-level user read profiles, so this is a plain select.
 // ------------------------------------------------------------------
 
 export interface AccountRow extends Profile {
-  levelName: string | null;
+  levelNames: string[];
   tags: string[];
 }
 
 export async function listAccounts(): Promise<AccountRow[]> {
   const [profilesRes, levelsRes, tagsRes] = await Promise.all([
     supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-    supabase.from('user_levels').select('user_id, priority_levels(name)'),
+    // v2: several assignments per user, so this is a list, not a lookup.
+    // Expired assignments are excluded here for display only — authority is
+    // decided by assignment_is_current() in the database, never by this.
+    supabase
+      .from('role_assignments')
+      .select('user_id, valid_until, is_primary, priority_levels(name)')
+      .order('is_primary', { ascending: false }),
     supabase.from('user_tags').select('user_id, tags(code)'),
   ]);
   if (profilesRes.error) throw profilesRes.error;
 
-  const levelByUser = new Map<string, string>();
+  const now = Date.now();
+  const levelsByUser = new Map<string, string[]>();
   for (const row of levelsRes.data ?? []) {
-    const r = row as { user_id: string; priority_levels: { name: string } | { name: string }[] | null };
+    const r = row as {
+      user_id: string;
+      valid_until: string | null;
+      priority_levels: { name: string } | { name: string }[] | null;
+    };
+    if (r.valid_until && Date.parse(r.valid_until) < now) continue;
     const lvl = Array.isArray(r.priority_levels) ? r.priority_levels[0] : r.priority_levels;
-    if (lvl) levelByUser.set(r.user_id, lvl.name);
+    if (lvl) levelsByUser.set(r.user_id, [...(levelsByUser.get(r.user_id) ?? []), lvl.name]);
   }
 
   const tagsByUser = new Map<string, string[]>();
@@ -154,7 +216,7 @@ export async function listAccounts(): Promise<AccountRow[]> {
 
   return (profilesRes.data ?? []).map((p: Profile) => ({
     ...p,
-    levelName: levelByUser.get(p.id) ?? null,
+    levelNames: levelsByUser.get(p.id) ?? [],
     tags: tagsByUser.get(p.id) ?? [],
   }));
 }

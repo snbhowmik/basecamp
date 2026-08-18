@@ -9,17 +9,19 @@ import { supabase } from './supabase';
 // No fixture data — see README.md "No Fixture Data — the Captain Builds
 // the Org By Hand". The captain is identified by the `admin` tag *code*
 // (kept as-is, not renamed to 'captain', because has_tag('admin') is
-// load-bearing throughout 0002_functions_and_rls.sql) with the label
+// load-bearing throughout schema-v2/0003_rls.sql) with the label
 // "Captain" shown in the UI.
 //
-// Bootstrap ordering note: `allowed_login_domains` has no admin-only RLS (it's
-// a config table, see 0002_functions_and_rls.sql), but auth.users itself has
-// a trigger (`check_allowed_domain`) that rejects signup unless the email's
-// domain is already present in that table. So the captain's own domain has
-// to be inserted *before* the captain account is created — even though the
-// PRD lists "create admin" as step 1 and "configure domains" as step 3. We
-// do that domain insert transparently as part of step 1 here; step 3 in the
-// UI is for adding any *additional* domains beyond the captain's own.
+// Bootstrap ordering note: this INVERTED in v2. In v1 `allowed_login_domains`
+// had no admin-only RLS, so the wizard could insert the captain's domain as
+// anon before signup — which check_allowed_domain() then required. In v2 that
+// table is covered by the config write policy, which needs can_bootstrap(),
+// and anon has no auth.uid(): the pre-signup insert fails with 42501.
+//
+// It is also no longer needed. check_allowed_domain() bypasses the domain and
+// invite checks entirely for the very first account, so the captain signs up
+// against an empty allowed_login_domains table. Their domain is registered
+// afterwards, from their own authenticated session, as part of org setup.
 //
 // Gating note: "is setup needed" is NOT "are priority_levels empty" — Basecamp
 // ships an optional supabase/seed.sql with example catalog data (priority
@@ -29,7 +31,7 @@ import { supabase } from './supabase';
 // (no captain account, no one holding the 'admin' tag, and every
 // non-bootstrap write requires it). The real signal is whether anyone holds
 // the 'admin' tag yet — same is_bootstrapping() predicate the RLS policies
-// in 0003_wizard_rls.sql use, exposed here as an RPC since it has to be
+// in schema-v2/0003_rls.sql use, exposed here as an RPC since it has to be
 // callable pre-auth.
 
 export async function isSetupComplete(): Promise<boolean> {
@@ -49,7 +51,6 @@ export async function ensureDomainAllowed(email: string) {
 }
 
 export async function createCaptainAccount(fullName: string, email: string, password: string) {
-  await ensureDomainAllowed(email);
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -91,9 +92,10 @@ export interface DraftPriorityLevel {
   name: string;
 }
 
-export interface DraftDepartment {
+export interface DraftOrgUnit {
   name: string;
   code: string;
+  unitType: 'faculty' | 'programme';
 }
 
 export interface DraftTag {
@@ -103,8 +105,9 @@ export interface DraftTag {
 
 export interface OrgSetupInput {
   captainUserId: string;
+  captainEmail: string;
   levels: DraftPriorityLevel[];
-  departments: DraftDepartment[];
+  orgUnits: DraftOrgUnit[];
   extraTags: DraftTag[];
   firstCategoryName: string;
 }
@@ -132,9 +135,15 @@ async function insertOrGet<T extends Record<string, unknown>>(
 }
 
 export async function completeOrgSetup(input: OrgSetupInput) {
-  const { captainUserId, levels, departments, extraTags, firstCategoryName } = input;
+  const { captainUserId, captainEmail, levels, orgUnits, extraTags, firstCategoryName } = input;
+
+  // 0. Register the captain's own domain. This runs here, not before signup:
+  // the write needs can_bootstrap(), which needs the captain's session.
+  await ensureDomainAllowed(captainEmail);
 
   // 1. Priority levels — rank follows list order, rank 1 = top authority.
+  // The last one is flagged is_base: self-registration and is_lowest_level()
+  // resolve through that flag rather than through "highest rank number".
   // Inserted one at a time (rather than a bulk insert) so a rank collision
   // with pre-existing seed data falls back to reusing that row instead of
   // aborting the whole batch.
@@ -142,7 +151,7 @@ export async function completeOrgSetup(input: OrgSetupInput) {
   for (let i = 0; i < levels.length; i++) {
     const row = await insertOrGet<{ id: string; rank: number }>(
       'priority_levels',
-      { rank: i + 1, name: levels[i].name },
+      { rank: i + 1, name: levels[i].name, is_base: i === levels.length - 1 },
       'rank',
     );
     if (row.rank === 1) topLevel = row;
@@ -154,7 +163,10 @@ export async function completeOrgSetup(input: OrgSetupInput) {
   // defined.
   const tagInputs: DraftTag[] = [
     { code: 'admin', label: 'Captain' },
-    ...departments.map((d) => ({ code: `dept:${d.code}`, label: `Department: ${d.name}` })),
+    ...orgUnits.map((u) => ({
+      code: `org:${u.code}`,
+      label: `${u.unitType === 'faculty' ? 'Faculty' : 'Programme'}: ${u.name}`,
+    })),
     ...extraTags,
   ];
   const tagsByCode = new Map<string, { id: string; code: string }>();
@@ -166,41 +178,49 @@ export async function completeOrgSetup(input: OrgSetupInput) {
   const captainTag = tagsByCode.get('admin');
   if (!captainTag) throw new Error('Failed to create captain tag.');
 
-  // 3. Departments, linked to their dept:<code> tag.
-  for (const d of departments) {
-    const tag = tagsByCode.get(`dept:${d.code}`);
+  // 3. Org units, linked to their org:<code> tag. create_org_unit() is not
+  // usable here — it requires has_tag('admin'), which the captain does not
+  // hold until step 5 below.
+  for (const u of orgUnits) {
+    const tag = tagsByCode.get(`org:${u.code}`);
     await insertOrGet(
-      'departments',
-      { name: d.name, code: d.code, tag_id: tag?.id ?? null },
+      'org_units',
+      { name: u.name, code: u.code, unit_type: u.unitType, tag_id: tag?.id ?? null },
       'code',
     );
   }
 
-  // 4. First request type + category (OD, approval mode).
+  // 4. First request type + category. decision_mode sits on the type in v2,
+  // and categories no longer carry a `code`.
   const reqType = await insertOrGet<{ id: string; code: string }>(
     'request_types',
-    { code: 'od', name: 'On-Duty' },
+    { code: 'od', name: 'On-Duty', decision_mode: 'approval' },
     'code',
   );
 
   const { error: catErr } = await supabase.from('request_categories').insert({
     request_type_id: reqType.id,
-    code: 'general',
     name: firstCategoryName,
-    decision_mode: 'approval',
   });
   if (catErr && catErr.code !== '23505') throw catErr;
 
   // 5. Grant the captain their tag + top priority level. These are the
   // writes that flip is_bootstrapping() to false — must succeed, no
   // insertOrGet fallback: if they already exist, something upstream is wrong.
+  //
+  // Order is load-bearing: the role assignment has to land BEFORE the admin
+  // tag. Inserting the tag closes the bootstrap window, and every write after
+  // that point is authorized by has_tag('admin') instead of can_bootstrap().
+  const { error: roleErr } = await supabase.from('role_assignments').insert({
+    user_id: captainUserId,
+    level_id: topLevel.id,
+    role_kind: 'admin',
+    is_primary: true,
+  });
+  if (roleErr) throw roleErr;
+
   const { error: userTagErr } = await supabase
     .from('user_tags')
     .insert({ user_id: captainUserId, tag_id: captainTag.id });
   if (userTagErr) throw userTagErr;
-
-  const { error: userLevelErr } = await supabase
-    .from('user_levels')
-    .insert({ user_id: captainUserId, level_id: topLevel.id });
-  if (userLevelErr) throw userLevelErr;
 }

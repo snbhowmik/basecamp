@@ -4,6 +4,11 @@ import type { Profile } from '../types';
 // Who is signed in, and what are they allowed to see? Nav and page gating
 // read from this. It is UX only — every actual permission is enforced by
 // RLS in the database (SECURITY.md R-07). Hiding a tab is not a control.
+//
+// v2 note: a user can hold several role_assignments at once, so `rank` is
+// my_best_rank() — the strongest level they hold anywhere. Anything that
+// depends on authority *within* one org unit must call my_rank_in() instead;
+// this context cannot answer that and must not be used to.
 export interface UserContext {
   profile: Profile;
   tagCodes: string[];
@@ -19,8 +24,8 @@ export async function loadUserContext(): Promise<UserContext | null> {
   const [profileRes, tagsRes, rankRes, baseRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('user_tags').select('tags(code)').eq('user_id', user.id),
-    supabase.rpc('my_rank'),
-    supabase.rpc('is_base_level'),
+    supabase.rpc('my_best_rank'),
+    supabase.rpc('is_lowest_level'),
   ]);
 
   if (profileRes.error) throw profileRes.error;
@@ -35,7 +40,7 @@ export async function loadUserContext(): Promise<UserContext | null> {
     tagCodes,
     rank: typeof rankRes.data === 'number' ? rankRes.data : null,
     isCaptain: tagCodes.includes('admin'),
-    // is_base_level() returns null when the user holds no level at all —
+    // is_lowest_level() returns null when the user holds no level at all —
     // treat "unknown" as not-staff rather than assuming elevated access.
     isStaff: baseRes.data === false,
   };

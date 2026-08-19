@@ -25,11 +25,22 @@ export default function AcceptInvite({ token, onDone }: { token: string; onDone:
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState('');
+  // Must sit with the other hooks, above every early return below. React
+  // counts hooks per render: when this was called after the `loading` and
+  // `!invite` guards, a valid invite added a hook on the render where the
+  // details arrived, and React tore the tree down with "rendered more hooks
+  // than during the previous render" — a blank page, no error on screen.
+  const wideEnoughForPanel = useMediaQuery(AUTH_PANEL_QUERY);
+
+  const [lookupFailed, setLookupFailed] = useState(false);
 
   useEffect(() => {
     getInviteByToken(token)
       .then(setInvite)
-      .catch(() => setInvite(null))
+      // A failed lookup is not the same as a consumed or unknown token, and
+      // showing "invite not found" for both hides real outages behind a
+      // message that tells the invitee to go pester whoever invited them.
+      .catch(() => setLookupFailed(true))
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -114,14 +125,16 @@ export default function AcceptInvite({ token, onDone }: { token: string; onDone:
     return (
       <div className="auth-wrapper" style={{ alignItems: 'center', justifyContent: 'center' }}>
         <div className="auth-card" style={{ textAlign: 'center' }}>
-          <h1 className="auth-title">Invite not found</h1>
-          <p className="auth-subtitle">This link is invalid, already used, or has been revoked. Contact whoever invited you.</p>
+          <h1 className="auth-title">{lookupFailed ? 'Could not check this invite' : 'Invite not found'}</h1>
+          <p className="auth-subtitle">
+            {lookupFailed
+              ? 'The server could not be reached. Try again in a moment — the link itself may be fine.'
+              : 'This link is invalid, already used, or has been revoked. Contact whoever invited you.'}
+          </p>
         </div>
       </div>
     );
   }
-
-  const wideEnoughForPanel = useMediaQuery(AUTH_PANEL_QUERY);
 
   return (
     <div className="auth-wrapper">

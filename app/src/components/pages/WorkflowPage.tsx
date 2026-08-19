@@ -66,7 +66,6 @@ function OrgSection() {
   const [unitType, setUnitType] = useState<OrgUnitType>('faculty');
   const [unitParent, setUnitParent] = useState('');
   const [batchUnit, setBatchUnit] = useState('');
-  const [batchName, setBatchName] = useState('');
   const [batchStartYear, setBatchStartYear] = useState('');
   const [batchEndYear, setBatchEndYear] = useState('');
   const [batchPrefix, setBatchPrefix] = useState('');
@@ -108,15 +107,15 @@ function OrgSection() {
     setBusy(true);
     setError('');
     try {
+      // Name omitted on purpose — create_batch() derives "<start>-<end>".
       await createBatch(
         batchUnit,
-        batchName,
+        null,
         Number(batchStartYear),
         Number(batchEndYear),
         'FT',
         batchPrefix.trim() || null,
       );
-      setBatchName('');
       setBatchStartYear('');
       setBatchEndYear('');
       setBatchPrefix('');
@@ -225,26 +224,24 @@ function OrgSection() {
               </div>
               <div className="grid-cols-2">
                 <div className="form-group">
-                  <label className="form-label">Batch</label>
-                  <input className="form-input" required value={batchName} onChange={(e) => setBatchName(e.target.value)} placeholder="2023-2027" />
-                </div>
-                <div className="form-group">
                   <label className="form-label">Start year</label>
-                  <input type="number" className="form-input" required value={batchStartYear} onChange={(e) => setBatchStartYear(e.target.value)} placeholder="2023" />
+                  <input type="number" className="form-input" required value={batchStartYear} onChange={(e) => setBatchStartYear(e.target.value)} placeholder="2024" />
                 </div>
-              </div>
-              <div className="grid-cols-2">
                 <div className="form-group">
                   <label className="form-label">End year</label>
-                  <input type="number" className="form-input" required value={batchEndYear} onChange={(e) => setBatchEndYear(e.target.value)} placeholder="2027" />
+                  <input type="number" className="form-input" required value={batchEndYear} onChange={(e) => setBatchEndYear(e.target.value)} placeholder="2028" />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Reg-no prefix (optional)</label>
-                  <div className="repeatable-row">
-                    <input className="form-input" value={batchPrefix} onChange={(e) => setBatchPrefix(e.target.value)} placeholder="RA2211003" />
-                    <button className="btn btn-primary" type="submit" disabled={busy || orgUnits.length === 0}><Plus size={15} /></button>
-                  </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Reg-no prefix (optional)</label>
+                <div className="repeatable-row">
+                  <input className="form-input" value={batchPrefix} onChange={(e) => setBatchPrefix(e.target.value)} placeholder="RA2211003" />
+                  <button className="btn btn-primary" type="submit" disabled={busy || orgUnits.length === 0}><Plus size={15} /></button>
                 </div>
+                <span className="form-hint">
+                  This batch will be named{' '}
+                  <strong>{batchStartYear && batchEndYear ? `${batchStartYear}-${batchEndYear}` : '<start>-<end>'}</strong>.
+                </span>
               </div>
             </form>
 

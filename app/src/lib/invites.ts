@@ -159,15 +159,18 @@ export interface SelfRegisterInput {
 export async function selfRegisterStudent(input: SelfRegisterInput) {
   const email = input.email.trim().toLowerCase();
 
-  // Prefer the level explicitly flagged is_base; fall back to the highest
-  // rank number (lowest authority) only if nobody has flagged one.
-  const levels = await listPriorityLevels();
-  const baseLevel = levels.find((l) => l.is_base) ?? levels[levels.length - 1];
-  if (!baseLevel) throw new Error('No priority levels configured yet — contact your administrator.');
+  // Resolved server-side. priority_levels is readable by `authenticated` only,
+  // so a self-registering student -- who has no session yet -- always saw an
+  // empty list here and was told to contact an administrator who had in fact
+  // configured everything correctly. pa_self_register pins level_id to the
+  // base level anyway, so this is the one value the public form needs.
+  const { data: baseLevelId, error: levelErr } = await supabase.rpc('public_base_level');
+  if (levelErr) throw levelErr;
+  if (!baseLevelId) throw new Error('No student level has been set up yet — contact your administrator.');
 
   const { error: assignErr } = await supabase.from('pending_assignments').insert({
     email,
-    level_id: baseLevel.id,
+    level_id: baseLevelId as string,
     tag_codes: [],
     member_type: 'student',
     role_kind: 'academic',

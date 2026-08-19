@@ -104,4 +104,12 @@ for f in "$MIGRATION_DIR"/*.sql; do
   applied=$((applied + 1))
 done
 
+# PostgREST caches the schema. A new RPC applied above is invisible to the API
+# until it reloads, which surfaces as a confusing 404 ("Could not find the
+# function ... in the schema cache") long after the migration reported success.
+if [ "$applied" -gt 0 ]; then
+  psql_quiet -c "notify pgrst, 'reload schema'" >/dev/null
+  echo "PostgREST schema cache reload signalled."
+fi
+
 echo "Migrations: ${applied} applied, ${skipped} already present."

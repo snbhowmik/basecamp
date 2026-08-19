@@ -21,7 +21,7 @@ export async function createOrgUnit(
   campus: string | null = null,
 ): Promise<string> {
   const { data, error } = await supabase.rpc('create_org_unit', {
-    p_name: name,
+    p_name: name ?? null,
     p_code: code,
     p_unit_type: unitType,
     p_parent_id: parentId,
@@ -43,9 +43,12 @@ export async function listAllBatches(): Promise<Batch[]> {
 // v2 batches span a range (start_year..end_year) rather than carrying a single
 // `year`, and an optional reg_no_prefix that reg_no_matches_batch() validates
 // self-registering students against (PRD-V2 §8.2).
+// `name` is optional: passed empty, create_batch() derives "<start>-<end>".
+// The years are the structured half — reg-no validation and intake queries need
+// them — so asking for the name as well was the same fact typed twice.
 export async function createBatch(
   orgUnitId: string,
-  name: string,
+  name: string | null,
   startYear: number,
   endYear: number,
   mode = 'FT',
@@ -53,7 +56,7 @@ export async function createBatch(
 ): Promise<string> {
   const { data, error } = await supabase.rpc('create_batch', {
     p_org_unit_id: orgUnitId,
-    p_name: name,
+    p_name: name ?? null,
     p_start_year: startYear,
     p_end_year: endYear,
     p_mode: mode,

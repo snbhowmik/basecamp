@@ -1,6 +1,6 @@
 import { errorMessage } from '../../lib/errors';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Plus, Inbox, Search, Send } from 'lucide-react';
+import { Plus, Inbox, Search, Send, FileText } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
 import {
   listVisibleRequests,
@@ -27,6 +27,8 @@ import { listCategories } from '../../lib/org';
 import type { RequestCategory } from '../../types';
 import StatusBadge from '../ui/StatusBadge';
 import Modal from '../ui/Modal';
+import { listTemplates } from '../../lib/documents';
+import DocumentView from '../documents/DocumentView';
 
 type Filter = 'all' | 'mine' | 'desk';
 
@@ -427,6 +429,8 @@ function RequestDetailModal({
   const [forwardQuery, setForwardQuery] = useState('');
   const [forwardResults, setForwardResults] = useState<ForwardTarget[]>([]);
   const [showForward, setShowForward] = useState(false);
+  const [docTypes, setDocTypes] = useState<string[]>([]);
+  const [openDoc, setOpenDoc] = useState<string | null>(null);
 
   const isHolder = request.current_holder === ctx.profile.id;
   const isOpen = !['approved', 'rejected', 'reviewed', 'cancelled', 'closed'].includes(request.status);
@@ -435,7 +439,12 @@ function RequestDetailModal({
     listHistory(request.id).then(setHistory).catch(() => setHistory([]));
     listComments(request.id).then(setComments).catch(() => setComments([]));
     listFieldValues(request.id).then(setFieldValues).catch(() => setFieldValues([]));
-  }, [request.id]);
+    // Distinct doc types for this category. Several versions of the same
+    // template are normal; render_document() always picks the newest.
+    listTemplates(request.category_id)
+      .then((t) => setDocTypes(Array.from(new Set(t.map((x) => x.doc_type)))))
+      .catch(() => setDocTypes([]));
+  }, [request.id, request.category_id]);
 
   useEffect(() => {
     if (!forwardQuery.trim()) {
@@ -536,6 +545,28 @@ function RequestDetailModal({
           </div>
         ))}
       </div>
+
+      {docTypes.length > 0 && (
+        <div className="form-group">
+          <span className="detail-label">Documents</span>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+            {docTypes.map((dt) => (
+              <button
+                type="button"
+                key={dt}
+                className="btn btn-secondary btn-sm"
+                onClick={() => setOpenDoc(dt)}
+              >
+                <FileText size={14} /> {dt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {openDoc && (
+        <DocumentView requestId={request.id} docType={openDoc} onClose={() => setOpenDoc(null)} />
+      )}
 
       {request.body && (
         <div className="form-group">

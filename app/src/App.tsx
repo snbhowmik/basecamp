@@ -8,15 +8,17 @@ import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import AcceptInvite from './components/auth/AcceptInvite';
 import VerifyMfa from './components/auth/VerifyMfa';
+import VerifyPage from './components/pages/VerifyPage';
 import AppShell, { tabsFor, type Route } from './components/layout/AppShell';
 import DashboardPage from './components/pages/DashboardPage';
 import RequestsPage from './components/pages/RequestsPage';
 import AccountPage from './components/pages/AccountPage';
 import AccountsPage from './components/pages/AccountsPage';
 import WorkflowPage from './components/pages/WorkflowPage';
+import TemplatesPage from './components/pages/TemplatesPage';
 import InvitePanel from './components/admin/InvitePanel';
 
-type Screen = 'loading' | 'wizard' | 'levels' | 'login' | 'register' | 'invite' | 'verify' | 'app';
+type Screen = 'loading' | 'wizard' | 'levels' | 'login' | 'register' | 'invite' | 'verify' | 'verify-doc' | 'app';
 
 // Minimal path routing — no router dependency for a handful of flat routes.
 // nginx/frontend.conf serves index.html for all of them so a direct visit
@@ -26,12 +28,22 @@ function inviteTokenFrom(pathname: string): string | null {
   return m ? m[1] : null;
 }
 
+// /verify and /verify/<code>. Public by design (PRD.md §14.4) — someone
+// holding a printed document must be able to check it without an account, so
+// this is matched before the session gate rather than inside the app shell.
+function verifyCodeFrom(pathname: string): string | null | undefined {
+  if (pathname === '/verify') return null;
+  const m = pathname.match(/^\/verify\/([^/]+)$/);
+  return m ? m[1] : undefined;
+}
+
 function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [ctx, setCtx] = useState<UserContext | null>(null);
   const [route, setRoute] = useState<Route>('/dashboard');
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const inviteToken = inviteTokenFrom(window.location.pathname);
+  const verifyCode = verifyCodeFrom(window.location.pathname);
 
   const bootstrap = useCallback(async () => {
     try {
@@ -86,6 +98,10 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (verifyCode !== undefined) {
+      setScreen('verify-doc');
+      return;
+    }
     if (inviteToken) {
       setScreen('invite');
       return;
@@ -95,7 +111,7 @@ function App() {
       return;
     }
     bootstrap();
-  }, [bootstrap, inviteToken]);
+  }, [bootstrap, inviteToken, verifyCode]);
 
   useEffect(() => {
     const onPop = () => {
@@ -127,6 +143,7 @@ function App() {
     setScreen('login');
   };
 
+  if (screen === 'verify-doc') return <VerifyPage code={verifyCode ?? undefined} />;
   if (screen === 'invite' && inviteToken) return <AcceptInvite token={inviteToken} onDone={goHome} />;
   if (screen === 'register') return <RegisterForm onDone={goHome} onSwitchToLogin={goHome} />;
   if (screen === 'verify')
@@ -150,6 +167,7 @@ function App() {
         {route === '/invite' && <InvitePanel />}
         {route === '/accounts' && <AccountsPage />}
         {route === '/workflow' && <WorkflowPage />}
+        {route === '/templates' && <TemplatesPage />}
         {route === '/levels' && <LevelsSetup mode="manage" onDone={bootstrap} />}
         {route === '/account' && <AccountPage ctx={ctx} onProfileChanged={bootstrap} />}
       </AppShell>

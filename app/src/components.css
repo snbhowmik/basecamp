@@ -605,3 +605,112 @@ button.chip:hover { border-color: var(--ink-body); }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
   .modal-content { max-height: 92vh; width: 100%; }
 }
+
+/* ============================================================
+   Document templates, generated documents, verification
+   PRD.md §14 — see schema-v2/0017_document_templates.sql
+   ============================================================ */
+
+.text-muted { color: var(--ink-soft, #6b7280); }
+
+/* --- the template editor --- */
+.tpl-fields { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: var(--sp-4); }
+.tpl-toolbar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+.tpl-toolbar-sep { width: 1px; align-self: stretch; background: var(--rule); margin-inline: var(--sp-1); }
+.tpl-select { width: auto; min-width: 11rem; padding: 0.3rem 0.6rem; font-size: var(--step--1); }
+
+/* The authoring surface is sized like a page, not like a text box: a template
+   that looks right in a short field routinely looks wrong once it is a letter. */
+.tpl-surface {
+  min-height: 22rem;
+  padding: var(--sp-5);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: #fff;
+  color: #111827;
+  font-family: var(--font-body);
+  line-height: 1.6;
+  overflow-y: auto;
+}
+.tpl-surface:focus { outline: 2px solid var(--accent, #2563eb); outline-offset: 1px; }
+.tpl-surface h1, .tpl-surface h2, .tpl-surface h3 { margin: 0 0 0.5em; font-family: var(--font-head); }
+.tpl-surface p { margin: 0 0 0.75em; }
+.tpl-surface table { border-collapse: collapse; width: 100%; }
+.tpl-surface td, .tpl-surface th { border: 1px solid #d1d5db; padding: 0.4rem 0.6rem; }
+
+/* An unresolved placeholder must be visible, never a silent blank. */
+.tpl-missing { color: #b91c1c; font-weight: 600; }
+
+/* --- the rendered document --- */
+.doc-modal { max-width: 60rem; width: 100%; }
+.doc-sheet {
+  background: #fff;
+  color: #111827;
+  padding: var(--sp-6, 2rem);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  line-height: 1.6;
+}
+.doc-sheet h1, .doc-sheet h2 { font-family: var(--font-head); margin: 0 0 0.6em; }
+.doc-sheet table { border-collapse: collapse; width: 100%; }
+.doc-sheet td, .doc-sheet th { border: 1px solid #d1d5db; padding: 0.4rem 0.6rem; }
+.doc-footer {
+  margin-top: 2.5rem; padding-top: 0.75rem; border-top: 1px solid #d1d5db;
+  display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  font-size: 0.75rem; color: #4b5563;
+}
+
+/* --- signature stamps --- */
+.sig-stamp { display: inline-flex; flex-direction: column; gap: 0.1rem; min-width: 12rem; }
+.sig-img { max-height: 4rem; max-width: 100%; object-fit: contain; align-self: flex-start; }
+.sig-name { font-weight: 600; border-top: 1px solid #111827; padding-top: 0.2rem; }
+.sig-role, .sig-date { font-size: 0.78rem; color: #4b5563; }
+/* A slot nobody has signed reads as an empty slot, not as a signature. */
+.sig-pending {
+  border: 1px dashed #9ca3af; border-radius: 6px; padding: 1rem 1.25rem;
+  color: #6b7280; font-style: italic; text-align: center;
+}
+
+/* --- public verification page --- */
+.verify-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--sp-5); background: var(--bg-color, #f8f8f7); }
+.verify-card { width: 100%; max-width: 34rem; background: var(--surface, #fff); border: 1px solid var(--rule); border-radius: 12px; padding: var(--sp-6, 2rem); }
+.verify-result { display: flex; gap: var(--sp-4); align-items: flex-start; margin-top: var(--sp-5); padding: var(--sp-4); border-radius: 8px; border: 1px solid; }
+.verify-result p { margin: 0.35rem 0 0; font-size: 0.9rem; }
+.verify-good { background: #f0fdf4; border-color: #86efac; color: #14532d; }
+.verify-warn { background: #fffbeb; border-color: #fcd34d; color: #78350f; }
+.verify-bad  { background: #fef2f2; border-color: #fca5a5; color: #7f1d1d; }
+.verify-signers { margin: 0.6rem 0 0; padding-left: 1.1rem; font-size: 0.9rem; }
+
+@media (max-width: 720px) {
+  .tpl-fields { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   Print — the document IS the page
+   ============================================================
+   window.print() is what produces the PDF (there is no server-side
+   renderer; PRD §14.4 makes the file disposable). So printing must yield a
+   document, not a screenshot of the app: everything except the sheet is
+   removed, and the sheet is lifted out of the modal it is sitting in. */
+@media print {
+  .no-print, .topbar, .app-nav, .modal-header, .modal-footer { display: none !important; }
+
+  body, .app-container, .modal-overlay, .modal-content, .modal-body {
+    position: static !important;
+    overflow: visible !important;
+    background: #fff !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .doc-sheet { border: 0 !important; border-radius: 0 !important; padding: 0 !important; }
+
+  /* A signature must never be split across a page break. */
+  .sig-stamp { break-inside: avoid; }
+
+  @page { margin: 18mm; }
+}

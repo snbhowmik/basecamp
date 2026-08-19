@@ -13,6 +13,7 @@ import {
   type MfaFactorSummary,
   type MemberDetails,
 } from '../../lib/account';
+import SignaturePad from '../documents/SignaturePad';
 
 export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContext; onProfileChanged: () => void }) {
   const [factors, setFactors] = useState<MfaFactorSummary[]>([]);
@@ -303,6 +304,10 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
             </form>
           </div>
         </div>
+
+        {/* Only staff sign documents; a student has nothing to stamp.
+            isStaff is is_lowest_level() === false -- see lib/context.ts. */}
+        {ctx.isStaff && <SignaturePad />}
       </div>
     </>
   );

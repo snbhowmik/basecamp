@@ -84,6 +84,28 @@ export async function createBatch(
   return data as string;
 }
 
+// Editing a batch. org_unit_id is intentionally absent: moving a batch between
+// programmes would change what its members' register numbers are validated
+// against. An empty prefix means "accept any register number".
+export async function updateBatch(input: {
+  id: string;
+  name?: string | null;
+  startYear?: number | null;
+  endYear?: number | null;
+  mode?: string | null;
+  regNoPrefix?: string | null;
+}): Promise<void> {
+  const { error } = await supabase.rpc('update_batch', {
+    p_id: input.id,
+    p_name: input.name ?? null,
+    p_start_year: input.startYear ?? null,
+    p_end_year: input.endYear ?? null,
+    p_mode: input.mode ?? null,
+    p_reg_no_prefix: input.regNoPrefix ?? null,
+  });
+  if (error) throw error;
+}
+
 export async function listSections(batchId: string): Promise<Section[]> {
   const { data, error } = await supabase
     .from('sections')

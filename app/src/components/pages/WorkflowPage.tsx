@@ -6,6 +6,7 @@ import {
   createOrgUnit,
   listAllBatches,
   createBatch,
+  updateBatch,
   renameOrgUnit,
   renameRequestType,
   renameCategory,
@@ -72,6 +73,10 @@ function OrgSection() {
   const [unitType, setUnitType] = useState<OrgUnitType>('faculty');
   const [unitParent, setUnitParent] = useState('');
   const [batchUnit, setBatchUnit] = useState('');
+  const [editBatch, setEditBatch] = useState<string | null>(null);
+  const [editBatchPrefix, setEditBatchPrefix] = useState('');
+  const [editBatchStart, setEditBatchStart] = useState('');
+  const [editBatchEnd, setEditBatchEnd] = useState('');
   const [editUnit, setEditUnit] = useState<string | null>(null);
   const [editUnitName, setEditUnitName] = useState('');
   const [pendingDelete, setPendingDelete] =
@@ -132,6 +137,27 @@ function OrgSection() {
       await reload();
     } catch (err) {
       setError(errorMessage(err, 'Could not create batch.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveBatch = async (id: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      await updateBatch({
+        id,
+        startYear: Number(editBatchStart),
+        endYear: Number(editBatchEnd),
+        // Blank clears the prefix on purpose — an intake whose numbering is not
+        // settled should accept anything rather than reject everyone.
+        regNoPrefix: editBatchPrefix.trim() || null,
+      });
+      setEditBatch(null);
+      await reload();
+    } catch (err) {
+      setError(errorMessage(err, 'Could not update the batch.'));
     } finally {
       setBusy(false);
     }
@@ -312,15 +338,55 @@ function OrgSection() {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr><th>Batch</th><th>Org unit</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
+                  <thead><tr><th>Batch</th><th>Org unit</th><th>Reg-no prefix</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
                   <tbody>
                     {batches.map((b) => (
                       <tr key={b.id}>
-                        <td className="cell-strong">{b.name}</td>
+                        <td>
+                          {editBatch === b.id ? (
+                            <div className="repeatable-row">
+                              <input type="number" className="form-input" style={{ width: 90 }}
+                                value={editBatchStart} onChange={(e) => setEditBatchStart(e.target.value)} />
+                              <input type="number" className="form-input" style={{ width: 90 }}
+                                value={editBatchEnd} onChange={(e) => setEditBatchEnd(e.target.value)} />
+                            </div>
+                          ) : (
+                            <span className="cell-strong">{b.name}</span>
+                          )}
+                        </td>
                         <td>{orgUnits.find((d) => d.id === b.org_unit_id)?.name ?? '—'}</td>
+                        <td>
+                          {editBatch === b.id ? (
+                            <input className="form-input" value={editBatchPrefix}
+                              placeholder="any number accepted"
+                              onChange={(e) => setEditBatchPrefix(e.target.value)} />
+                          ) : b.reg_no_prefix ? (
+                            <span className="cell-mono">{b.reg_no_prefix}</span>
+                          ) : (
+                            <span className="detail-value empty">Any</span>
+                          )}
+                        </td>
                         <td style={{ textAlign: 'right' }}>
-                          <button className="btn btn-secondary" title="Delete"
-                            onClick={() => setPendingDelete({ table: 'batches', id: b.id, name: b.name })}><Trash2 size={14} /></button>
+                          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                            {editBatch === b.id ? (
+                              <>
+                                <button className="btn btn-primary" disabled={busy} onClick={() => saveBatch(b.id)}>Save</button>
+                                <button className="btn btn-secondary" onClick={() => setEditBatch(null)}>Cancel</button>
+                              </>
+                            ) : (
+                              <>
+                                <button className="btn btn-secondary" title="Edit"
+                                  onClick={() => {
+                                    setEditBatch(b.id);
+                                    setEditBatchPrefix(b.reg_no_prefix ?? '');
+                                    setEditBatchStart(String(b.start_year));
+                                    setEditBatchEnd(String(b.end_year));
+                                  }}><Pencil size={14} /></button>
+                                <button className="btn btn-secondary" title="Delete"
+                                  onClick={() => setPendingDelete({ table: 'batches', id: b.id, name: b.name })}><Trash2 size={14} /></button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

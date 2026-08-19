@@ -1,8 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Plus, X, ArrowUp, ArrowDown, Check, Lock } from 'lucide-react';
+import { Plus, X, ArrowUp, ArrowDown, Check, Lock, Pencil, Trash2 } from 'lucide-react';
 import {
-  listLevels, completeLevelSetup, appendLevel, insertLevelAfter, type DraftLevel,
+  listLevels, completeLevelSetup, appendLevel, insertLevelAfter,
+  renameLevel, setLevelTag, type DraftLevel,
 } from '../../lib/levels';
+import { adminDelete } from '../../lib/admin';
+import ConfirmDestructive from '../ui/ConfirmDestructive';
 import type { PriorityLevel, Tag } from '../../types';
 import { listTags } from '../../lib/invites';
 
@@ -31,6 +34,12 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
   // Which level a mid-ladder insert is anchored under, if any.
   const [insertAfter, setInsertAfter] = useState<string | null>(null);
   const [insertDraft, setInsertDraft] = useState<DraftLevel>(emptyDraft());
+  // Inline edit of one row: name and tag are both editable after creation;
+  // rank is not, because existing tickets resolve authority through it.
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editTag, setEditTag] = useState('');
+  const [deleting, setDeleting] = useState<PriorityLevel | null>(null);
 
   useEffect(() => {
     if (mode !== 'manage') return;
@@ -103,6 +112,29 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
       .finally(() => setBusy(false));
   };
 
+  const startEdit = (l: PriorityLevel) => {
+    setEditing(l.id);
+    setEditName(l.name);
+    setEditTag(tags.find((t) => t.id === l.tag_id)?.code ?? '');
+  };
+
+  const saveEdit = async (l: PriorityLevel) => {
+    setBusy(true);
+    setError('');
+    try {
+      if (editName.trim() && editName.trim() !== l.name) await renameLevel(l.id, editName);
+      const currentCode = tags.find((t) => t.id === l.tag_id)?.code ?? '';
+      if (editTag.trim().toLowerCase() !== currentCode) await setLevelTag(l.id, editTag, editTag);
+      setEditing(null);
+      const [l2, t2] = await Promise.all([listLevels(), listTags()]);
+      setExisting(l2); setTags(t2);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save the level.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const tagLabelFor = (id: string | null) =>
     id ? tags.find((t) => t.id === id)?.code ?? '—' : null;
 
@@ -111,6 +143,21 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
     return (
       <>
         {error && <div className="alert alert-danger" style={{ marginBottom: '1.25rem' }}>{error}</div>}
+
+        {deleting && (
+          <ConfirmDestructive
+            title="Delete level"
+            recordName={deleting.name}
+            description={`Removing the "${deleting.name}" level.`}
+            onCancel={() => setDeleting(null)}
+            onConfirmed={async () => {
+              await adminDelete('priority_levels', deleting.id);
+              setDeleting(null);
+              const [l2, t2] = await Promise.all([listLevels(), listTags()]);
+              setExisting(l2); setTags(t2);
+            }}
+          />
+        )}
 
         <div className="card" style={{ marginBottom: '1.25rem' }}>
           <div className="card-header">
@@ -133,9 +180,16 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
                   {existing.map((l) => (
                     <tr key={l.id}>
                       <td className="cell-mono">{l.rank}</td>
-                      <td className="cell-strong">{l.name}</td>
                       <td>
-                        {tagLabelFor(l.tag_id)
+                        {editing === l.id
+                          ? <input className="form-input" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                          : <span className="cell-strong">{l.name}</span>}
+                      </td>
+                      <td>
+                        {editing === l.id ? (
+                          <input className="form-input" value={editTag} placeholder="no tag"
+                            onChange={(e) => setEditTag(e.target.value)} />
+                        ) : tagLabelFor(l.tag_id)
                           ? <span className="chip">{tagLabelFor(l.tag_id)}</span>
                           : <span className="detail-value empty">No tag yet</span>}
                       </td>
@@ -144,12 +198,33 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
                         {l.is_base && <span className="status-badge status-neutral">Base</span>}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        {!l.is_base && (
-                          <button type="button" className="btn btn-secondary"
-                            onClick={() => { setInsertAfter(l.id); setInsertDraft(emptyDraft()); }}>
-                            Insert below
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                          {editing === l.id ? (
+                            <>
+                              <button type="button" className="btn btn-primary" disabled={busy}
+                                onClick={() => saveEdit(l)}>Save</button>
+                              <button type="button" className="btn btn-secondary"
+                                onClick={() => setEditing(null)}>Cancel</button>
+                            </>
+                          ) : (
+                            <>
+                              {!l.is_reserved && (
+                                <button type="button" className="btn btn-secondary" title="Edit"
+                                  onClick={() => startEdit(l)}><Pencil size={14} /></button>
+                              )}
+                              {!l.is_base && (
+                                <button type="button" className="btn btn-secondary"
+                                  onClick={() => { setInsertAfter(l.id); setInsertDraft(emptyDraft()); }}>
+                                  Insert below
+                                </button>
+                              )}
+                              {!l.is_reserved && (
+                                <button type="button" className="btn btn-secondary" title="Delete"
+                                  onClick={() => setDeleting(l)}><Trash2 size={14} /></button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

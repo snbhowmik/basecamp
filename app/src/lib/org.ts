@@ -31,6 +31,23 @@ export async function createOrgUnit(
   return data as string;
 }
 
+// Renaming is a plain update: the config write policies allow an admin to
+// update these tables directly. Only deletion is routed through admin_delete().
+export async function renameOrgUnit(id: string, name: string): Promise<void> {
+  const { error } = await supabase.from('org_units').update({ name: name.trim() }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function renameRequestType(id: string, name: string): Promise<void> {
+  const { error } = await supabase.from('request_types').update({ name: name.trim() }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function renameCategory(id: string, name: string): Promise<void> {
+  const { error } = await supabase.from('request_categories').update({ name: name.trim() }).eq('id', id);
+  if (error) throw error;
+}
+
 export async function listAllBatches(): Promise<Batch[]> {
   const { data, error } = await supabase
     .from('batches')

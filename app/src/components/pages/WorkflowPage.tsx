@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Plus, Building2, GraduationCap, GitBranch, Trash2, EyeOff, Eye } from 'lucide-react';
+import { Plus, Building2, GraduationCap, GitBranch, Trash2, EyeOff, Eye, Pencil } from 'lucide-react';
 import {
   listOrgUnits,
   createOrgUnit,
   listAllBatches,
   createBatch,
+  renameOrgUnit,
+  renameRequestType,
+  renameCategory,
   listRequestTypes,
   createRequestType,
   listCategories,
@@ -16,6 +19,8 @@ import {
   type FirstHopOption,
 } from '../../lib/org';
 import { listTags } from '../../lib/invites';
+import { adminDelete, type DeletableTable } from '../../lib/admin';
+import ConfirmDestructive from '../ui/ConfirmDestructive';
 import type { OrgUnit, OrgUnitType, Batch, RequestType, RequestCategory, Tag } from '../../types';
 
 type Section = 'org' | 'catalog';
@@ -66,6 +71,10 @@ function OrgSection() {
   const [unitType, setUnitType] = useState<OrgUnitType>('faculty');
   const [unitParent, setUnitParent] = useState('');
   const [batchUnit, setBatchUnit] = useState('');
+  const [editUnit, setEditUnit] = useState<string | null>(null);
+  const [editUnitName, setEditUnitName] = useState('');
+  const [pendingDelete, setPendingDelete] =
+    useState<{ table: DeletableTable; id: string; name: string } | null>(null);
   const [batchStartYear, setBatchStartYear] = useState('');
   const [batchEndYear, setBatchEndYear] = useState('');
   const [batchPrefix, setBatchPrefix] = useState('');
@@ -127,11 +136,39 @@ function OrgSection() {
     }
   };
 
+  const saveUnitName = async (id: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      await renameOrgUnit(id, editUnitName);
+      setEditUnit(null);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not rename the org unit.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loading) return <div className="loading-spinner" style={{ marginTop: '3rem' }} />;
 
   return (
     <>
       {error && <div className="alert alert-danger" style={{ marginBottom: '1.25rem' }}>{error}</div>}
+
+      {pendingDelete && (
+        <ConfirmDestructive
+          title="Delete record"
+          recordName={pendingDelete.name}
+          description={`Removing "${pendingDelete.name}".`}
+          onCancel={() => setPendingDelete(null)}
+          onConfirmed={async () => {
+            await adminDelete(pendingDelete.table, pendingDelete.id);
+            setPendingDelete(null);
+            await reload();
+          }}
+        />
+      )}
 
       <div className="grid-2">
         <div className="card">
@@ -191,13 +228,34 @@ function OrgSection() {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr><th>Org unit</th><th>Type</th><th>Code</th></tr></thead>
+                  <thead><tr><th>Org unit</th><th>Type</th><th>Code</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
                   <tbody>
                     {orgUnits.map((d) => (
                       <tr key={d.id}>
-                        <td className="cell-strong">{d.name}</td>
+                        <td>
+                          {editUnit === d.id
+                            ? <input className="form-input" value={editUnitName} onChange={(e) => setEditUnitName(e.target.value)} />
+                            : <span className="cell-strong">{d.name}</span>}
+                        </td>
                         <td>{d.unit_type === 'faculty' ? 'Faculty' : 'Programme'}</td>
                         <td className="cell-mono">{d.code}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                            {editUnit === d.id ? (
+                              <>
+                                <button className="btn btn-primary" disabled={busy} onClick={() => saveUnitName(d.id)}>Save</button>
+                                <button className="btn btn-secondary" onClick={() => setEditUnit(null)}>Cancel</button>
+                              </>
+                            ) : (
+                              <>
+                                <button className="btn btn-secondary" title="Rename"
+                                  onClick={() => { setEditUnit(d.id); setEditUnitName(d.name); }}><Pencil size={14} /></button>
+                                <button className="btn btn-secondary" title="Delete"
+                                  onClick={() => setPendingDelete({ table: 'org_units', id: d.id, name: d.name })}><Trash2 size={14} /></button>
+                              </>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -253,12 +311,16 @@ function OrgSection() {
             ) : (
               <div className="table-container">
                 <table>
-                  <thead><tr><th>Batch</th><th>Org unit</th></tr></thead>
+                  <thead><tr><th>Batch</th><th>Org unit</th><th style={{ textAlign: 'right' }}>Actions</th></tr></thead>
                   <tbody>
                     {batches.map((b) => (
                       <tr key={b.id}>
                         <td className="cell-strong">{b.name}</td>
                         <td>{orgUnits.find((d) => d.id === b.org_unit_id)?.name ?? '—'}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button className="btn btn-secondary" title="Delete"
+                            onClick={() => setPendingDelete({ table: 'batches', id: b.id, name: b.name })}><Trash2 size={14} /></button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -293,6 +355,12 @@ function CatalogSection() {
   const [catRetain, setCatRetain] = useState(false);
 
   const [routingFor, setRoutingFor] = useState<RequestCategory | null>(null);
+  const [editType, setEditType] = useState<string | null>(null);
+  const [editTypeName, setEditTypeName] = useState('');
+  const [editCat, setEditCat] = useState<string | null>(null);
+  const [editCatName, setEditCatName] = useState('');
+  const [catDelete, setCatDelete] =
+    useState<{ table: DeletableTable; id: string; name: string } | null>(null);
 
   const reload = async () => {
     try {
@@ -355,6 +423,34 @@ function CatalogSection() {
     }
   };
 
+  const saveTypeName = async (id: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      await renameRequestType(id, editTypeName);
+      setEditType(null);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not rename the request type.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveCatName = async (id: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      await renameCategory(id, editCatName);
+      setEditCat(null);
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not rename the category.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loading) return <div className="loading-spinner" style={{ marginTop: '3rem' }} />;
 
   const categoriesOfType = categories.filter((c) => !catType || c.request_type_id === catType);
@@ -362,6 +458,20 @@ function CatalogSection() {
   return (
     <>
       {error && <div className="alert alert-danger" style={{ marginBottom: '1.25rem' }}>{error}</div>}
+
+      {catDelete && (
+        <ConfirmDestructive
+          title="Delete record"
+          recordName={catDelete.name}
+          description={`Removing "${catDelete.name}".`}
+          onCancel={() => setCatDelete(null)}
+          onConfirmed={async () => {
+            await adminDelete(catDelete.table, catDelete.id);
+            setCatDelete(null);
+            await reload();
+          }}
+        />
+      )}
 
       <div className="card" style={{ marginBottom: '1.25rem' }}>
         <div className="card-header"><h2 className="section-title">Request types</h2></div>
@@ -386,10 +496,57 @@ function CatalogSection() {
               </div>
             </div>
           </form>
-          <div className="chip-list">
-            {types.length === 0 && <span className="form-hint">None yet.</span>}
-            {types.map((t) => <span key={t.id} className="chip">{t.name}</span>)}
-          </div>
+          {types.length === 0 ? (
+            <span className="form-hint">None yet.</span>
+          ) : (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr><th>Type</th><th>Code</th><th>Mode</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
+                </thead>
+                <tbody>
+                  {types.map((t) => (
+                    <tr key={t.id}>
+                      <td>
+                        {editType === t.id
+                          ? <input className="form-input" value={editTypeName} onChange={(e) => setEditTypeName(e.target.value)} />
+                          : <span className="cell-strong">{t.name}</span>}
+                      </td>
+                      <td className="cell-mono">{t.code}</td>
+                      <td>
+                        <span className="status-badge status-neutral">
+                          {t.decision_mode === 'approval' ? 'Approval' : 'Log only'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          {editType === t.id ? (
+                            <>
+                              <button className="btn btn-primary btn-sm" disabled={busy}
+                                onClick={() => saveTypeName(t.id)}>Save</button>
+                              <button className="btn btn-secondary btn-sm"
+                                onClick={() => setEditType(null)}>Cancel</button>
+                            </>
+                          ) : (
+                            <>
+                              <button className="btn-icon" title="Rename"
+                                onClick={() => { setEditType(t.id); setEditTypeName(t.name); }}>
+                                <Pencil size={15} />
+                              </button>
+                              <button className="btn-icon" title="Delete"
+                                onClick={() => setCatDelete({ table: 'request_types', id: t.id, name: t.name })}>
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
@@ -459,7 +616,12 @@ function CatalogSection() {
                   {categories.map((c) => (
                     <tr key={c.id}>
                       <td>
-                        <div className="cell-strong">{c.name}</div>
+                        {editCat === c.id ? (
+                          <input className="form-input" value={editCatName}
+                            onChange={(e) => setEditCatName(e.target.value)} />
+                        ) : (
+                          <div className="cell-strong">{c.name}</div>
+                        )}
                         <div className="cell-mono">{types.find((t) => t.id === c.request_type_id)?.code ?? ''}</div>
                       </td>
                       <td>
@@ -475,10 +637,29 @@ function CatalogSection() {
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                          <button className="btn btn-secondary btn-sm" onClick={() => setRoutingFor(c)}>Routing</button>
-                          <button className="btn-icon" title={c.is_active ? 'Hide' : 'Show'} onClick={() => toggleActive(c)}>
-                            {c.is_active ? <EyeOff size={15} /> : <Eye size={15} />}
-                          </button>
+                          {editCat === c.id ? (
+                            <>
+                              <button className="btn btn-primary btn-sm" disabled={busy}
+                                onClick={() => saveCatName(c.id)}>Save</button>
+                              <button className="btn btn-secondary btn-sm"
+                                onClick={() => setEditCat(null)}>Cancel</button>
+                            </>
+                          ) : (
+                            <>
+                              <button className="btn btn-secondary btn-sm" onClick={() => setRoutingFor(c)}>Routing</button>
+                              <button className="btn-icon" title="Rename"
+                                onClick={() => { setEditCat(c.id); setEditCatName(c.name); }}>
+                                <Pencil size={15} />
+                              </button>
+                              <button className="btn-icon" title={c.is_active ? 'Hide' : 'Show'} onClick={() => toggleActive(c)}>
+                                {c.is_active ? <EyeOff size={15} /> : <Eye size={15} />}
+                              </button>
+                              <button className="btn-icon" title="Delete"
+                                onClick={() => setCatDelete({ table: 'request_categories', id: c.id, name: c.name })}>
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

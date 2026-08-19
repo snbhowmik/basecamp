@@ -1,6 +1,10 @@
 # Never commit real secrets — see .env.example
 .env
 .env.local
+# Any .env variant — a backup of a secrets file next to the real one is
+# exactly what gets committed later by someone running `git add -A`.
+.env.*
+!.env.example
 *.local
 
 node_modules

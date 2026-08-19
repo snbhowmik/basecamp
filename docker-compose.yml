@@ -148,10 +148,21 @@ services:
       STORAGE_BACKEND: s3
       GLOBAL_S3_BUCKET: basecamp-files
       REGION: garage
-      S3_FORCE_PATH_STYLE: "true"
-      S3_ENDPOINT: http://garage:3900
-      S3_PROTOCOL_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY}
-      S3_PROTOCOL_ACCESS_KEY_SECRET: ${GARAGE_SECRET_KEY}
+      # GLOBAL_S3_ prefix: the unprefixed names were ignored, so storage-api
+      # fell back to the real AWS endpoint and tried to resolve
+      # basecamp-files.s3.garage.amazonaws.com.
+      GLOBAL_S3_FORCE_PATH_STYLE: "true"
+      GLOBAL_S3_ENDPOINT: http://garage:3900
+      GLOBAL_S3_PROTOCOL: http
+      # storage-api v1 resolves S3 credentials through the AWS SDK's default
+      # provider chain, which reads AWS_* -- it never looked at the
+      # S3_PROTOCOL_* names that used to be here, so every upload failed with
+      # "Could not load credentials from any providers". The bucket, the key
+      # and the cluster layout did not exist either; storage had simply never
+      # been exercised (see NOTE.md on Garage).
+      AWS_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${GARAGE_SECRET_KEY}
+      AWS_DEFAULT_REGION: garage
     networks: [internal]
 
   garage:

@@ -163,13 +163,15 @@ These exist in the schema/design but the implementation isn't finished. Each one
 - [ ] Admin: priority levels, tags, categories, field definitions, dashboard grants management
 
 ### Document Generation
-- [ ] Signature capture UI — canvas draw + image upload
-- [ ] Signature cleaning pipeline (background removal, crop, sharpen) → `signature_assets`
-- [ ] Annexure 4.4 template + field mapping
-- [ ] NOC template + field mapping
-- [ ] PDF rendering service, stamping `signature_assets` into the template
-- [ ] `generated_documents` row creation with `reference_code` + `state_hash`
-- [ ] Public verification page — look up a reference code, confirm authenticity
+- [x] Signature capture UI — canvas draw + image upload (`components/documents/SignaturePad.tsx`)
+- [x] Signature cleaning pipeline (background removal, crop) — runs in-browser, so the original photo never leaves the machine; only the cleaned stamp is uploaded
+- [x] Template authoring + field mapping — `0017_document_templates.sql`, `components/pages/TemplatesPage.tsx`. Annexure 4.4 and NOC are **authored by the captain, not shipped**: "no fixture data" applies to documents too
+- [x] Rendering — `render_document()` populates the template and stamps signatures; the browser prints it. No server-side PDF renderer: PRD-V2 §14 rules out an API server and §14.4 makes the file disposable
+- [x] `generated_documents` row creation with `reference_code` + `state_hash`
+- [x] Public verification page — `/verify` and `/verify/<code>`, anon-reachable, returns no request contents
+- [ ] **Garage was uninitialised until 2026-08-19** — no layout role, no bucket, no key, and the `.env` access key was not a valid Garage key ID. Storage had never been exercised. Layout applied, `basecamp-files` created, key regenerated into `.env`. The old `S3_PROTOCOL_*`/`S3_ENDPOINT` names in docker-compose were never read by storage-api v1; it needs `AWS_*` for credentials and `GLOBAL_S3_*` for the endpoint. **Attachments will hit the same path — this is now proven working for signatures only.**
+- [ ] `sanitizeDocumentHtml` allows `style`, so a captain-pasted `position:fixed` can escape the document sheet. Captain-only and cosmetic, but worth an allowlist on style properties
+- [ ] Signature slots match on level id (`{{signature:<uuid>}}`) with a legacy fallback to level name. Templates authored before `0020` still match by name and **would silently unmatch if that level is renamed** — re-save them to move to ids
 
 ### Storage Pipeline
 - [ ] Upload endpoint: MIME sniffing, allowlist check against `field_definitions`

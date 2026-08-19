@@ -91,8 +91,10 @@ export default function VerifyPage({ code }: VerifyPageProps) {
               </p>
               {!result.intact && (
                 <p>
-                  A signed document is hashed against the request's data. That data no longer matches, so this
-                  printout does not reflect what was approved. Treat it as void and ask for a fresh copy.
+                  A signed document is hashed against the request's data, and that data has changed since — so
+                  this printout no longer reflects what was approved. That is not proof of forgery: a request
+                  sent back for changes and resubmitted will also read this way. Ask the holder for a freshly
+                  generated copy, which will carry a new reference code.
                 </p>
               )}
               {(result.signatures ?? []).length > 0 && (

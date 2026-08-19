@@ -127,6 +127,15 @@ export default function TemplatesPage() {
   const builtIns = keys.filter((k) => k.source === 'built-in');
   const fields = keys.filter((k) => k.source === 'field');
 
+  // Signature slots store the level's id, not its name — renaming a level
+  // must not silently unmatch every template that references it. The id is
+  // unreadable though, so the preview shows the name back.
+  const readableSlots = (html: string) =>
+    levels.reduce(
+      (acc, l) => acc.replaceAll(`{{signature:${l.id}}}`, `⟨${l.name}'s signature⟩`),
+      html,
+    );
+
   return (
     <div className="page">
       <div className="page-header">
@@ -216,7 +225,7 @@ export default function TemplatesPage() {
               >
                 <option value="">Insert signature…</option>
                 {levels.map((l) => (
-                  <option key={l.id} value={`{{signature:${l.name}}}`}>{l.name}'s signature</option>
+                  <option key={l.id} value={`{{signature:${l.id}}}`}>{l.name}'s signature</option>
                 ))}
               </select>
             </div>
@@ -224,7 +233,7 @@ export default function TemplatesPage() {
             {previewing ? (
               <div
                 className="tpl-surface"
-                dangerouslySetInnerHTML={{ __html: sanitizeDocumentHtml(editorRef.current?.innerHTML ?? '') }}
+                dangerouslySetInnerHTML={{ __html: readableSlots(sanitizeDocumentHtml(editorRef.current?.innerHTML ?? '')) }}
               />
             ) : (
               <div

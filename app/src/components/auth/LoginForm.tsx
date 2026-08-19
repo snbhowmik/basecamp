@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useState, type FormEvent } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -44,7 +45,7 @@ export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormP
 
       setFactorId(totp.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed.');
+      setError(errorMessage(err, 'Login failed.'));
     } finally {
       setLoading(false);
     }
@@ -66,7 +67,7 @@ export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormP
       if (verify.error) throw verify.error;
       onLoggedIn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed.');
+      setError(errorMessage(err, 'Verification failed.'));
     } finally {
       setLoading(false);
     }

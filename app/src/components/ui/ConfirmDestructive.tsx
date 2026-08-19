@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useState, type FormEvent } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import Modal from './Modal';
@@ -37,7 +38,7 @@ export default function ConfirmDestructive({
       await reverifyTotp(code);
       await onConfirmed();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not complete the deletion.');
+      setError(errorMessage(err, 'Could not complete the deletion.'));
       setCode('');
     } finally {
       setBusy(false);

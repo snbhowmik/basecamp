@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -57,7 +58,7 @@ export default function AcceptInvite({ token, onDone }: { token: string; onDone:
         try {
           await beginMfa();
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Could not start MFA enrollment.');
+          setError(errorMessage(err, 'Could not start MFA enrollment.'));
         }
         setLoading(false);
         return;
@@ -82,7 +83,7 @@ export default function AcceptInvite({ token, onDone }: { token: string; onDone:
     try {
       await fn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(errorMessage(err, 'Something went wrong.'));
     } finally {
       setSubmitting(false);
     }

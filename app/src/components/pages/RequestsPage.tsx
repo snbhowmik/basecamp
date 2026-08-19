@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Plus, Inbox, Search, Send } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
@@ -74,7 +75,7 @@ export default function RequestsPage({ ctx }: { ctx: UserContext }) {
       setCategories(cats.filter((c) => c.is_active));
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load requests.');
+      setError(errorMessage(err, 'Failed to load requests.'));
     } finally {
       setLoading(false);
     }
@@ -299,7 +300,7 @@ function NewRequestModal({
       );
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not submit the request.');
+      setError(errorMessage(err, 'Could not submit the request.'));
     } finally {
       setSubmitting(false);
     }
@@ -454,7 +455,7 @@ function RequestDetailModal({
       await fn();
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed.');
+      setError(errorMessage(err, 'Action failed.'));
       setBusy(false);
     }
   };
@@ -468,7 +469,7 @@ function RequestDetailModal({
       setCommentBody('');
       setComments(await listComments(request.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not post comment.');
+      setError(errorMessage(err, 'Could not post comment.'));
     } finally {
       setBusy(false);
     }

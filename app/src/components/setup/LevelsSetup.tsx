@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Plus, X, ArrowUp, ArrowDown, Check, Lock, Pencil, Trash2 } from 'lucide-react';
 import {
@@ -45,7 +46,7 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
     if (mode !== 'manage') return;
     Promise.all([listLevels(), listTags()])
       .then(([l, t]) => { setExisting(l); setTags(t); })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load levels.'));
+      .catch((e) => setError(errorMessage(e, 'Could not load levels.')));
   }, [mode]);
 
   const update = (i: number, patch: Partial<DraftLevel>) =>
@@ -79,7 +80,7 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
     setBusy(true);
     completeLevelSetup(filled)
       .then(onDone)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not create levels.'))
+      .catch((err) => setError(errorMessage(err, 'Could not create levels.')))
       .finally(() => setBusy(false));
   };
 
@@ -93,7 +94,7 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
         setAppendDraft(emptyDraft());
         setExisting(await listLevels());
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not add the level.'))
+      .catch((err) => setError(errorMessage(err, 'Could not add the level.')))
       .finally(() => setBusy(false));
   };
 
@@ -108,7 +109,7 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
         setInsertDraft(emptyDraft());
         setExisting(await listLevels());
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not insert the level.'))
+      .catch((err) => setError(errorMessage(err, 'Could not insert the level.')))
       .finally(() => setBusy(false));
   };
 
@@ -129,7 +130,7 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
       const [l2, t2] = await Promise.all([listLevels(), listTags()]);
       setExisting(l2); setTags(t2);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save the level.');
+      setError(errorMessage(err, 'Could not save the level.'));
     } finally {
       setBusy(false);
     }

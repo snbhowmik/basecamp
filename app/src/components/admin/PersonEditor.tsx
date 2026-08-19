@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, ShieldOff, ShieldCheck } from 'lucide-react';
 import Modal from '../ui/Modal';
@@ -54,7 +55,7 @@ export default function PersonEditor({ account, onClose, onChanged }: {
   };
 
   useEffect(() => {
-    reload().catch((e) => setError(e instanceof Error ? e.message : 'Could not load this account.'));
+    reload().catch((e) => setError(errorMessage(e, 'Could not load this account.')));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account.id]);
 
@@ -66,7 +67,7 @@ export default function PersonEditor({ account, onClose, onChanged }: {
       onChanged();
       setMsg(ok);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(errorMessage(err, 'Something went wrong.'));
     } finally {
       setBusy(false);
     }

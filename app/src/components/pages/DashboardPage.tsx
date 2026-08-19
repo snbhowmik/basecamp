@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { Fragment, useEffect, useState } from 'react';
 import { Clock, CheckCircle2, XCircle, Inbox, Users, MailPlus, ArrowRight } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
@@ -39,7 +40,7 @@ export default function DashboardPage({ ctx, onNavigate }: { ctx: UserContext; o
           setRequests(await listVisibleRequests());
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load dashboard.');
+        setError(errorMessage(err, 'Failed to load dashboard.'));
       } finally {
         setLoading(false);
       }

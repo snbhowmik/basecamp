@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useState, type FormEvent } from 'react';
 import { UserPlus, X, Copy, Check as CheckIcon, Send } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -101,7 +102,7 @@ export default function InvitePanel() {
       setInvites(inv);
       setMyRank(typeof rank.data === 'number' ? rank.data : null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load.');
+      setError(errorMessage(err, 'Failed to load.'));
     } finally {
       setLoading(false);
     }
@@ -187,7 +188,7 @@ export default function InvitePanel() {
       await revokeInvite(id);
       setInvites(invites.filter((i) => i.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to revoke.');
+      setError(errorMessage(err, 'Failed to revoke.'));
     }
   };
 
@@ -199,7 +200,7 @@ export default function InvitePanel() {
       setSuccess('Queued for resend — it usually arrives within a minute.');
       setInvites(await listMyInvites());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to queue the resend.');
+      setError(errorMessage(err, 'Failed to queue the resend.'));
     } finally {
       setResending(null);
     }

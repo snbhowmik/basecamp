@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Users, Pencil } from 'lucide-react';
 import { listAccounts, type AccountRow } from '../../lib/org';
@@ -21,7 +22,7 @@ export default function AccountsPage() {
         // Keep the open editor pointed at fresh data after a change.
         setEditing((cur) => (cur ? rows.find((r) => r.id === cur.id) ?? null : null));
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load accounts.'));
+      .catch((err) => setError(errorMessage(err, 'Failed to load accounts.')));
 
   useEffect(() => {
     reload().finally(() => setLoading(false));

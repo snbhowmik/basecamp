@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -48,7 +49,7 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
       })
       .catch((err) => {
         setOrgUnits([]);
-        setCatalogError(err instanceof Error ? err.message : 'Could not load programmes.');
+        setCatalogError(errorMessage(err, 'Could not load programmes.'));
       });
   }, []);
 
@@ -67,7 +68,7 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
     try {
       await fn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(errorMessage(err, 'Something went wrong.'));
     } finally {
       setSubmitting(false);
     }

@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Plus, Building2, GraduationCap, GitBranch, Trash2, EyeOff, Eye, Pencil } from 'lucide-react';
 import {
@@ -86,7 +87,7 @@ function OrgSection() {
       setOrgUnits(d);
       setBatches(b);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load.');
+      setError(errorMessage(err, 'Failed to load.'));
     } finally {
       setLoading(false);
     }
@@ -105,7 +106,7 @@ function OrgSection() {
       setUnitParent('');
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create org unit.');
+      setError(errorMessage(err, 'Could not create org unit.'));
     } finally {
       setBusy(false);
     }
@@ -130,7 +131,7 @@ function OrgSection() {
       setBatchPrefix('');
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create batch.');
+      setError(errorMessage(err, 'Could not create batch.'));
     } finally {
       setBusy(false);
     }
@@ -144,7 +145,7 @@ function OrgSection() {
       setEditUnit(null);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not rename the org unit.');
+      setError(errorMessage(err, 'Could not rename the org unit.'));
     } finally {
       setBusy(false);
     }
@@ -369,7 +370,7 @@ function CatalogSection() {
       setCategories(c);
       setTags(tg);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load.');
+      setError(errorMessage(err, 'Failed to load.'));
     } finally {
       setLoading(false);
     }
@@ -387,7 +388,7 @@ function CatalogSection() {
       setTypeName('');
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create request type.');
+      setError(errorMessage(err, 'Could not create request type.'));
     } finally {
       setBusy(false);
     }
@@ -408,7 +409,7 @@ function CatalogSection() {
       setCatName('');
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create category.');
+      setError(errorMessage(err, 'Could not create category.'));
     } finally {
       setBusy(false);
     }
@@ -419,7 +420,7 @@ function CatalogSection() {
       await setCategoryActive(c.id, !c.is_active);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update category.');
+      setError(errorMessage(err, 'Could not update category.'));
     }
   };
 
@@ -431,7 +432,7 @@ function CatalogSection() {
       setEditType(null);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not rename the request type.');
+      setError(errorMessage(err, 'Could not rename the request type.'));
     } finally {
       setBusy(false);
     }
@@ -445,7 +446,7 @@ function CatalogSection() {
       setEditCat(null);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not rename the category.');
+      setError(errorMessage(err, 'Could not rename the category.'));
     } finally {
       setBusy(false);
     }
@@ -699,7 +700,7 @@ function RoutingEditor({ category, tags, onClose }: { category: RequestCategory;
       setLabel('');
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not add option.');
+      setError(errorMessage(err, 'Could not add option.'));
     } finally {
       setBusy(false);
     }

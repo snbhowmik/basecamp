@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useState, type FormEvent } from 'react';
 import { ShieldCheck, KeyRound, RefreshCw, Check } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
@@ -59,7 +60,7 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
       setProfileMsg('Profile updated.');
       onProfileChanged();
     } catch (err) {
-      setProfileErr(err instanceof Error ? err.message : 'Could not update profile.');
+      setProfileErr(errorMessage(err, 'Could not update profile.'));
     } finally {
       setSavingProfile(false);
     }
@@ -79,7 +80,7 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
       setPassword('');
       setPasswordMsg('Password changed.');
     } catch (err) {
-      setPasswordErr(err instanceof Error ? err.message : 'Could not change password.');
+      setPasswordErr(errorMessage(err, 'Could not change password.'));
     } finally {
       setSavingPassword(false);
     }
@@ -93,7 +94,7 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
       const enrolled = await beginMfaReenroll();
       setReenroll({ id: enrolled.id, qr: enrolled.totp.qr_code, secret: enrolled.totp.secret });
     } catch (err) {
-      setMfaErr(err instanceof Error ? err.message : 'Could not start re-enrollment.');
+      setMfaErr(errorMessage(err, 'Could not start re-enrollment.'));
     } finally {
       setBusyMfa(false);
     }
@@ -112,7 +113,7 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
       setMfaMsg('Authenticator replaced. Use the new one from your next sign-in.');
       setFactors(await listMfaFactors());
     } catch (err) {
-      setMfaErr(err instanceof Error ? err.message : 'Verification failed — check the code and try again.');
+      setMfaErr(errorMessage(err, 'Verification failed — check the code and try again.'));
     } finally {
       setBusyMfa(false);
     }

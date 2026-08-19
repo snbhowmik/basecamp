@@ -1,3 +1,4 @@
+import { errorMessage } from '../../lib/errors';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Plus, X, ShieldCheck, MailCheck } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
@@ -42,7 +43,7 @@ export default function SetupWizard({ onComplete }: { onComplete: () => void }) 
     try {
       await fn();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      setError(errorMessage(err, 'Something went wrong.'));
     } finally {
       setSubmitting(false);
     }

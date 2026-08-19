@@ -31,17 +31,49 @@ export default function AcceptInvite({ token, onDone }: { token: string; onDone:
   // details arrived, and React tore the tree down with "rendered more hooks
   // than during the previous render" — a blank page, no error on screen.
   const wideEnoughForPanel = useMediaQuery(AUTH_PANEL_QUERY);
+  const resumedRef = useRef(false);
 
   const [lookupFailed, setLookupFailed] = useState(false);
 
+  // Order matters: session first, invite row second.
+  //
+  // apply_pending_assignment() consumes the invite the moment the account is
+  // created, which is *before* the invitee clicks the confirmation link. So on
+  // the way back from that link the invite row is already spent and
+  // get_invite_by_token() returns nothing. Keying this screen on the invite
+  // row therefore sent a legitimately confirmed user back to a signup form for
+  // an account they already had. Once a session exists the invite has done its
+  // job and is irrelevant — what is left is finishing MFA.
   useEffect(() => {
-    getInviteByToken(token)
-      .then(setInvite)
-      // A failed lookup is not the same as a consumed or unknown token, and
-      // showing "invite not found" for both hides real outages behind a
-      // message that tells the invitee to go pester whoever invited them.
-      .catch(() => setLookupFailed(true))
-      .finally(() => setLoading(false));
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aal?.currentLevel === 'aal2') {
+          onDone();
+          return;
+        }
+        resumedRef.current = true;
+        try {
+          await beginMfa();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Could not start MFA enrollment.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setInvite(await getInviteByToken(token));
+      } catch {
+        // A failed lookup is not the same as a consumed or unknown token, and
+        // showing "invite not found" for both hides real outages behind a
+        // message telling the invitee to go pester whoever invited them.
+        setLookupFailed(true);
+      }
+      setLoading(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const run = async (fn: () => Promise<void>) => {
@@ -64,10 +96,13 @@ export default function AcceptInvite({ token, onDone }: { token: string; onDone:
     setStep('mfa');
   };
 
-  const resumedRef = useRef(false);
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && !resumedRef.current && step !== 'form') {
+      // No `step !== 'form'` guard any more. It meant a cold page load — which
+      // always starts at 'form' — ignored a perfectly good session, which is
+      // exactly the state a user is in when they arrive from the confirmation
+      // link.
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && !resumedRef.current) {
         resumedRef.current = true;
         run(beginMfa);
       }
@@ -84,7 +119,7 @@ export default function AcceptInvite({ token, onDone }: { token: string; onDone:
       return;
     }
     run(async () => {
-      await acceptInvite(invite.email, fullName, password);
+      await acceptInvite(invite.email, fullName, password, token);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setStep('confirm');

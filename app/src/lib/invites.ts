@@ -186,7 +186,12 @@ export async function selfRegisterStudent(input: SelfRegisterInput) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password: input.password,
-    options: { data: { full_name: input.fullName } },
+    options: {
+      data: { full_name: input.fullName },
+      // Explicit for the same reason as acceptInvite: do not let the
+      // confirmation link's destination depend on the Referer header.
+      emailRedirectTo: `${window.location.origin}/register`,
+    },
   });
   if (error) throw error;
   if (!data.user) throw new Error('Registration did not return a user.');
@@ -218,11 +223,21 @@ export async function getInviteByToken(token: string): Promise<InviteDetails | n
   };
 }
 
-export async function acceptInvite(email: string, fullName: string, password: string) {
+// emailRedirectTo is set explicitly. Left unset, GoTrue falls back to the
+// Referer header to decide where its confirmation link returns to — which
+// happens to work until a browser or privacy setting strips Referer, and is
+// invisible when it breaks. Point it at the invite page deliberately: that is
+// where MFA enrollment continues.
+export async function acceptInvite(
+  email: string, fullName: string, password: string, token: string,
+) {
   const { data, error } = await supabase.auth.signUp({
     email: email.trim().toLowerCase(),
     password,
-    options: { data: { full_name: fullName } },
+    options: {
+      data: { full_name: fullName },
+      emailRedirectTo: inviteLink(token),
+    },
   });
   if (error) throw error;
   if (!data.user) throw new Error('Signup did not return a user.');

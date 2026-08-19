@@ -86,7 +86,10 @@ export default function RegisterForm({ onDone, onSwitchToLogin }: { onDone: () =
   const resumedRef = useRef(false);
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && !resumedRef.current && step !== 'form') {
+      // Same reasoning as AcceptInvite: a cold load from the confirmation
+      // link always starts at 'form', so gating on step ignored the session
+      // the user just earned by clicking it.
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user && !resumedRef.current) {
         resumedRef.current = true;
         run(beginMfa);
       }

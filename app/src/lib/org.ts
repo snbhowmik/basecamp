@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { adminDelete } from './admin';
 import type { OrgUnit, OrgUnitType, Batch, Section, RequestType, RequestCategory, Profile } from '../types';
 
 // The org tree: org_units (faculty → programme) → batches → sections.
@@ -31,20 +32,20 @@ export async function createOrgUnit(
   return data as string;
 }
 
-// Renaming is a plain update: the config write policies allow an admin to
-// update these tables directly. Only deletion is routed through admin_delete().
+// Renames go through functions rather than table updates: the browser asks for
+// an outcome and the database decides, instead of composing its own UPDATE.
 export async function renameOrgUnit(id: string, name: string): Promise<void> {
-  const { error } = await supabase.from('org_units').update({ name: name.trim() }).eq('id', id);
+  const { error } = await supabase.rpc('rename_org_unit', { p_id: id, p_name: name });
   if (error) throw error;
 }
 
 export async function renameRequestType(id: string, name: string): Promise<void> {
-  const { error } = await supabase.from('request_types').update({ name: name.trim() }).eq('id', id);
+  const { error } = await supabase.rpc('rename_request_type', { p_id: id, p_name: name });
   if (error) throw error;
 }
 
 export async function renameCategory(id: string, name: string): Promise<void> {
-  const { error } = await supabase.from('request_categories').update({ name: name.trim() }).eq('id', id);
+  const { error } = await supabase.rpc('rename_category', { p_id: id, p_name: name });
   if (error) throw error;
 }
 
@@ -122,17 +123,12 @@ export async function createRequestType(
   name: string,
   decisionMode: 'approval' | 'log_only' = 'approval',
 ) {
-  const { error } = await supabase.from('request_types').insert({
-    code: code.trim().toLowerCase(),
-    name: name.trim(),
-    decision_mode: decisionMode,
+  const { error } = await supabase.rpc('create_request_type', {
+    p_code: code, p_name: name, p_decision_mode: decisionMode,
   });
   if (error) throw error;
 }
 
-// v2 dropped request_categories.code and moved decision_mode to the type.
-// `classification` ('tech' | 'non_tech') is new and drives the tech/non-tech
-// counts on a person card (PRD-V2 §9).
 export interface CreateCategoryInput {
   requestTypeId: string;
   parentId: string | null;
@@ -142,18 +138,18 @@ export interface CreateCategoryInput {
 }
 
 export async function createCategory(input: CreateCategoryInput) {
-  const { error } = await supabase.from('request_categories').insert({
-    request_type_id: input.requestTypeId,
-    parent_id: input.parentId,
-    name: input.name.trim(),
-    classification: input.classification,
-    retain_attachments_after_close: input.retainAttachments,
+  const { error } = await supabase.rpc('create_category', {
+    p_request_type_id: input.requestTypeId,
+    p_parent_id: input.parentId,
+    p_name: input.name,
+    p_classification: input.classification,
+    p_retain: input.retainAttachments,
   });
   if (error) throw error;
 }
 
 export async function setCategoryActive(id: string, isActive: boolean) {
-  const { error } = await supabase.from('request_categories').update({ is_active: isActive }).eq('id', id);
+  const { error } = await supabase.rpc('set_category_active', { p_id: id, p_active: isActive });
   if (error) throw error;
 }
 
@@ -177,17 +173,17 @@ export async function listFirstHopOptions(categoryId: string): Promise<FirstHopO
 }
 
 export async function createFirstHopOption(categoryId: string, label: string, resolveTag: string) {
-  const { error } = await supabase.from('category_first_hop_options').insert({
-    category_id: categoryId,
-    label: label.trim(),
-    resolve_tag: resolveTag.trim(),
+  const { error } = await supabase.rpc('create_first_hop_option', {
+    p_category_id: categoryId, p_label: label, p_resolve_tag: resolveTag,
   });
   if (error) throw error;
 }
 
+// Routed through admin_delete(): category_first_hop_options no longer carries a
+// delete policy, so a direct .delete() here removed nothing and reported
+// success — the option stayed on screen after a reload.
 export async function deleteFirstHopOption(id: string) {
-  const { error } = await supabase.from('category_first_hop_options').delete().eq('id', id);
-  if (error) throw error;
+  await adminDelete('category_first_hop_options', id);
 }
 
 // ------------------------------------------------------------------

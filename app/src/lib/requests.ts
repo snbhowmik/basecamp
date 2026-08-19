@@ -136,11 +136,14 @@ export async function saveFieldValues(
   requestId: string,
   values: { definitionId: string; value: unknown }[],
 ): Promise<void> {
-  const rows = values
+  const payload = values
     .filter((v) => v.value !== '' && v.value !== null && v.value !== undefined)
-    .map((v) => ({ request_id: requestId, definition_id: v.definitionId, value: v.value }));
-  if (rows.length === 0) return;
-  const { error } = await supabase.from('request_field_values').insert(rows);
+    .map((v) => ({ definition_id: v.definitionId, value: v.value }));
+  if (payload.length === 0) return;
+  const { error } = await supabase.rpc('save_field_values', {
+    p_request_id: requestId,
+    p_values: payload,
+  });
   if (error) throw error;
 }
 
@@ -255,13 +258,8 @@ export async function listComments(requestId: string): Promise<CommentRow[]> {
 // plus block_base_level_internal_comment(), which stops a lowest-level user
 // from even authoring one. This function just posts; it does not decide.
 export async function addComment(requestId: string, body: string, visibility: 'public' | 'internal') {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in.');
-  const { error } = await supabase.from('request_comments').insert({
-    request_id: requestId,
-    author_id: user.id,
-    visibility,
-    body,
+  const { error } = await supabase.rpc('add_comment', {
+    p_request_id: requestId, p_body: body, p_visibility: visibility,
   });
   if (error) throw error;
 }

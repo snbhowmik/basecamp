@@ -45,9 +45,7 @@ export async function isSetupComplete(): Promise<boolean> {
 export async function ensureDomainAllowed(email: string) {
   const domain = email.split('@')[1];
   if (!domain) throw new Error('Invalid email address.');
-  const { error } = await supabase
-    .from('allowed_login_domains')
-    .upsert({ domain, is_active: true }, { onConflict: 'domain', ignoreDuplicates: true });
+  const { error } = await supabase.rpc('add_allowed_domains', { p_domains: [domain] });
   if (error) throw error;
   return domain;
 }
@@ -83,9 +81,6 @@ export async function verifyTotp(factorId: string, code: string) {
 
 export async function addAllowedDomains(domains: string[]) {
   if (domains.length === 0) return;
-  const rows = domains.map((domain) => ({ domain, is_active: true }));
-  const { error } = await supabase
-    .from('allowed_login_domains')
-    .upsert(rows, { onConflict: 'domain', ignoreDuplicates: true });
+  const { error } = await supabase.rpc('add_allowed_domains', { p_domains: domains });
   if (error) throw error;
 }

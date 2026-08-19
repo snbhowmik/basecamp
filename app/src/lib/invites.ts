@@ -71,34 +71,28 @@ export interface CreateInviteInput {
 }
 
 export async function createInvite(input: CreateInviteInput): Promise<PendingAssignment> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in.');
-
-  const { data, error } = await supabase
-    .from('pending_assignments')
-    .insert({
-      email: input.email.trim().toLowerCase(),
-      level_id: input.levelId,
-      tag_codes: input.tagCodes,
-      member_type: input.memberType,
-      role_kind: input.roleKind,
-      org_unit_id: input.orgUnitId,
-      batch_id: input.batchId,
-      section_id: input.sectionId,
-      reg_no: input.regNo,
-      fet_id: input.fetId,
-      invited_by: user.id,
-    })
-    .select()
-    .single();
-  // RLS (can_invite()) is the real gate — a rejected insert surfaces here as
-  // a generic 42501 from PostgREST; the caller decides how to present it.
+  // can_invite() is re-checked inside create_invite(); a refusal comes back as
+  // a sentence rather than a bare 42501 from PostgREST.
+  const { data, error } = await supabase.rpc('create_invite', {
+    p_email: input.email.trim().toLowerCase(),
+    p_level_id: input.levelId,
+    p_tag_codes: input.tagCodes,
+    p_member_type: input.memberType,
+    p_role_kind: input.roleKind,
+    p_org_unit_id: input.orgUnitId,
+    p_batch_id: input.batchId,
+    p_section_id: input.sectionId,
+    p_reg_no: input.regNo,
+    p_fet_id: input.fetId,
+  });
   if (error) throw error;
-  return data;
+  return data as PendingAssignment;
 }
 
+// Withdrawing an invite is a deletion, so it needs a fresh authenticator code
+// like any other — see ConfirmDestructive.
 export async function revokeInvite(id: string) {
-  const { error } = await supabase.from('pending_assignments').delete().eq('id', id);
+  const { error } = await supabase.rpc('revoke_invite', { p_id: id });
   if (error) throw error;
 }
 
@@ -168,16 +162,12 @@ export async function selfRegisterStudent(input: SelfRegisterInput) {
   if (levelErr) throw levelErr;
   if (!baseLevelId) throw new Error('No student level has been set up yet — contact your administrator.');
 
-  const { error: assignErr } = await supabase.from('pending_assignments').insert({
-    email,
-    level_id: baseLevelId as string,
-    tag_codes: [],
-    member_type: 'student',
-    role_kind: 'academic',
-    org_unit_id: input.orgUnitId,
-    batch_id: input.batchId,
-    section_id: input.sectionId,
-    reg_no: input.regNo.trim(),
+  const { error: assignErr } = await supabase.rpc('self_register', {
+    p_email: email,
+    p_org_unit_id: input.orgUnitId,
+    p_batch_id: input.batchId,
+    p_section_id: input.sectionId,
+    p_reg_no: input.regNo,
   });
   if (assignErr) {
     if (assignErr.code === '23505') {

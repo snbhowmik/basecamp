@@ -74,40 +74,17 @@ export async function insertLevelAfter(afterLevelId: string, draft: DraftLevel):
 }
 
 export async function renameLevel(id: string, name: string): Promise<void> {
-  const { error } = await supabase
-    .from('priority_levels').update({ name: name.trim() }).eq('id', id);
+  const { error } = await supabase.rpc('rename_level', { p_id: id, p_name: name });
   if (error) throw error;
 }
 
-// Attach or replace the role tag on an existing level — the "or after" half of
-// how tagging was described. Reuses a tag with the same code rather than
-// failing, so retagging two levels through the same code is not an error the
-// captain has to understand.
+// Attach, replace or clear the role tag on an existing level — the "or after"
+// half of how tagging was described. An empty code clears it.
 export async function setLevelTag(levelId: string, code: string, label: string): Promise<void> {
-  const trimmed = code.trim().toLowerCase();
-  if (!trimmed) {
-    const { error } = await supabase.from('priority_levels').update({ tag_id: null }).eq('id', levelId);
-    if (error) throw error;
-    return;
-  }
-  if (trimmed === 'admin') throw new Error('The tag "admin" is reserved for the captain.');
-
-  let tagId: string;
-  const { data, error } = await supabase
-    .from('tags').insert({ code: trimmed, label: label.trim() || trimmed, tag_type: 'role' })
-    .select('id').single();
-  if (!error) {
-    tagId = data.id;
-  } else if (error.code === '23505') {
-    const { data: existing, error: selErr } = await supabase
-      .from('tags').select('id').eq('code', trimmed).single();
-    if (selErr) throw selErr;
-    tagId = existing.id;
-  } else {
-    throw error;
-  }
-
-  const { error: updErr } = await supabase
-    .from('priority_levels').update({ tag_id: tagId }).eq('id', levelId);
-  if (updErr) throw updErr;
+  const { error } = await supabase.rpc('set_level_tag', {
+    p_id: levelId,
+    p_code: code.trim().toLowerCase() || null,
+    p_label: label.trim() || null,
+  });
+  if (error) throw error;
 }

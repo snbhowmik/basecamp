@@ -65,9 +65,7 @@ export async function cancelMfaEnroll(factorId: string) {
 // v2's profiles table has no phone column — full_name is the only
 // self-editable field left here.
 export async function updateProfile(fields: { full_name?: string }) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in.');
-  const { error } = await supabase.from('profiles').update(fields).eq('id', user.id);
+  const { error } = await supabase.rpc('update_own_profile', { p_full_name: fields.full_name ?? '' });
   if (error) throw error;
 }
 

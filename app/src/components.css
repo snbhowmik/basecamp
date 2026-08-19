@@ -300,6 +300,16 @@
   color: var(--ink-body);
 }
 
+/* A chip used as a toggle — selected state has to be legible without relying
+   on colour alone, so the border weight and background both change. */
+button.chip { cursor: pointer; }
+button.chip:hover { border-color: var(--ink-body); }
+.chip-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 /* --- Forms ------------------------------------------------ */
 
 .form-group { margin-bottom: var(--sp-4); }

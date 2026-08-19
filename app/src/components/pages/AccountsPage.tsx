@@ -1,20 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Users } from 'lucide-react';
+import { Search, Users, Pencil } from 'lucide-react';
 import { listAccounts, type AccountRow } from '../../lib/org';
+import PersonEditor from '../admin/PersonEditor';
 
-// The captain's roster of every account on the instance. Read-only for now —
-// deactivating or re-leveling someone is V3 (TASK.md).
+// The captain's roster of every account on the instance, and where roles,
+// tags and suspension are managed. Every change goes through an RPC — this
+// page never writes a table directly, because the rules about who may hold
+// what authority belong in the database.
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [editing, setEditing] = useState<AccountRow | null>(null);
+
+  const reload = () =>
+    listAccounts()
+      .then((rows) => {
+        setAccounts(rows);
+        // Keep the open editor pointed at fresh data after a change.
+        setEditing((cur) => (cur ? rows.find((r) => r.id === cur.id) ?? null : null));
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load accounts.'));
 
   useEffect(() => {
-    listAccounts()
-      .then(setAccounts)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load accounts.'))
-      .finally(() => setLoading(false));
+    reload().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const visible = useMemo(() => {
@@ -33,11 +44,15 @@ export default function AccountsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Accounts</h1>
-          <p className="page-subtitle">Everyone with an account on this instance.</p>
+          <p className="page-subtitle">Everyone with an account on this instance. Select a row to change roles, tags, or access.</p>
         </div>
       </div>
 
       {error && <div className="alert alert-danger" style={{ marginBottom: '1.25rem' }}>{error}</div>}
+
+      {editing && (
+        <PersonEditor account={editing} onClose={() => setEditing(null)} onChanged={reload} />
+      )}
 
       <div className="card">
         <div className="toolbar">
@@ -72,6 +87,7 @@ export default function AccountsPage() {
                   <th>MFA</th>
                   <th>Status</th>
                   <th>Joined</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,6 +115,11 @@ export default function AccountsPage() {
                       </span>
                     </td>
                     <td className="cell-mono">{new Date(a.created_at).toLocaleDateString()}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="btn-icon" title="Edit roles and tags" onClick={() => setEditing(a)}>
+                        <Pencil size={15} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

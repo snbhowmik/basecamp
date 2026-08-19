@@ -27,3 +27,36 @@ export async function hasCompletedMfa(): Promise<boolean> {
   if (error) throw error;
   return data.currentLevel === 'aal2';
 }
+
+export interface SessionMfa {
+  signedIn: boolean;
+  aal2: boolean;
+  /** The verified TOTP factor to challenge, or null if none is enrolled yet. */
+  factorId: string | null;
+}
+
+// The gate App.tsx runs before anything else. It deliberately touches only
+// GoTrue and the locally-held JWT — never PostgREST — because every PostgREST
+// request now passes through require_mfa() (schema-v2/0016_require_mfa.sql)
+// and would be refused at aal1, which is exactly the state this call exists to
+// detect.
+//
+// factorId === null while signed in is a real state, not an error: signup and
+// invite acceptance create the account before enrollment, and the database
+// permits that window precisely so it can be closed. The caller must send
+// those users to enroll rather than into the app.
+export async function sessionMfa(): Promise<SessionMfa> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { signedIn: false, aal2: false, factorId: null };
+
+  const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aalErr) throw aalErr;
+  const { data: factors, error: factorsErr } = await supabase.auth.mfa.listFactors();
+  if (factorsErr) throw factorsErr;
+
+  return {
+    signedIn: true,
+    aal2: aal?.currentLevel === 'aal2',
+    factorId: factors.totp.find((f) => f.status === 'verified')?.id ?? null,
+  };
+}

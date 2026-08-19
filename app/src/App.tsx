@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isSetupComplete } from './lib/wizard';
-import { signOut } from './lib/auth';
+import { signOut, sessionMfa } from './lib/auth';
 import { loadUserContext, type UserContext } from './lib/context';
 import SetupWizard from './components/wizard/SetupWizard';
 import LevelsSetup from './components/setup/LevelsSetup';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import AcceptInvite from './components/auth/AcceptInvite';
+import VerifyMfa from './components/auth/VerifyMfa';
 import AppShell, { tabsFor, type Route } from './components/layout/AppShell';
 import DashboardPage from './components/pages/DashboardPage';
 import RequestsPage from './components/pages/RequestsPage';
@@ -15,7 +16,7 @@ import AccountsPage from './components/pages/AccountsPage';
 import WorkflowPage from './components/pages/WorkflowPage';
 import InvitePanel from './components/admin/InvitePanel';
 
-type Screen = 'loading' | 'wizard' | 'levels' | 'login' | 'register' | 'invite' | 'app';
+type Screen = 'loading' | 'wizard' | 'levels' | 'login' | 'register' | 'invite' | 'verify' | 'app';
 
 // Minimal path routing — no router dependency for a handful of flat routes.
 // nginx/frontend.conf serves index.html for all of them so a direct visit
@@ -29,10 +30,30 @@ function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [ctx, setCtx] = useState<UserContext | null>(null);
   const [route, setRoute] = useState<Route>('/dashboard');
+  const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const inviteToken = inviteTokenFrom(window.location.pathname);
 
   const bootstrap = useCallback(async () => {
     try {
+      // The MFA gate runs FIRST, before any call that reaches the database.
+      // Two reasons, and the second is the one that bites:
+      //
+      // 1. Signing in with a password alone leaves a real, persisted aal1
+      //    session. The TOTP step used to live in LoginForm's local state, so
+      //    a refresh re-entered here and walked straight into the app.
+      //
+      // 2. Every PostgREST request now passes through require_mfa()
+      //    (schema-v2/0016_require_mfa.sql), so isSetupComplete() and
+      //    loadUserContext() BOTH fail at aal1 — and the catch below sends
+      //    failures to the login screen, where signing in re-establishes aal1
+      //    and loops forever. The check has to come before them, not between.
+      const mfa = await sessionMfa();
+      if (mfa.signedIn && !mfa.aal2) {
+        setMfaFactorId(mfa.factorId);
+        setScreen('verify');
+        return;
+      }
+
       const setupDone = await isSetupComplete();
       const loaded = await loadUserContext();
 
@@ -108,6 +129,8 @@ function App() {
 
   if (screen === 'invite' && inviteToken) return <AcceptInvite token={inviteToken} onDone={goHome} />;
   if (screen === 'register') return <RegisterForm onDone={goHome} onSwitchToLogin={goHome} />;
+  if (screen === 'verify')
+    return <VerifyMfa factorId={mfaFactorId} onVerified={bootstrap} onSignOut={handleLogout} />;
   if (screen === 'wizard') return <SetupWizard onComplete={() => window.location.reload()} />;
   if (screen === 'levels') return <LevelsSetup mode="setup" onDone={() => window.location.reload()} />;
 

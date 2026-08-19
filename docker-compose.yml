@@ -97,6 +97,15 @@ services:
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET}
+      # Runs before every request, after `set role`. require_mfa() raises
+      # 42501 unless the session has completed its second factor, which is the
+      # only place that also covers RPCs -- those are `security definer` and
+      # bypass RLS, so policies alone left forward_request() and friends
+      # reachable with a password only. Defined in
+      # supabase/schema-v2/0016_require_mfa.sql; that migration must be applied
+      # before this container starts, and dropping the function takes the whole
+      # REST API down.
+      PGRST_DB_PRE_REQUEST: public.require_mfa
     networks: [internal]
 
   realtime:

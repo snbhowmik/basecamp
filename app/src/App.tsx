@@ -11,6 +11,7 @@ import VerifyMfa from './components/auth/VerifyMfa';
 import VerifyPage from './components/pages/VerifyPage';
 import AppShell, { tabsFor, type Route } from './components/layout/AppShell';
 import DashboardPage from './components/pages/DashboardPage';
+import HierarchyPage from './components/pages/HierarchyPage';
 import RequestsPage from './components/pages/RequestsPage';
 import AccountPage from './components/pages/AccountPage';
 import AccountsPage from './components/pages/AccountsPage';
@@ -163,6 +164,7 @@ function App() {
     return (
       <AppShell ctx={ctx} route={route} onNavigate={navigate} onLogout={handleLogout}>
         {route === '/dashboard' && <DashboardPage ctx={ctx} onNavigate={navigate} />}
+        {route === '/hierarchy' && <HierarchyPage />}
         {route === '/requests' && <RequestsPage ctx={ctx} />}
         {route === '/invite' && <InvitePanel />}
         {route === '/accounts' && <AccountsPage />}

@@ -11,7 +11,10 @@
 
 /* --- Shell ---------------------------------------------- */
 
-.app-container { min-height: 100vh; display: flex; flex-direction: column; background: var(--paper-laid); }
+/* Desktop is an index rail beside the page. Mobile is a single column with
+   the launcher docked at its foot, within thumb reach. */
+.app-container { min-height: 100vh; display: flex; background: var(--paper-laid); }
+.app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 /* The measure. Without this every page rendered flush to the viewport
    edge — rules running the full 1900px of a desktop monitor, body text
@@ -30,21 +33,24 @@
 
 /* The topbar is the letterhead: institution mark, then a heavy
    rule. Paper-coloured, not dark console chrome — a form does not
-   have a black header. */
-/* Brand, nav, and user sit as siblings in one header row. The
-   padding formula gives a full-bleed rule across the viewport
-   while holding the contents to the same 76rem measure as the
-   page below it — no inner wrapper element required. */
+   have a black header. Below the rail's breakpoint it carries the mark
+   alone; wayfinding lives in the docked launcher instead. */
 .topbar {
   position: sticky;
   top: 0;
   z-index: 30;
   display: flex;
-  align-items: stretch;
-  gap: var(--sp-5);
-  padding-inline: max(var(--sp-5), (100% - 76rem) / 2);
+  align-items: center;
+  gap: var(--sp-4);
+  padding-inline: var(--sp-4);
   background: var(--paper);
   border-bottom: 2px solid var(--rule-ink);
+}
+
+/* Above the rail's breakpoint the letterhead is the rail's own head, so the
+   mobile one is removed rather than duplicated. */
+@media (min-width: 60rem) {
+  .topbar { display: none; }
 }
 
 .topbar-brand {
@@ -84,39 +90,83 @@
   font-weight: 600;
 }
 
-.nav-tabs {
-  display: flex;
-  align-items: stretch;
-  gap: var(--sp-1);
-  flex: 1;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.nav-tabs::-webkit-scrollbar { display: none; }
+/* --- The index rail -------------------------------------- */
 
-.nav-tabs button, .nav-tabs a {
-  display: inline-flex;
+.rail {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  display: none;
+  flex-direction: column;
+  width: 15rem;
+  flex: none;
+  height: 100vh;
+  padding: var(--sp-5) 0 var(--sp-4);
+  background: var(--paper);
+  border-right: 1px solid var(--rule-strong);
+}
+
+@media (min-width: 60rem) {
+  .rail { display: flex; }
+}
+
+.rail-brand {
+  display: flex;
   align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-3);
+  gap: var(--sp-3);
+  padding: 0 var(--sp-5) var(--sp-4);
+  border-bottom: 2px solid var(--rule-ink);
+  margin-inline: 0;
+}
+
+.rail-brand strong {
+  font-family: var(--font-head);
+  font-size: var(--step-1);
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.rail-nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3) var(--sp-3) 0;
+  gap: 1px;
+  overflow-y: auto;
+}
+
+/* The active marker is a rule on the leading edge — the same 2px ink weight
+   the head of a document carries, turned on its side. */
+.rail-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3);
   border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
+  border-left: 2px solid transparent;
   background: none;
   font: inherit;
   font-size: var(--step-0);
   font-weight: 500;
   color: var(--ink-label);
+  text-align: left;
   cursor: pointer;
-  white-space: nowrap;
-  text-decoration: none;
-  transition: color 140ms var(--ease), border-color 140ms var(--ease);
+  transition: color 140ms var(--ease), background 140ms var(--ease), border-color 140ms var(--ease);
 }
-.nav-tabs button:hover, .nav-tabs a:hover { color: var(--ink); }
-.nav-tabs .active { color: var(--srm-blue); border-bottom-color: var(--srm-blue); }
+.rail-tab:hover { color: var(--ink); background: var(--paper-sunk); }
+.rail-tab.active { color: var(--srm-blue); border-left-color: var(--srm-blue); }
 
-.topbar-user { margin-left: auto; display: flex; align-items: center; gap: var(--sp-2); position: relative; }
+.rail-user { margin-top: auto; position: relative; padding: var(--sp-3) var(--sp-3) 0; border-top: 1px solid var(--rule); }
+.rail-user .user-trigger { width: 100%; }
+.rail-user-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--step--1);
+}
+.dropdown--rail { top: auto; bottom: calc(100% + var(--sp-2)); left: var(--sp-3); right: var(--sp-3); }
 
 .user-trigger {
   display: inline-flex;
@@ -199,6 +249,10 @@
 /* --- Sheets (inherited name: card) ------------------------ */
 
 .card { background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg); }
+/* Stacked sheets are separated by space, not by an inline style on each one. */
+.card + .card, .grid-2 + .card { margin-top: var(--sp-5); }
+
+.dash-lede { color: var(--ink-body); max-width: 60ch; }
 
 .card-header {
   display: flex;
@@ -596,7 +650,6 @@ button.chip:hover { border-color: var(--ink-body); }
   }
   .btn { padding-inline: var(--sp-4); }
   .btn-sm { min-height: 2.25rem; }
-  .nav-tabs button, .nav-tabs a { min-height: 2.75rem; }
 
   .topbar { padding-inline: var(--sp-4); gap: var(--sp-3); }
   .card-body, .card-header, .modal-body, .modal-header, .modal-footer,
@@ -693,7 +746,8 @@ button.chip:hover { border-color: var(--ink-body); }
    document, not a screenshot of the app: everything except the sheet is
    removed, and the sheet is lifted out of the modal it is sitting in. */
 @media print {
-  .no-print, .topbar, .app-nav, .modal-header, .modal-footer { display: none !important; }
+  .no-print, .topbar, .rail, .launcher, .launcher-dock,
+  .modal-header, .modal-footer { display: none !important; }
 
   body, .app-container, .modal-overlay, .modal-content, .modal-body {
     position: static !important;
@@ -713,4 +767,248 @@ button.chip:hover { border-color: var(--ink-body); }
   .sig-stamp { break-inside: avoid; }
 
   @page { margin: 18mm; }
+}
+
+/* ============================================================
+   Mobile wayfinding — the launcher
+   ============================================================
+   Below the rail's breakpoint the nav does not collapse into an icon that
+   hides it. It becomes a docked control naming where you are, and a full
+   page of destinations you can hit with a thumb. One tap to open, one to
+   move — the same two taps a hamburger costs, without the guess. */
+
+.launcher-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 45;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 3.5rem;
+  padding: var(--sp-3) var(--sp-4);
+  padding-bottom: max(var(--sp-3), env(safe-area-inset-bottom));
+  border: 0;
+  border-top: 2px solid var(--rule-ink);
+  background: var(--paper);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.launcher-dock-label { font-weight: 600; }
+.launcher-dock-hint {
+  font-size: 0.6875rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+
+@media (min-width: 60rem) {
+  .launcher-dock { display: none; }
+}
+
+/* Room for the dock, so the last row of a page is never sitting underneath
+   it. Tied to the dock's own breakpoint, not the 48rem one. */
+@media (max-width: 59.99rem) {
+  .main-content { padding-bottom: 6rem; }
+}
+
+.launcher {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  animation: launcher-rise 280ms var(--ease) both;
+}
+
+.launcher--closing { animation: launcher-rise 220ms var(--ease) reverse both; }
+
+/* The panel rises from the dock it was opened from and settles, on the same
+   exponential ease as a slip landing on a desk. */
+@keyframes launcher-rise {
+  from { opacity: 0; transform: translateY(1.5rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+.launcher-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border-bottom: 2px solid var(--rule-ink);
+}
+.launcher-head strong { display: block; color: var(--ink); }
+.launcher-head span { font-size: var(--step--1); color: var(--ink-label); }
+
+.launcher-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  overflow-y: auto;
+  /* The smooth part: momentum inside the panel, and never dragging the page
+     underneath it. */
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.launcher-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  min-height: 6rem;
+  padding: var(--sp-4);
+  border: 1px solid var(--rule-strong);
+  border-left: 2px solid transparent;
+  border-radius: var(--radius);
+  background: var(--paper);
+  font: inherit;
+  color: var(--ink-label);
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms var(--ease), border-color 140ms var(--ease), color 140ms var(--ease);
+}
+.launcher-item:hover, .launcher-item:active { background: var(--paper-sunk); }
+.launcher-item.active { color: var(--srm-blue); border-left-color: var(--srm-blue); }
+
+.launcher-item-label { color: var(--ink); font-weight: 600; font-size: var(--step-0); }
+.launcher-item.active .launcher-item-label { color: var(--srm-blue); }
+.launcher-item-hint { font-size: var(--step--1); line-height: 1.35; color: var(--ink-label); }
+
+.launcher-signout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 2.75rem;
+  padding: var(--sp-3) var(--sp-4);
+  padding-bottom: max(var(--sp-3), env(safe-area-inset-bottom));
+  border: 0;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+  font: inherit;
+  color: var(--state-rejected);
+  cursor: pointer;
+}
+.launcher-signout:hover { background: var(--state-rejected-wash); }
+
+/* ============================================================
+   The organisation board
+   ============================================================
+   One column per rung of the ladder, read left to right. Selecting somebody
+   narrows every column to their right, so the board answers "who reports to
+   whom" rather than restating the account roster. */
+
+.hier-board {
+  display: flex;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  background: var(--paper);
+  border-top: 2px solid var(--rule-ink);
+  border-bottom: 1px solid var(--rule);
+}
+
+.hier-col {
+  flex: 0 0 17rem;
+  min-width: 0;
+  height: min(34rem, 70vh);
+  display: flex;
+  flex-direction: column;
+  scroll-snap-align: start;
+  border-right: 1px solid var(--rule);
+}
+.hier-col:last-child { border-right: 0; }
+
+.hier-head { padding: var(--sp-3) var(--sp-4); border-bottom: 2px solid var(--rule-ink); }
+.hier-head-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+
+.hier-level {
+  font-size: 0.6875rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+.hier-count { font-family: var(--font-code); font-size: var(--step--1); color: var(--ink); }
+.hier-scope {
+  display: block;
+  margin-top: var(--sp-1);
+  font-size: var(--step--1);
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hier-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+
+/* Fixed height because the student column is windowed — the spacer that
+   carries 8,000 rows has to agree with the row it is spacing. */
+.hier-row {
+  height: 52px;
+  padding: var(--sp-2) var(--sp-4);
+  gap: var(--sp-3);
+}
+.hier-who { display: flex; flex-direction: column; min-width: 0; justify-content: center; }
+.hier-who > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; }
+.hier-chev { color: var(--ink-faint); flex: none; }
+
+.hier-row--on { background: var(--srm-blue-wash); }
+.hier-row--on .stub__title { color: var(--srm-blue); }
+/* The perforation fills in on the chosen stub: this is the one that was
+   torn out and acted on. */
+.hier-row--on .stub__perf { background-image: none; background: var(--srm-blue); }
+
+.hier-row--static { cursor: default; }
+.hier-row--static:hover { background: transparent; }
+
+.hier-spacer { position: relative; }
+.hier-window { position: absolute; top: 0; left: 0; right: 0; }
+
+.hier-loading {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--rule-strong);
+  flex: none;
+}
+
+.hier-empty {
+  padding: var(--sp-5) var(--sp-4);
+  font-size: var(--step--1);
+  color: var(--ink-label);
+  border-bottom: 1px dashed var(--rule-strong);
+}
+
+.hier-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border-top: 1px solid var(--rule);
+  font-size: var(--step--1);
+  color: var(--ink-label);
+}
+
+@media (max-width: 48rem) {
+  .hier-col { flex-basis: min(17rem, 84vw); height: min(28rem, 62vh); }
+}
+
+/* Smooth scrolling is a motion effect too. The global reduced-motion block
+   only collapses animations and transitions, not scroll behaviour. */
+@media (prefers-reduced-motion: reduce) {
+  .hier-board, .hier-list, .launcher-grid { scroll-behavior: auto; }
 }

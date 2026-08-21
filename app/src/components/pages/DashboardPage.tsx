@@ -1,12 +1,34 @@
 import { errorMessage } from '../../lib/errors';
 import { Fragment, useEffect, useState } from 'react';
-import { Clock, CheckCircle2, XCircle, Inbox, Users, MailPlus, ArrowRight } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, Inbox, Users, MailPlus, ArrowRight, Network } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
 import { listVisibleRequests, type RequestRow } from '../../lib/requests';
 import { listAccounts, type AccountRow } from '../../lib/org';
 import { listMyInvites } from '../../lib/invites';
 import StatusBadge from '../ui/StatusBadge';
 import type { Route } from '../layout/AppShell';
+
+// Every dashboard opens onto the board, whatever rung you are on — the answer
+// to "who is above and below me" should not be something you have to know the
+// nav to find.
+function OrgBoardLink({ onNavigate }: { onNavigate: (r: Route) => void }) {
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h2 className="section-title">Organisation</h2>
+        <button className="btn btn-secondary btn-sm" onClick={() => onNavigate('/hierarchy')}>
+          <Network size={14} /> Open the board <ArrowRight size={14} />
+        </button>
+      </div>
+      <div className="card-body">
+        <p className="dash-lede">
+          The ladder read left to right, one column per level. Choose somebody to narrow the rungs
+          below them to their people.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | string }) {
   return (
@@ -220,6 +242,8 @@ function CaptainDashboard({
           </div>
         )}
       </div>
+
+      <OrgBoardLink onNavigate={onNavigate} />
     </>
   );
 }
@@ -330,6 +354,8 @@ function MemberDashboard({
           )}
         </div>
       </div>
+
+      <OrgBoardLink onNavigate={onNavigate} />
     </>
   );
 }

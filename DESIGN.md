@@ -182,14 +182,20 @@ components:
     rounded: "{rounded.cut}"
     padding: "0.125rem 0.5rem"
     typography: "{typography.code}"
-  nav-tab:
+  rail-tab:
     backgroundColor: "transparent"
     textColor: "{colors.ink-label}"
     padding: "0.75rem"
     typography: "{typography.body}"
-  nav-tab-active:
+  rail-tab-active:
     backgroundColor: "transparent"
     textColor: "{colors.srm-blue}"
+  launcher-item:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink-label}"
+    rounded: "{rounded.cut}"
+    padding: "1rem"
+    typography: "{typography.body-small}"
   avatar:
     backgroundColor: "{colors.srm-blue}"
     textColor: "#ffffff"
@@ -223,7 +229,7 @@ Two anti-references are confirmed and binding: the SaaS ticket console (grey car
 An ink-on-warm-paper neutral field, sampled institution blue for action, and a seal gold spent exactly once.
 
 ### Primary
-- **SRM Wordmark Blue** (`{colors.srm-blue}`): pixel-sampled from the institution's own logo. It appears only where a control acts or a place is current: primary buttons, the active nav tab and its 2px underline, focus rings and the input focus glow, the wizard's completed step ticks, the active timeline dot, the avatar disc, links, the auth side panel ground, and the caret. Never as decoration, never as a background wash behind content.
+- **SRM Wordmark Blue** (`{colors.srm-blue}`): pixel-sampled from the institution's own logo. It appears only where a control acts or a place is current: primary buttons, the active rail tab and its 2px leading rule, focus rings and the input focus glow, the wizard's completed step ticks, the active timeline dot, the avatar disc, links, the auth side panel ground, and the caret. Never as decoration, never as a background wash behind content.
 - **Blue Deep** (`{colors.srm-blue-deep}`): the hover shade of the primary button and of hovered links. No other role.
 - **Blue Wash** (`{colors.srm-blue-wash}`): the 3px focus glow on text inputs, and nothing else.
 
@@ -234,7 +240,7 @@ An ink-on-warm-paper neutral field, sampled institution blue for action, and a s
 Four document states, each a paired ink and wash: **Draft** (`{colors.state-draft}`), **Pending Amber** (`{colors.state-pending}`), **Approved Green** (`{colors.state-approved}`), **Rejected Red** (`{colors.state-rejected}`). The ink carries the state; the wash is support. Rejected red doubles as the destructive-action colour (outlined buttons, dangerous menu items); approved green is the only other filled button in the system, used to confirm a decision.
 
 ### Neutral
-- **Paper** (`{colors.paper}`): sheets, cards, modals, inputs, the letterhead topbar. The thing printed on.
+- **Paper** (`{colors.paper}`): sheets, cards, modals, inputs, the index rail, the mobile letterhead and the launcher. The thing printed on.
 - **Laid Paper** (`{colors.paper-laid}`): the app ground and the auth/wizard ground — faintly warm, like form stock rather than a grey dashboard canvas. Also the hover tint on ledger rows.
 - **Sunk Paper** (`{colors.paper-sunk}`): recessed wells — table headers, stub and menu-item hover, disabled inputs, the draft mark's ground.
 - **Ink** (`{colors.ink}`): headings, field values, the emphasised cell. The darkest thing on the page.
@@ -265,7 +271,7 @@ Four document states, each a paired ink and wash: **Draft** (`{colors.state-draf
 - **Masthead** (Source Serif 4, 600, 1.75rem, 1.2, -0.02em): the document title — page headers, the letterhead title, the auth panel headline. Drops to 1.5rem below 48rem.
 - **Headline** (Source Serif 4, 600, 1.375rem): modal titles and the auth card title. Drops to 1.25rem below 48rem.
 - **Title** (Inter, 600, 1.0625rem): card and section headers and the brand lockup wordmark. The signature mark inside a filled signature cell uses this size in the serif.
-- **Body** (Inter, 400, 0.9375rem, 1.55): all running text, inputs, buttons, table cells, nav tabs.
+- **Body** (Inter, 400, 0.9375rem, 1.55): all running text, inputs, buttons, table cells, rail tabs.
 - **Body Small** (Inter, 400, 0.8125rem): hints, errors, dropdown meta, small buttons.
 - **Code** (mono, 0.8125rem, 0.02em, tabular): reference codes, register numbers, timestamps, chips, and numeric table cells. The register figure in a stat reading is the one place mono runs large, at the 1.75rem masthead size.
 - **Label** (Inter, 600, 0.6875rem, 0.09em, uppercase): the small-caps field label. This is a real ramp step, not drift: it is the size of every field label, form label, section title, table header, stat label, and signature attribution. State marks use the same size at 0.07em; the brand sub-lockup uses it at 0.12em.
@@ -279,11 +285,11 @@ Four document states, each a paired ink and wash: **Draft** (`{colors.state-draf
 
 ## Layout
 
-The page measure is 76rem, centred, with `2rem / 1.5rem / 3rem` padding. The letterhead topbar is sticky and full-bleed but holds its contents to the same 76rem measure via `padding-inline: max(1.5rem, (100% - 76rem) / 2)` — the rule crosses the whole viewport while the brand, nav, and user align with the page below.
+The page measure is 76rem, centred, with `2rem / 1.5rem / 3rem` padding. Wayfinding lives beside the page, not above it: a 15rem index rail is sticky at full viewport height, carrying the mark under a 2px ink rule, the tabs, and the user at its foot. A ledger is tabbed down its side, and horizontal space spent on navigation is space that keeps — a head-mounted row has to scroll sideways the moment a level is added. Below 60rem the rail is replaced by a slim letterhead and the launcher.
 
 Spacing is a seven-step scale from `0.25rem` to `3rem`. Field and detail grids are `repeat(auto-fit, minmax(13rem, 1fr))` with column gap only (`0 2rem`) — rows are separated by their own bottom rule, never by gap. Stat readings use `minmax(9rem, 1fr)` with the same column-gap-only rhythm under a heavy top rule. Two-column form grids use `minmax(14rem, 1fr)` with a full `1rem` gap.
 
-**Breakpoints.** Two, both authored. `min-width: 60rem` splits the auth screen into the blue side panel plus form. `max-width: 48rem` performs the character shift: masthead sizes shrink, field and detail grids collapse to a single column with zero gap so the slip reads as one continuous run, stat readings go to a fixed two columns, ledger table heads disappear (the same data reads as stubs), the masthead stacks, and sheets go edge-to-edge with a negative inline margin and no radius. Interactive controls grow to a `2.75rem` minimum target — type does not change size. WCAG 2.1 AA is binding on this project.
+**Breakpoints.** Two, both authored. `min-width: 60rem` splits the auth screen into the blue side panel plus form, and is the same line the index rail appears on — below it, navigation becomes the docked launcher. `max-width: 48rem` performs the character shift: masthead sizes shrink, field and detail grids collapse to a single column with zero gap so the slip reads as one continuous run, stat readings go to a fixed two columns, ledger table heads disappear (the same data reads as stubs), the masthead stacks, and sheets go edge-to-edge with a negative inline margin and no radius. Interactive controls grow to a `2.75rem` minimum target — type does not change size. WCAG 2.1 AA is binding on this project.
 
 ### Named Rules
 **The Full-Bleed Rule, Held Measure Rule.** Structural rules cross the full viewport; content stays on the 76rem measure. Never let a band-separating rule stop at the content edge.
@@ -304,7 +310,9 @@ One authored moment: **`slip-settle`** (320ms, `cubic-bezier(0.16, 1, 0.3, 1)`) 
 ### Named Rules
 **The Two-Shadow Rule.** Shadows exist only for surfaces that are literally above the page: modals, dropdowns, and the standalone wizard card. Sheets, cards, stubs, stat readings, and inputs are flat.
 
-**The One Settle Rule.** `slip-settle` is the system's only authored entrance. It plays when a slip or modal arrives. It is not a per-section reveal, and it is never chained down a list.
+**The One Settle Rule.** `slip-settle` is the system's authored entrance for anything that arrives on the page. It plays when a slip or modal arrives. It is not a per-section reveal, and it is never chained down a list.
+
+**The launcher's rise.** The mobile launcher is the one sanctioned exception, and it is a surface arriving rather than a slip: `launcher-rise` (280ms in, 220ms reversed on exit, same `--ease`) lifts the panel from the dock that opened it. It is still one moment per surface — the items inside it do not stagger. Smooth scrolling inside the launcher, the board, and every column is part of the same decision, and all of it is dropped under `prefers-reduced-motion`, which the global block does not do for scroll behaviour on its own.
 
 ## Shapes
 

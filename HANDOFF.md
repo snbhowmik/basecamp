@@ -60,15 +60,27 @@ migrations onto v1:
                       mailer role
 ```
 
-**It has never been applied to any database.** Validation so far is static
-only: declaration order, foreign keys resolving to real columns, and every
-helper function called being defined. That process caught four real bugs, so
-it was worth doing — but it cannot catch plpgsql body errors, policy
-recursion, or how `auth.uid()` behaves under PostgREST.
+**It is applied and live.** The database was reset and this baseline applied
+from scratch on 2026-08-18/19; `basecamp_meta.schema_migrations` is the ledger
+and carries `0001`–`0023` with no v1 filenames in it. The paragraph that used
+to stand here said the opposite and was wrong — it was written before the
+reset and never revisited, which is exactly the failure mode the "verify
+against the real system" principle exists to catch. Query the ledger, do not
+trust this file.
 
-**First job for the next session: apply it to a throwaway database and fix
-what breaks.** Do not apply it to the live instance until it runs clean
-somewhere disposable.
+Files past the original baseline:
+
+```
+0021_lock_down_anon_rpcs.sql        EXECUTE taken from anon on RPCs that were
+                                    never public — claim_invite_emails() was
+                                    handing live invite tokens to anyone
+0022_people_search_facets.sql       search_people() gains batch/section/level
+                                    facets and an optional query
+0023_person_cards_and_sticky_notes.sql
+                                    Tier 1 card widened to any MFA-verified
+                                    member; sticky notes derived from
+                                    role_assignments
+```
 
 ### Applying it
 

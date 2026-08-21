@@ -5,12 +5,13 @@
 **[HANDOFF.md](HANDOFF.md) is the current state of this project.** Read it
 before proposing or changing anything. The two facts that matter most:
 
-1. **v1 is deployed and working.** `supabase/migrations/0001`–`0008` are
-   applied to the live instance; the wizard, MFA, invites and invite email
-   are all verified end to end against it.
-2. **v2 (`supabase/schema-v2/`) is written but has NEVER been applied to any
-   database**, and the frontend still targets the v1 schema. Applying v2
-   breaks `app/src/lib/`. That work has not been started.
+1. **v2 is what is deployed.** `supabase/schema-v2/0001`–`0023` are applied to
+   the live instance — check `basecamp_meta.schema_migrations` for the ledger.
+   The database was reset and v2 applied from scratch on 2026-08-18/19; no v1
+   filename appears in the ledger at all. The wizard, MFA, invites and invite
+   email are verified end to end against it.
+2. **`supabase/migrations/` (v1) is retired.** It does not describe the live
+   database and cannot be applied over v2. Read `supabase/schema-v2/` instead.
 
 `ARCH.md` is stale — it documents the v1 schema only through `0003`. When it
 and the migration files disagree, the files are right.

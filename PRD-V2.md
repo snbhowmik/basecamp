@@ -324,6 +324,19 @@ alter table request_categories
 
 Clubs may carry a default to pre-fill the field when a coordinator raises a request, but the counted value is the category's — a tech club can run a non-tech event and the count must follow the event.
 
+> **Superseded in part, 2026-08-22.** The org chart is now meant to be legible to
+> the whole portal — "so everyone knows everyone" — so Tier 1's gate is no longer
+> `can_see_request()`. It is "signed in and MFA-verified", and the card is reached
+> from the Organisation page rather than only from a ticket. Name, email, register
+> number, FET ID, role, department, batch and class are org-wide.
+>
+> The tech/non-tech counts have **not** followed that widening by intent. They are
+> currently org-wide because they were already Tier 1 and Tier 1's audience grew
+> around them, but the decision is that activity counts should be visible to
+> somebody ranked above the subject, or configured per level the way sticky notes
+> are. That work is deferred to the next version and tracked in TASK.md's Known
+> Gaps. Tier 2 below is unaffected.
+
 ### 9.2 Tier 2 — the full profile
 
 CGPA, achievement history, full request history. **Not visible to peers.**

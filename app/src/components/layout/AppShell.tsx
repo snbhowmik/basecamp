@@ -139,9 +139,9 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
                 <strong>{ctx.profile.full_name}</strong>
                 <span>{ctx.profile.email}</span>
               </div>
-              <button className="dropdown-item" role="menuitem" onClick={() => { setMenuOpen(false); onNavigate('/account'); }}>
-                <UserCircle size={16} aria-hidden="true" /> My account
-              </button>
+              {/* No "My account" here — the rail already carries an Account
+                  tab, and a second door to the same room is just a decision
+                  to make twice. */}
               <button className="dropdown-item danger" role="menuitem" onClick={onLogout}>
                 <LogOut size={16} aria-hidden="true" /> Sign out
               </button>

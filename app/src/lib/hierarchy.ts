@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { OrgUnit, PriorityLevel, Profile } from '../types';
+import type { Batch, OrgUnit, PriorityLevel, Profile, Section } from '../types';
 
 // The org board — who holds which rung, and over what.
 //
@@ -38,6 +38,8 @@ export interface StudentRow {
 export interface HierarchySnapshot {
   levels: PriorityLevel[];
   orgUnits: OrgUnit[];
+  batches: Batch[];
+  sections: Section[];
   positions: Position[];
 }
 
@@ -60,9 +62,11 @@ export function descendantOrgUnits(orgUnits: OrgUnit[], rootId: string): string[
 }
 
 export async function loadHierarchy(): Promise<HierarchySnapshot> {
-  const [levelsRes, unitsRes, rolesRes] = await Promise.all([
+  const [levelsRes, unitsRes, batchesRes, sectionsRes, rolesRes] = await Promise.all([
     supabase.from('priority_levels').select('*').eq('is_active', true).order('rank'),
     supabase.from('org_units').select('*').order('name'),
+    supabase.from('batches').select('*').order('start_year', { ascending: false }),
+    supabase.from('sections').select('*').order('name'),
     supabase
       .from('role_assignments')
       .select('user_id, level_id, org_unit_id, section_id, is_primary, valid_until')
@@ -70,6 +74,8 @@ export async function loadHierarchy(): Promise<HierarchySnapshot> {
   ]);
   if (levelsRes.error) throw levelsRes.error;
   if (unitsRes.error) throw unitsRes.error;
+  if (batchesRes.error) throw batchesRes.error;
+  if (sectionsRes.error) throw sectionsRes.error;
   if (rolesRes.error) throw rolesRes.error;
 
   type RoleRow = {
@@ -122,6 +128,8 @@ export async function loadHierarchy(): Promise<HierarchySnapshot> {
   return {
     levels: (levelsRes.data ?? []) as PriorityLevel[],
     orgUnits: (unitsRes.data ?? []) as OrgUnit[],
+    batches: (batchesRes.data ?? []) as Batch[],
+    sections: (sectionsRes.data ?? []) as Section[],
     positions,
   };
 }
@@ -189,4 +197,96 @@ export async function fetchStudentPage(
   });
 
   return { rows, total: count ?? rows.length };
+}
+
+// ── Directory search ──────────────────────────────────────────────────────
+//
+// Two questions wear the same clothes here. "RA2411026050147" is a lookup;
+// "Computer Science, III-B" is a browse with no text in it at all. Both go to
+// search_people(), which treats an empty query as "no text filter" rather than
+// "match nothing" — see schema-v2/0022.
+//
+// This is the one read on this page that does NOT go through RLS: the function
+// is SECURITY DEFINER, so it carries its own guard (a real subject, MFA
+// satisfied) and its own EXECUTE grant. schema-v2/0021 has the history of why
+// that matters.
+
+export type MemberType = 'staff' | 'student';
+
+export interface PeopleFilter {
+  query: string;
+  memberType: MemberType | null;
+  orgUnitId: string | null;
+  batchId: string | null;
+  sectionId: string | null;
+  levelId: string | null;
+}
+
+export interface PersonResult {
+  userId: string;
+  fullName: string;
+  email: string;
+  regNo: string | null;
+  fetId: string | null;
+  memberType: string | null;
+  orgUnitName: string | null;
+  batchName: string | null;
+  sectionName: string | null;
+  levelName: string | null;
+}
+
+export const EMPTY_FILTER: PeopleFilter = {
+  query: '', memberType: null, orgUnitId: null, batchId: null, sectionId: null, levelId: null,
+};
+
+// A filter with nothing set would ask the server for the entire directory, so
+// the caller uses this to decide whether to search at all.
+export function filterIsEmpty(f: PeopleFilter): boolean {
+  return f.query.trim() === '' && !f.memberType && !f.orgUnitId
+    && !f.batchId && !f.sectionId && !f.levelId;
+}
+
+export async function searchPeople(
+  f: PeopleFilter,
+  limit = 25,
+  offset = 0,
+): Promise<{ rows: PersonResult[]; total: number }> {
+  const { data, error } = await supabase.rpc('search_people', {
+    p_query: f.query.trim(),
+    p_member_type: f.memberType,
+    p_org_unit_id: f.orgUnitId,
+    p_section_id: f.sectionId,
+    p_batch_id: f.batchId,
+    p_level_id: f.levelId,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) throw error;
+
+  type Row = {
+    user_id: string; full_name: string; email: string;
+    reg_no: string | null; fet_id: string | null; member_type: string | null;
+    org_unit_name: string | null; batch_name: string | null;
+    section_name: string | null; level_name: string | null;
+    total_count: number;
+  };
+
+  const rows = (data ?? []) as Row[];
+  return {
+    rows: rows.map((r) => ({
+      userId: r.user_id,
+      fullName: r.full_name,
+      email: r.email,
+      regNo: r.reg_no,
+      fetId: r.fet_id,
+      memberType: r.member_type,
+      orgUnitName: r.org_unit_name,
+      batchName: r.batch_name,
+      sectionName: r.section_name,
+      levelName: r.level_name,
+    })),
+    // total_count is a window aggregate, so it is the size of the whole match,
+    // not of this page. An empty page means an empty match.
+    total: rows[0]?.total_count ?? 0,
+  };
 }

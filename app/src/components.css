@@ -906,34 +906,43 @@ button.chip:hover { border-color: var(--ink-body); }
 /* ============================================================
    The organisation board
    ============================================================
-   One column per rung of the ladder, read left to right. Selecting somebody
-   narrows every column to their right, so the board answers "who reports to
-   whom" rather than restating the account roster. */
+   One rung per level of the ladder, read top to bottom: the captain is at the
+   top because the captain is at the top. Choosing somebody narrows every rung
+   beneath them, so the board answers "who reports to whom" rather than
+   restating the account roster. */
 
-.hier-board {
-  display: flex;
-  overflow-x: auto;
+.hier-ladder {
   scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
-  overscroll-behavior-x: contain;
-  background: var(--paper);
   border-top: 2px solid var(--rule-ink);
+}
+
+.hier-rung {
+  position: relative;
+  padding: var(--sp-4) 0 var(--sp-5);
   border-bottom: 1px solid var(--rule);
+  background: var(--paper);
 }
 
-.hier-col {
-  flex: 0 0 17rem;
-  min-width: 0;
-  height: min(34rem, 70vh);
+/* The step down to the next rung. A short rule rather than an arrow: the
+   ladder already reads downward, and an arrowhead on every joint would be
+   decoration arguing with the layout. */
+.hier-drop {
+  position: absolute;
+  left: var(--sp-5);
+  bottom: calc(var(--sp-5) * -0.5);
+  width: 1px;
+  height: var(--sp-5);
+  background: var(--rule-strong);
+}
+
+.hier-head {
   display: flex;
-  flex-direction: column;
-  scroll-snap-align: start;
-  border-right: 1px solid var(--rule);
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-4) var(--sp-3);
+  border-bottom: 2px solid var(--rule-ink);
+  margin-bottom: var(--sp-3);
 }
-.hier-col:last-child { border-right: 0; }
-
-.hier-head { padding: var(--sp-3) var(--sp-4); border-bottom: 2px solid var(--rule-ink); }
-.hier-head-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
 
 .hier-level {
   font-size: 0.6875rem;
@@ -944,8 +953,10 @@ button.chip:hover { border-color: var(--ink-body); }
 }
 .hier-count { font-family: var(--font-code); font-size: var(--step--1); color: var(--ink); }
 .hier-scope {
-  display: block;
-  margin-top: var(--sp-1);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  margin-left: auto;
   font-size: var(--step--1);
   color: var(--ink-faint);
   overflow: hidden;
@@ -953,27 +964,49 @@ button.chip:hover { border-color: var(--ink-body); }
   white-space: nowrap;
 }
 
-.hier-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+/* Positions wrap across the rung. There are a handful per level, so they get
+   room to be read rather than being stacked into a list. */
+.hier-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4);
+}
 
-/* Fixed height because the student column is windowed — the spacer that
-   carries 8,000 rows has to agree with the row it is spacing. */
-.hier-row {
-  height: 52px;
-  padding: var(--sp-2) var(--sp-4);
+.hier-card {
+  flex: 0 1 15rem;
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
   gap: var(--sp-3);
 }
-.hier-who { display: flex; flex-direction: column; min-width: 0; justify-content: center; }
-.hier-who > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; }
-.hier-chev { color: var(--ink-faint); flex: none; }
-
-.hier-row--on { background: var(--srm-blue-wash); }
-.hier-row--on .stub__title { color: var(--srm-blue); }
+.hier-card--on { background: var(--srm-blue-wash); }
+.hier-card--on .stub__title { color: var(--srm-blue); }
 /* The perforation fills in on the chosen stub: this is the one that was
    torn out and acted on. */
-.hier-row--on .stub__perf { background-image: none; background: var(--srm-blue); }
+.hier-card--on .stub__perf { background-image: none; background: var(--srm-blue); }
+
+.hier-rows { padding: 0 var(--sp-4); }
+
+/* Fixed height because the cohort is windowed once expanded — the spacer
+   carrying 8,000 rows has to agree with the row it is spacing. */
+.hier-row {
+  height: 52px;
+  padding: var(--sp-2) var(--sp-3);
+  gap: var(--sp-3);
+}
+.hier-rows--tall {
+  height: min(26rem, 60vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.hier-who { display: flex; flex-direction: column; min-width: 0; justify-content: center; }
+.hier-who > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3; }
 
 .hier-row--static { cursor: default; }
 .hier-row--static:hover { background: transparent; }
+
+.hier-more { margin: var(--sp-3) var(--sp-4) 0; }
 
 .hier-spacer { position: relative; }
 .hier-window { position: absolute; top: 0; left: 0; right: 0; }
@@ -987,28 +1020,104 @@ button.chip:hover { border-color: var(--ink-body); }
 }
 
 .hier-empty {
-  padding: var(--sp-5) var(--sp-4);
+  padding: var(--sp-4);
   font-size: var(--step--1);
   color: var(--ink-label);
-  border-bottom: 1px dashed var(--rule-strong);
 }
 
 .hier-foot {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-4);
+  margin: var(--sp-3) var(--sp-4) 0;
+  padding-top: var(--sp-2);
   border-top: 1px solid var(--rule);
   font-size: var(--step--1);
   color: var(--ink-label);
 }
 
+/* ── Directory search ──────────────────────────────────────── */
+
+.hier-search { margin-bottom: var(--sp-4); }
+
+.hier-search-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* Two mutually exclusive questions, so a pair of stubs rather than a select:
+   which one you are asking is the first thing to see, not something to open a
+   menu to find out. */
+.hier-kind { display: flex; border: 1px solid var(--rule-strong); border-radius: 3px; overflow: hidden; }
+.hier-kind-btn {
+  padding: var(--sp-2) var(--sp-4);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--step--1);
+  color: var(--ink-label);
+  cursor: pointer;
+}
+.hier-kind-btn + .hier-kind-btn { border-left: 1px solid var(--rule-strong); }
+.hier-kind-btn:hover { background: var(--paper-sunk); }
+.hier-kind-btn.active { background: var(--srm-blue); color: var(--paper); }
+
+.hier-search-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+.hier-search-input > svg {
+  position: absolute;
+  left: var(--sp-3);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+.hier-search-input .form-input { padding-left: calc(var(--sp-3) * 2 + 15px); width: 100%; }
+
+.hier-facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px dashed var(--rule-strong);
+}
+.hier-facet { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1 1 11rem; min-width: 0; }
+.hier-facet-label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+
+.hier-results-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-3);
+  border-bottom: 2px solid var(--rule-ink);
+  font-size: var(--step--1);
+  color: var(--ink-label);
+}
+.hier-results { list-style: none; margin: 0; padding: 0; }
+.hier-results-more {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--step--1);
+  color: var(--ink-faint);
+}
+
 @media (max-width: 48rem) {
-  .hier-col { flex-basis: min(17rem, 84vw); height: min(28rem, 62vh); }
+  .hier-card { flex-basis: 100%; }
 }
 
 /* Smooth scrolling is a motion effect too. The global reduced-motion block
    only collapses animations and transitions, not scroll behaviour. */
 @media (prefers-reduced-motion: reduce) {
-  .hier-board, .hier-list, .launcher-grid { scroll-behavior: auto; }
+  .hier-ladder, .hier-rows--tall, .launcher-grid { scroll-behavior: auto; }
 }

@@ -13,3 +13,6 @@ dist
 
 
 *.save
+
+# graphify build output — regenerate with /graphify, not worth versioning
+graphify-out

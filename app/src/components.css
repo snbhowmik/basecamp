@@ -1121,3 +1121,126 @@ button.chip:hover { border-color: var(--ink-body); }
 @media (prefers-reduced-motion: reduce) {
   .hier-ladder, .hier-rows--tall, .launcher-grid { scroll-behavior: auto; }
 }
+
+/* ============================================================
+   The person card
+   ============================================================
+   PRD-V2 §9's ⓘ affordance. Tier 1 only — the widened one, readable by anyone
+   signed in and MFA-verified (schema-v2/0023). Tier 2 is not reachable here. */
+
+.pcard-open {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-left: auto;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.pcard-open:hover { background: var(--paper-sunk); color: var(--srm-blue); }
+
+/* The card is a div so the ⓘ can sit beside the choose target rather than
+   inside it; this is the part that behaves like the button. */
+.hier-card-hit {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pcard { margin: 0; }
+.pcard-field {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--rule);
+}
+.pcard-field dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 0 0 9rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+.pcard-field dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.pcard-mono { font-family: var(--font-code); font-size: var(--step--1); }
+
+/* The sticky note. Set on laid stock and pinned under the details, because it
+   is the one block here that nobody typed — it is the organisation speaking
+   about this person rather than a field they filled in. */
+.pcard-note {
+  margin-top: var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--paper-laid);
+  border-left: 2px solid var(--rule-ink);
+}
+.pcard-note-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+  font-size: 0.6875rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-label);
+}
+.pcard-note ul { list-style: none; margin: 0; padding: 0; }
+.pcard-note li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  padding: var(--sp-1) 0;
+}
+.pcard-note-role {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-label);
+  flex: 0 0 8rem;
+}
+.pcard-note-who { font-weight: 500; }
+.pcard-note-via { font-size: var(--step--1); color: var(--ink-faint); }
+
+.pcard-counts {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-4) 0 0;
+  font-size: var(--step--1);
+  color: var(--ink-label);
+}
+.pcard-gone { margin: 0; color: var(--ink-label); }
+
+.sticky-picks { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.sticky-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  font-size: var(--step--1);
+  color: var(--ink-label);
+  cursor: pointer;
+}
+.sticky-pick.on { border-color: var(--srm-blue); background: var(--srm-blue-wash); color: var(--srm-blue); }
+.sticky-pick input { accent-color: var(--srm-blue); }

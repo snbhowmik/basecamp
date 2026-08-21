@@ -108,13 +108,37 @@ export async function getMemberDetails(userId: string): Promise<MemberDetails | 
 export interface MemberCard {
   user_id: string;
   full_name: string;
+  email: string;
+  member_type: string | null;
   reg_no: string | null;
   fet_id: string | null;
+  level_name: string | null;
   org_unit_name: string | null;
   batch_name: string | null;
   section_name: string | null;
   tech_count: number;
   non_tech_count: number;
+}
+
+// The people the org attaches to somebody: a student's mentor and HOD, derived
+// from role_assignments on every read rather than stored. Nobody types a name
+// in, so it cannot be forged and cannot go stale — a mentor changing section
+// changes every card that mentions them, with no backfill.
+export interface StickyNoteEntry {
+  level_id: string;
+  level_name: string;
+  level_rank: number;
+  user_id: string;
+  full_name: string;
+  email: string;
+  org_unit_name: string | null;
+  section_name: string | null;
+}
+
+export async function getStickyNote(userId: string): Promise<StickyNoteEntry[]> {
+  const { data, error } = await supabase.rpc('get_sticky_note', { p_user_id: userId });
+  if (error) throw error;
+  return (data ?? []) as StickyNoteEntry[];
 }
 
 export async function getMemberCard(userId: string): Promise<MemberCard | null> {

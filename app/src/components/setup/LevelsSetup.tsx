@@ -6,6 +6,7 @@ import {
   renameLevel, setLevelTag, type DraftLevel,
 } from '../../lib/levels';
 import { adminDelete } from '../../lib/admin';
+import StickyNoteSettings from './StickyNoteSettings';
 import ConfirmDestructive from '../ui/ConfirmDestructive';
 import type { PriorityLevel, Tag } from '../../types';
 import { listTags } from '../../lib/invites';
@@ -234,6 +235,8 @@ export default function LevelsSetup({ mode, onDone }: { mode: 'setup' | 'manage'
             </div>
           </div>
         </div>
+
+        <StickyNoteSettings levels={existing} />
 
         {insertAfter && (
           <div className="card" style={{ marginBottom: '1.25rem' }}>

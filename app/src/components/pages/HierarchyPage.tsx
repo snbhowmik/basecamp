@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Network, ChevronDown, Users, Search, X, CornerDownRight } from 'lucide-react';
+import { Network, ChevronDown, Users, Search, X, CornerDownRight, Info } from 'lucide-react';
 import { errorMessage } from '../../lib/errors';
 import {
   loadHierarchy, descendantOrgUnits, countStudents, fetchStudentPage,
@@ -8,6 +8,7 @@ import {
   type PeopleFilter, type PersonResult, type MemberType,
 } from '../../lib/hierarchy';
 import type { OrgUnit, PriorityLevel } from '../../types';
+import PersonCard from '../ui/PersonCard';
 
 // The organisation board — the authority ladder read top to bottom.
 //
@@ -67,6 +68,7 @@ export default function HierarchyPage() {
   const [snap, setSnap] = useState<HierarchySnapshot | null>(null);
   const [selected, setSelected] = useState<(Position | null)[]>([]);
   const [filter, setFilter] = useState<PeopleFilter>(EMPTY_FILTER);
+  const [card, setCard] = useState<{ userId: string; name: string } | null>(null);
   const [error, setError] = useState('');
   const rungRefs = useRef<(HTMLElement | null)[]>([]);
 
@@ -106,11 +108,11 @@ export default function HierarchyPage() {
       const rung = rungRefs.current[rungIndex + (e.key === 'ArrowDown' ? 1 : -1)];
       if (!rung) return;
       e.preventDefault();
-      rung.querySelector<HTMLElement>('[role="option"], [role="list"]')?.focus();
+      rung.querySelector<HTMLElement>('.hier-card-hit, .hier-rows--tall, .hier-more')?.focus();
       return;
     }
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    const options = [...(rungRefs.current[rungIndex]?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])];
+    const options = [...(rungRefs.current[rungIndex]?.querySelectorAll<HTMLElement>('.hier-card-hit') ?? [])];
     const at = options.indexOf(document.activeElement as HTMLElement);
     if (at === -1) return;
     const next = options[at + (e.key === 'ArrowRight' ? 1 : -1)];
@@ -143,7 +145,7 @@ export default function HierarchyPage() {
       <PeopleSearch snap={snap} filter={filter} onChange={setFilter} />
 
       {searching ? (
-        <SearchResults filter={filter} />
+        <SearchResults filter={filter} onOpen={setCard} />
       ) : (
         <div className="hier-ladder">
           {snap.levels.map((level, i) => {
@@ -160,6 +162,7 @@ export default function HierarchyPage() {
                     level={level}
                     scope={scope}
                     scopedTo={label}
+                    onOpen={setCard}
                     onKeyDown={(e) => onRungKeyDown(e, i)}
                   />
                 ) : (
@@ -170,6 +173,7 @@ export default function HierarchyPage() {
                     scopedTo={label}
                     orgUnits={snap.orgUnits}
                     onSelect={(p) => choose(i, p)}
+                    onOpen={setCard}
                     onKeyDown={(e) => onRungKeyDown(e, i)}
                   />
                 )}
@@ -179,7 +183,28 @@ export default function HierarchyPage() {
           })}
         </div>
       )}
+
+      {card && (
+        <PersonCard userId={card.userId} name={card.name} onClose={() => setCard(null)} />
+      )}
     </>
+  );
+}
+
+// The affordance PRD-V2 §9 calls for. It is a real button rather than an icon
+// on the card itself, because opening a profile and choosing somebody to filter
+// by are two different intentions and a card that did both on click would
+// guess wrong half the time.
+function InfoButton({ name, onOpen }: { name: string; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      className="pcard-open"
+      aria-label={`Profile of ${name}`}
+      onClick={(e) => { e.stopPropagation(); onOpen(); }}
+    >
+      <Info size={15} aria-hidden="true" />
+    </button>
   );
 }
 
@@ -333,7 +358,12 @@ function PeopleSearch({
   );
 }
 
-function SearchResults({ filter }: { filter: PeopleFilter }) {
+function SearchResults({
+  filter, onOpen,
+}: {
+  filter: PeopleFilter;
+  onOpen: (p: { userId: string; name: string }) => void;
+}) {
   const [rows, setRows] = useState<PersonResult[]>([]);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(true);
@@ -392,6 +422,7 @@ function SearchResults({ filter }: { filter: PeopleFilter }) {
                   .filter(Boolean).join(' · ') || r.email}
               </span>
             </span>
+            <InfoButton name={r.fullName} onOpen={() => onOpen({ userId: r.userId, name: r.fullName })} />
           </li>
         ))}
       </ul>
@@ -423,7 +454,7 @@ function RungHead({
 }
 
 function PositionRung({
-  level, people, selectedId, scopedTo, orgUnits, onSelect, onKeyDown,
+  level, people, selectedId, scopedTo, orgUnits, onSelect, onOpen, onKeyDown,
 }: {
   level: PriorityLevel;
   people: Position[];
@@ -431,6 +462,7 @@ function PositionRung({
   scopedTo: string | null;
   orgUnits: OrgUnit[];
   onSelect: (p: Position | null) => void;
+  onOpen: (p: { userId: string; name: string }) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
 }) {
   const unitName = useMemo(() => {
@@ -449,30 +481,41 @@ function PositionRung({
           {scopedTo ? `Nobody at this level under ${scopedTo}.` : 'Nobody holds this level yet.'}
         </div>
       ) : (
-        <div className="hier-people" role="listbox" aria-label={level.name} onKeyDown={onKeyDown}>
+        <div className="hier-people" role="list" aria-label={level.name} onKeyDown={onKeyDown}>
           {people.map((p, i) => {
             const isSelected = p.userId === selectedId;
             const unit = unitName(p.orgUnitId);
             return (
-              <button
+              // The info control is a sibling, not a child: a button inside a
+              // button is invalid HTML and browsers resolve it by dropping one
+              // of them.
+              <div
                 key={p.userId + p.levelId + (p.orgUnitId ?? '')}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                // Roving tabindex: one stop per rung. Falling back to the first
-                // card matters when the selected person has been filtered out
-                // by a choice above — without it the rung would have no tab
-                // stop at all.
-                tabIndex={i === activeIndex ? 0 : -1}
+                role="listitem"
                 className={`stub hier-card ${isSelected ? 'hier-card--on' : ''}`}
-                onClick={() => onSelect(isSelected ? null : p)}
               >
                 <span className="stub__perf" aria-hidden="true" />
-                <span className="hier-who">
-                  <span className="stub__title">{p.fullName}</span>
-                  <span className="stub__ref">{unit ?? p.email}</span>
-                </span>
-              </button>
+                <button
+                  type="button"
+                  // Not a listbox option: choosing somebody filters the rungs
+                  // below rather than picking a value, and clicking again
+                  // releases it. That is a toggle, so it says so.
+                  aria-pressed={isSelected}
+                  // Roving tabindex: one stop per rung. Falling back to the
+                  // first card matters when the selected person has been
+                  // filtered out by a choice above — without it the rung would
+                  // have no tab stop at all.
+                  tabIndex={i === activeIndex ? 0 : -1}
+                  className="hier-card-hit"
+                  onClick={() => onSelect(isSelected ? null : p)}
+                >
+                  <span className="hier-who">
+                    <span className="stub__title">{p.fullName}</span>
+                    <span className="stub__ref">{unit ?? p.email}</span>
+                  </span>
+                </button>
+                <InfoButton name={p.fullName} onOpen={() => onOpen({ userId: p.userId, name: p.fullName })} />
+              </div>
             );
           })}
         </div>
@@ -487,11 +530,12 @@ function PositionRung({
 // the life of the screen rather than one enormous one up front — and revisiting
 // a stretch already scrolled past costs nothing.
 function StudentRung({
-  level, scope, scopedTo, onKeyDown,
+  level, scope, scopedTo, onOpen, onKeyDown,
 }: {
   level: PriorityLevel;
   scope: StudentScope;
   scopedTo: string | null;
+  onOpen: (p: { userId: string; name: string }) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
 }) {
   const [total, setTotal] = useState<number | null>(null);
@@ -569,6 +613,7 @@ function StudentRung({
           <span className="stub__ref">{r?.regNo ?? ''}</span>
         </span>
         {!r && <span className="hier-loading" aria-hidden="true" />}
+        {r && <InfoButton name={r.fullName} onOpen={() => onOpen({ userId: r.userId, name: r.fullName })} />}
       </div>
     );
   };

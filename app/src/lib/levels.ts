@@ -88,3 +88,35 @@ export async function setLevelTag(levelId: string, code: string, label: string):
   });
   if (error) throw error;
 }
+
+// ── Sticky note rules ─────────────────────────────────────────────────────
+//
+// Which rungs appear on which rung's card. A level with no rules has no sticky
+// note — configuring it IS enabling it, so there is no separate switch that
+// could disagree with the rules behind it.
+//
+// The read is a plain table read and goes through RLS. The write is an RPC,
+// because every write in this app is.
+
+export interface StickyNoteRule {
+  subject_level_id: string;
+  shown_level_id: string;
+  sort_order: number;
+}
+
+export async function listStickyNoteRules(): Promise<StickyNoteRule[]> {
+  const { data, error } = await supabase
+    .from('sticky_note_rules')
+    .select('subject_level_id, shown_level_id, sort_order')
+    .order('sort_order');
+  if (error) throw error;
+  return (data ?? []) as StickyNoteRule[];
+}
+
+export async function setStickyNoteRoles(subjectLevelId: string, shownLevelIds: string[]): Promise<void> {
+  const { error } = await supabase.rpc('set_sticky_note_roles', {
+    p_subject_level_id: subjectLevelId,
+    p_shown_level_ids: shownLevelIds,
+  });
+  if (error) throw error;
+}

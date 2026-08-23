@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { isSetupComplete } from './lib/wizard';
 import { signOut, sessionMfa } from './lib/auth';
+import { isMfaError } from './lib/errors';
 import { loadUserContext, type UserContext } from './lib/context';
 import SetupWizard from './components/wizard/SetupWizard';
 import LevelsSetup from './components/setup/LevelsSetup';
@@ -63,8 +64,11 @@ function App() {
       //    and loops forever. The check has to come before them, not between.
       const mfa = await sessionMfa();
       setMfaExpiresIn(mfa.secondsUntilStale);
+      // Recorded whether or not it is needed now: the catch below can also
+      // land on the verify screen, and without a factor id VerifyMfa offers
+      // enrolment instead of asking for a code from the app they already have.
+      setMfaFactorId(mfa.factorId);
       if (mfa.signedIn && !mfa.aal2) {
-        setMfaFactorId(mfa.factorId);
         setScreen('verify');
         return;
       }
@@ -95,7 +99,14 @@ function App() {
       const fromPath = window.location.pathname as Route;
       setRoute(allowed.includes(fromPath) ? fromPath : allowed[0]);
       setScreen('app');
-    } catch {
+    } catch (err) {
+      // A session whose hour ran out between the gate above and these calls
+      // needs a code, not a full sign-in. Sending it to login would work, but
+      // it throws away a valid session to re-establish the same one.
+      if (isMfaError(err)) {
+        setScreen('verify');
+        return;
+      }
       setScreen('login');
     }
   }, []);

@@ -19,6 +19,16 @@ const CANVAS_H = 200;
 // a grey wash behind the ink.
 const PAPER_LUMINANCE = 180;
 
+// Every stamp leaves here at exactly this size, so a generated document shows
+// one signature box rather than one per signatory's aspect ratio.
+//
+// The mark is *fitted* into the box, not cropped to it: scaled until it
+// touches one edge, then centred on a transparent ground. Cropping to a fixed
+// ratio would cut the tail off a wide signature, and stretching to fill would
+// mean the stamp on the document is not the shape the person actually signed.
+const STAMP_W = 275;
+const STAMP_H = 118;
+
 // Turn whatever is on the canvas into a transparent, tightly-cropped stamp.
 // Returns null when nothing survives — an empty pad, or a photo so dark that
 // the whole frame reads as ink.
@@ -66,10 +76,21 @@ function cleanToStamp(source: HTMLCanvasElement): Promise<Blob | null> {
   const w = Math.min(source.width - sx, maxX - minX + 1 + pad * 2);
   const h = Math.min(source.height - sy, maxY - minY + 1 + pad * 2);
 
+  // Fit the cropped ink into the stamp box, preserving its shape. Never scale
+  // up past 1: enlarging a small scribble to fill 275px only magnifies the
+  // camera noise the cleaning pass left behind.
+  const scale = Math.min(STAMP_W / w, STAMP_H / h, 1);
+  const dw = Math.round(w * scale);
+  const dh = Math.round(h * scale);
+
   const out = document.createElement('canvas');
-  out.width = w;
-  out.height = h;
-  out.getContext('2d')?.drawImage(source, sx, sy, w, h, 0, 0, w, h);
+  out.width = STAMP_W;
+  out.height = STAMP_H;
+  out.getContext('2d')?.drawImage(
+    source,
+    sx, sy, w, h,
+    Math.round((STAMP_W - dw) / 2), Math.round((STAMP_H - dh) / 2), dw, dh,
+  );
 
   return new Promise((resolve) => out.toBlob((b) => resolve(b), 'image/png'));
 }

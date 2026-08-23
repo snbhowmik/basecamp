@@ -216,10 +216,14 @@ export async function deleteFirstHopOption(id: string) {
 export interface AccountRow extends Profile {
   levelNames: string[];
   tags: string[];
+  // Which side of the org somebody is on. Read from member_profiles rather
+  // than guessed from their tags: tags are captain-editable labels, so any
+  // list of "the staff ones" goes stale the moment a level is added.
+  memberType: 'staff' | 'student' | null;
 }
 
 export async function listAccounts(): Promise<AccountRow[]> {
-  const [profilesRes, levelsRes, tagsRes] = await Promise.all([
+  const [profilesRes, levelsRes, tagsRes, memberRes] = await Promise.all([
     supabase.from('profiles').select('*').order('created_at', { ascending: false }),
     // v2: several assignments per user, so this is a list, not a lookup.
     // Expired assignments are excluded here for display only — authority is
@@ -229,6 +233,7 @@ export async function listAccounts(): Promise<AccountRow[]> {
       .select('user_id, valid_until, is_primary, priority_levels(name)')
       .order('is_primary', { ascending: false }),
     supabase.from('user_tags').select('user_id, tags(code)'),
+    supabase.from('member_profiles').select('user_id, member_type'),
   ]);
   if (profilesRes.error) throw profilesRes.error;
 
@@ -252,9 +257,16 @@ export async function listAccounts(): Promise<AccountRow[]> {
     tagsByUser.set(r.user_id, [...(tagsByUser.get(r.user_id) ?? []), ...t.map((x) => x.code)]);
   }
 
+  const typeByUser = new Map<string, 'staff' | 'student'>();
+  for (const row of memberRes.data ?? []) {
+    const r = row as { user_id: string; member_type: 'staff' | 'student' };
+    typeByUser.set(r.user_id, r.member_type);
+  }
+
   return (profilesRes.data ?? []).map((p: Profile) => ({
     ...p,
     levelNames: levelsByUser.get(p.id) ?? [],
     tags: tagsByUser.get(p.id) ?? [],
+    memberType: typeByUser.get(p.id) ?? null,
   }));
 }

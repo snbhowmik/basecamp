@@ -43,6 +43,7 @@ function App() {
   const [ctx, setCtx] = useState<UserContext | null>(null);
   const [route, setRoute] = useState<Route>('/dashboard');
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
+  const [mfaExpiresIn, setMfaExpiresIn] = useState<number | null>(null);
   const inviteToken = inviteTokenFrom(window.location.pathname);
   const verifyCode = verifyCodeFrom(window.location.pathname);
 
@@ -61,6 +62,7 @@ function App() {
       //    failures to the login screen, where signing in re-establishes aal1
       //    and loops forever. The check has to come before them, not between.
       const mfa = await sessionMfa();
+      setMfaExpiresIn(mfa.secondsUntilStale);
       if (mfa.signedIn && !mfa.aal2) {
         setMfaFactorId(mfa.factorId);
         setScreen('verify');
@@ -126,6 +128,15 @@ function App() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
+  // The hour can run out while somebody is sitting on a page. Re-running the
+  // gate at that moment sends them to VerifyMfa; without it their next click
+  // is simply refused by the database, which reads as the app breaking.
+  useEffect(() => {
+    if (mfaExpiresIn === null) return;
+    const t = window.setTimeout(bootstrap, Math.max(mfaExpiresIn, 1) * 1000);
+    return () => window.clearTimeout(t);
+  }, [mfaExpiresIn, bootstrap]);
 
   const navigate = (r: Route) => {
     window.history.pushState({}, '', r);

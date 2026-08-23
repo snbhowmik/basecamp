@@ -28,11 +28,40 @@ export async function hasCompletedMfa(): Promise<boolean> {
   return data.currentLevel === 'aal2';
 }
 
+// How long an authenticator check stands for before the app asks again. Must
+// match the 3600 in mfa_satisfied() (schema-v2/0024) — the database is what
+// enforces this; the value here only decides when to ask politely rather than
+// letting a request be refused.
+export const MFA_MAX_AGE_SECONDS = 3600;
+
+// Seconds since this session last verified a TOTP code, read from the `amr`
+// claim GoTrue stamps into the access token. Null when the claim is missing.
+//
+// This is needed because aal2 is *sticky*: GoTrue carries it across every
+// refresh-token rotation, so getAuthenticatorAssuranceLevel() keeps saying
+// aal2 indefinitely. A session observed here on 2026-08-24 held an `amr` totp
+// timestamp 85 hours older than the token carrying it.
+export function totpAgeSeconds(accessToken: string): number | null {
+  try {
+    const [, payload] = accessToken.split('.');
+    const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    const stamps = (claims.amr ?? [])
+      .filter((e: { method?: string }) => e.method === 'totp')
+      .map((e: { timestamp: number }) => e.timestamp);
+    if (stamps.length === 0) return null;
+    return Math.floor(Date.now() / 1000) - Math.max(...stamps);
+  } catch {
+    return null;
+  }
+}
+
 export interface SessionMfa {
   signedIn: boolean;
   aal2: boolean;
   /** The verified TOTP factor to challenge, or null if none is enrolled yet. */
   factorId: string | null;
+  /** Seconds until the MFA assertion goes stale, or null if it already has. */
+  secondsUntilStale: number | null;
 }
 
 // The gate App.tsx runs before anything else. It deliberately touches only
@@ -47,16 +76,25 @@ export interface SessionMfa {
 // those users to enroll rather than into the app.
 export async function sessionMfa(): Promise<SessionMfa> {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { signedIn: false, aal2: false, factorId: null };
+  if (!session) return { signedIn: false, aal2: false, factorId: null, secondsUntilStale: null };
 
   const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (aalErr) throw aalErr;
   const { data: factors, error: factorsErr } = await supabase.auth.mfa.listFactors();
   if (factorsErr) throw factorsErr;
 
+  // An hour-old aal2 is aal1 as far as this app is concerned, and saying so
+  // here routes the user to the same VerifyMfa screen a fresh login uses.
+  // Without this the claim still reads aal2, the gate waves them through, and
+  // the first PostgREST call fails with a raw permission error instead.
+  const age = totpAgeSeconds(session.access_token);
+  const claimAal2 = aal?.currentLevel === 'aal2';
+  const fresh = age !== null && age < MFA_MAX_AGE_SECONDS;
+
   return {
     signedIn: true,
-    aal2: aal?.currentLevel === 'aal2',
+    aal2: claimAal2 && fresh,
     factorId: factors.totp.find((f) => f.status === 'verified')?.id ?? null,
+    secondsUntilStale: claimAal2 && fresh ? MFA_MAX_AGE_SECONDS - (age as number) : null,
   };
 }

@@ -166,7 +166,6 @@
   white-space: nowrap;
   font-size: var(--step--1);
 }
-.dropdown--rail { top: auto; bottom: calc(100% + var(--sp-2)); left: var(--sp-3); right: var(--sp-3); }
 
 .user-trigger {
   display: inline-flex;
@@ -206,6 +205,10 @@
   z-index: 40;
   overflow: hidden;
 }
+/* Anchored to the bottom of the rail, so it opens upward. Must stay below
+   .dropdown: same specificity, and source order is what settles top vs bottom. */
+.dropdown--rail { top: auto; bottom: calc(100% + var(--sp-2)); left: var(--sp-3); right: var(--sp-3); }
+
 .dropdown-header { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--rule); }
 .dropdown-header strong { display: block; color: var(--ink); font-size: var(--step-0); }
 .dropdown-header span { font-size: var(--step--1); color: var(--ink-label); }

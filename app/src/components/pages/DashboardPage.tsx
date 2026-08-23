@@ -106,10 +106,13 @@ function CaptainDashboard({
   pendingInvites: number;
   onNavigate: (r: Route) => void;
 }) {
-  // "Important users" = everyone holding a level above base. These are the
+  // "Important users" = everyone on the staff side of the org. These are the
   // people who actually run things; students are counted, not listed.
-  const staff = accounts.filter((a) => a.tags.some((t) => ['admin', 'dean', 'hod', 'mentor', 'student_outreach'].includes(t)));
-  const students = accounts.length - staff.length;
+  // member_type is the record, not the hardcoded tag list this used to guess
+  // from — that list had no 'ascdean' or 'club', so those levels were being
+  // counted as students and the tiles disagreed with the board.
+  const staff = accounts.filter((a) => a.memberType === 'staff');
+  const students = accounts.filter((a) => a.memberType === 'student').length;
 
   // A brand-new org is every deployment's first screen, and counters reading
   // 1/1/0/0 answer "how many things exist" when the captain is asking "what

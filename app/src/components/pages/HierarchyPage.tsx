@@ -237,6 +237,7 @@ function PeopleSearch({
   onChange: (f: PeopleFilter) => void;
 }) {
   const set = (patch: Partial<PeopleFilter>) => onChange({ ...filter, ...patch });
+  const [facetsOpen, setFacetsOpen] = useState(false);
 
   // Choosing a department invalidates a batch from a different one, and a
   // batch invalidates a class from a different one. Clearing them here rather
@@ -260,6 +261,13 @@ function PeopleSearch({
 
   const isStudent = filter.memberType === 'student';
   const isStaff = filter.memberType === 'staff';
+
+  // On a phone the four facets are four full-width selects, and the ladder
+  // starts below the fold before anyone has read a name. The text field
+  // answers most searches on its own, so the facets fold away behind their own
+  // count. Desktop ignores this entirely — the facets are always shown there.
+  const narrowed = [filter.orgUnitId, filter.batchId, filter.sectionId, filter.levelId]
+    .filter(Boolean).length;
 
   return (
     <div className="card hier-search">
@@ -306,7 +314,18 @@ function PeopleSearch({
         )}
       </div>
 
-      <div className="hier-facets">
+      <button
+        type="button"
+        className="hier-facets-toggle"
+        aria-expanded={facetsOpen}
+        aria-controls="hier-facets"
+        onClick={() => setFacetsOpen((v) => !v)}
+      >
+        <ChevronDown size={15} aria-hidden="true" className={facetsOpen ? 'is-open' : ''} />
+        {narrowed > 0 ? `Narrowed by ${narrowed}` : 'Narrow it down'}
+      </button>
+
+      <div id="hier-facets" className={`hier-facets ${facetsOpen ? 'hier-facets--open' : ''}`}>
         <label className="hier-facet">
           <span className="hier-facet-label">Department</span>
           <select

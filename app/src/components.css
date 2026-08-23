@@ -1115,8 +1115,54 @@ button.chip:hover { border-color: var(--ink-body); }
   color: var(--ink-faint);
 }
 
+/* The facet disclosure is a phone control. On desktop the facets are simply
+   there, so the toggle is not rendered and .hier-facets keeps its own display. */
+.hier-facets-toggle { display: none; }
+
 @media (max-width: 48rem) {
   .hier-card { flex-basis: 100%; }
+
+  /* One question at a time on a phone: the kind stubs take a full row and a
+     thumb-sized target, then the field, then the facets if they are wanted. */
+  .hier-kind { flex: 1 1 100%; }
+  .hier-kind-btn { flex: 1; min-height: 2.75rem; }
+
+  .hier-facets-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    width: 100%;
+    min-height: 2.75rem;
+    margin-top: var(--sp-3);
+    padding: 0;
+    border: 0;
+    border-top: 1px dashed var(--rule-strong);
+    background: none;
+    font: inherit;
+    font-size: var(--step--1);
+    color: var(--ink-label);
+    cursor: pointer;
+  }
+  .hier-facets-toggle svg { transition: transform 140ms var(--ease); }
+  .hier-facets-toggle svg.is-open { transform: rotate(180deg); }
+
+  .hier-facets { display: none; }
+  /* Two up rather than four stacked — the ladder stays reachable. */
+  .hier-facets--open {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 0;
+    padding-top: var(--sp-3);
+    border-top: 0;
+  }
+
+  /* The ⓘ is a real target here, not a 28px hint. */
+  .pcard-open { width: 2.75rem; height: 2.75rem; }
+
+  /* The Label-Over-Value Rule. A 9rem label column leaves a phone nothing to
+     put the value in, and an email wraps to three lines beside its own label. */
+  .pcard-field { display: block; padding: var(--sp-3) 0; }
+  .pcard-field dt { display: flex; flex: none; margin-bottom: var(--sp-1); }
 }
 
 /* Smooth scrolling is a motion effect too. The global reduced-motion block

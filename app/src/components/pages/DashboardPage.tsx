@@ -22,7 +22,7 @@ function OrgBoardLink({ onNavigate }: { onNavigate: (r: Route) => void }) {
       </div>
       <div className="card-body">
         <p className="dash-lede">
-          The ladder read left to right, one column per level. Choose somebody to narrow the rungs
+          The ladder, read top to bottom, one rung per level. Choose somebody to narrow the rungs
           below them to their people.
         </p>
       </div>

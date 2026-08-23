@@ -249,6 +249,15 @@ function PeopleSearch({
     ? snap.sections.filter((s) => s.batch_id === filter.batchId)
     : snap.sections.filter((s) => batches.some((b) => b.id === s.batch_id));
 
+  // Every programme runs its own "2024-2028", so with no department chosen the
+  // batch list is four identical lines. Say which programme each one belongs to
+  // when — and only when — the name alone does not settle it.
+  const unitName = new Map(snap.orgUnits.map((u) => [u.id, u.name]));
+  const batchLabel = (b: { id: string; name: string; org_unit_id: string | null }) =>
+    batches.some((o) => o.id !== b.id && o.name === b.name)
+      ? `${b.name} · ${unitName.get(b.org_unit_id ?? '') ?? '—'}`
+      : b.name;
+
   const isStudent = filter.memberType === 'student';
   const isStaff = filter.memberType === 'staff';
 
@@ -320,7 +329,7 @@ function PeopleSearch({
                 onChange={(e) => set({ batchId: e.target.value || null, sectionId: null })}
               >
                 <option value="">Any</option>
-                {batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                {batches.map((b) => <option key={b.id} value={b.id}>{batchLabel(b)}</option>)}
               </select>
             </label>
 

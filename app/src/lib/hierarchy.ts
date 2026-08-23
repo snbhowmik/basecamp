@@ -144,7 +144,7 @@ export interface StudentScope {
 
 function studentQuery(scope: StudentScope) {
   let q = supabase.from('member_profiles').select(
-    'user_id, reg_no, org_unit_id, section_id, profiles!inner(full_name, email, is_active)',
+    'user_id, reg_no, org_unit_id, section_id, profiles!member_profiles_user_id_fkey!inner(full_name, email, is_active)',
     { count: 'exact' },
   ).eq('member_type', 'student');
 

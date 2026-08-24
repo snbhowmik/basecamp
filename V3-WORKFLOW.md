@@ -255,10 +255,31 @@ and does not clear it; the HOD's approval advances to the Dean rather than
 closing; the Dean's approval closes it with two signatures and `can_print`
 true; the participant window opens for the configured number of days; scanning
 the same student twice is idempotent; an unknown register number is refused.
+All three actors were then exercised in one request: the student filled a
+`requester` task while the HOD held the ticket, an accepted peer filled an
+`any_participant` one, and the HOD ticked the `per_participant` one for that
+peer — with the per-participant task correctly refusing an answer that named
+no participant.
 
-One bug the end-to-end run caught: `can_print` demanded a signature per stage
-regardless of decision mode, so a `log_only` category — which writes no
-signature by design — could never have been printed. Fixed before commit.
+Two bugs were caught before this was applied.
+
+`can_print` demanded a signature per stage regardless of decision mode, so a
+`log_only` category — which writes no signature by design — could never have
+been printed.
+
+The worse one: `stage_tasks_outstanding` computed a per-participant task's
+requirement as `participant_count − passed_count`, which on a request with no
+participants is `0 − 0 = 0`. A **required** per-participant task was therefore
+vacuously satisfied on an empty ticket — "parent permission taken, per
+participant" would have waved through every request that had nobody on it yet,
+which is precisely the gate's reason for existing. The first two end-to-end
+tests missed it because both used a task with no `scope` key, so the
+per-participant branch never ran.
+
+Fixed by flooring the requirement at one, which makes an empty ticket block.
+That in turn creates a deadlock for `after_approval` categories, where
+participants cannot exist while the stages run — so `save_stage_tasks` now
+refuses a required per-participant task in such a category and says why.
 
 Not built yet, and unchanged from the plan: the Workflow page editors, the
 request-detail participants panel and scan window, and pdfme.

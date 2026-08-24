@@ -93,10 +93,11 @@ $$;
 create or replace function save_stage_tasks(p_stage_id uuid, p_tasks jsonb)
 returns void language plpgsql security definer set search_path = public as $$
 declare
-  v_keep uuid[];
-  v_used text;
-  t      jsonb;
-  v_id   uuid;
+  v_keep  uuid[];
+  v_used  text;
+  v_phase text;
+  t       jsonb;
+  v_id    uuid;
 begin
   if not (has_tag('admin') or can_bootstrap()) then
     raise exception 'Only the captain can change a stage''s tasks.';
@@ -104,7 +105,11 @@ begin
   if jsonb_typeof(p_tasks) <> 'array' then
     raise exception 'Tasks must be sent as a list.';
   end if;
-  if not exists (select 1 from category_stages where id = p_stage_id) then
+
+  select rc.participant_phase into v_phase
+  from category_stages cs join request_categories rc on rc.id = cs.category_id
+  where cs.id = p_stage_id;
+  if v_phase is null then
     raise exception 'No such stage.';
   end if;
 
@@ -116,6 +121,21 @@ begin
     if (t ->> 'answer_type') = 'choice'
        and coalesce(jsonb_array_length(t -> 'options'), 0) = 0 then
       raise exception 'The task "%" is a choice but has no options.', trim(t ->> 'label');
+    end if;
+
+    -- A category that collects participants AFTER approval has, by definition,
+    -- none while its stages are being walked. A required per-participant task
+    -- in such a stage can therefore never be answered — and since
+    -- stage_tasks_outstanding() now floors that requirement at one rather than
+    -- letting it pass vacuously, authoring it would deadlock the ticket on the
+    -- approver's desk with no way forward. Refused here, where the captain can
+    -- still see why.
+    if coalesce(t ->> 'scope', 'request') = 'per_participant'
+       and coalesce((t ->> 'is_required')::boolean, true)
+       and v_phase = 'after_approval' then
+      raise exception
+        'The task "%" is answered per participant, but this category collects participants only after approval — nobody would be on the request when this stage runs. Make it optional, or collect participants before submission.',
+        trim(t ->> 'label');
     end if;
 
     if v_id is null then
@@ -287,14 +307,21 @@ $$;
 -- Required tasks in the request's current stage with no passing answer yet.
 -- Per-participant tasks count once per participant, which is why this is not
 -- a plain count of stage_tasks.
+--
+-- The greatest(..., 1) is load-bearing and not defensive padding. Without it a
+-- required per-participant task on a request with NO participants computes
+-- 0 - 0 = 0 and counts as satisfied — so "parent permission taken, per
+-- participant" would be vacuously clear on an empty ticket and the approval
+-- would sail straight through the gate that exists to stop exactly that.
+-- Flooring it at one makes an empty ticket block until somebody is on it.
 create or replace function stage_tasks_outstanding(p_request_id uuid)
 returns int language sql security definer stable set search_path = public as $$
   select coalesce(sum(needed), 0)::int
   from (
     select st.id,
       case when st.scope = 'per_participant'
-        then (select count(*) from request_participants rp
-              where rp.request_id = r.id and rp.acceptance_status <> 'declined')
+        then greatest((select count(*) from request_participants rp
+              where rp.request_id = r.id and rp.acceptance_status <> 'declined'), 1)
         else 1
       end
       -

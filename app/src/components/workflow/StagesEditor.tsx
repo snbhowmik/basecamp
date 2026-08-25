@@ -35,6 +35,8 @@ const parseList = (s: string) => {
   return parts.length ? parts : null;
 };
 
+const renumberTasks = (ts: StageTask[]) => ts.map((t, n) => ({ ...t, sort_order: n }));
+
 const emptyTask = (sortOrder: number): StageTask => ({
   id: null,
   label: '',
@@ -86,7 +88,20 @@ export default function StagesEditor({
   }, [stages, initiators, loaded]);
 
   const patchStage = (i: number, patch: Partial<Stage>) =>
-    setStages((prev) => prev.map((s, n) => (n === i ? { ...s, ...patch } : s)));
+    setStages((prev) => prev.map((s, n) => {
+      if (n !== i) return s;
+      const next = { ...s, ...patch };
+      // A follow-up stage sits on nobody's desk, so "whoever it is with"
+      // has no answer there. Move those tasks over as the kind is flipped,
+      // rather than letting the select show a value it no longer offers and
+      // the save fail on 0029's guard.
+      if (next.stage_kind === 'post_approval' && s.stage_kind !== 'post_approval') {
+        next.tasks = next.tasks.map((t) => (
+          t.actor === 'stage_role' ? { ...t, actor: 'requester' as TaskActor } : t
+        ));
+      }
+      return next;
+    }));
 
   const patchTask = (si: number, ti: number, patch: Partial<StageTask>) =>
     setStages((prev) => prev.map((s, n) => (n === si
@@ -220,13 +235,6 @@ export default function StagesEditor({
                           <option value="post_approval">Follow-up after approval</option>
                         </select>
                       </div>
-                      <div className="form-group" style={{ justifyContent: 'flex-end' }}>
-                        <label className={`sticky-pick ${s.is_optional ? 'on' : ''}`}>
-                          <input type="checkbox" checked={s.is_optional}
-                            onChange={(e) => patchStage(si, { is_optional: e.target.checked })} />
-                          <span>Optional</span>
-                        </label>
-                      </div>
                     </div>
 
                     <div className="table-container">
@@ -282,7 +290,7 @@ export default function StagesEditor({
                               </td>
                               <td style={{ textAlign: 'right' }}>
                                 <button className="btn-icon danger" title="Remove task"
-                                  onClick={() => patchStage(si, { tasks: s.tasks.filter((_, m) => m !== ti) })}>
+                                  onClick={() => patchStage(si, { tasks: renumberTasks(s.tasks.filter((_, m) => m !== ti)) })}>
                                   <Trash2 size={15} />
                                 </button>
                               </td>
@@ -294,7 +302,7 @@ export default function StagesEditor({
 
                     <div className="filter-row" style={{ marginTop: '0.75rem' }}>
                       <button className="btn btn-secondary btn-sm"
-                        onClick={() => patchStage(si, { tasks: [...s.tasks, emptyTask(s.tasks.length)] })}>
+                        onClick={() => patchStage(si, { tasks: renumberTasks([...s.tasks, emptyTask(s.tasks.length)]) })}>
                         <Plus size={14} /> Add task
                       </button>
                       <button className="btn-icon" title="Move up" onClick={() => move(si, -1)}><ArrowUp size={15} /></button>

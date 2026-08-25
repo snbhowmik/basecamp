@@ -659,11 +659,16 @@ function CatalogSection() {
             </div>
             <div className="grid-cols-2">
               <div className="form-group">
-                <label className="form-label">Attachments once it is decided</label>
+                <label className="form-label">Attachments after close</label>
                 <select className="form-input" value={catRetain ? 'keep' : 'purge'} onChange={(e) => setCatRetain(e.target.value === 'keep')}>
                   <option value="purge">Purge after a grace period</option>
                   <option value="keep">Keep permanently (certificates)</option>
                 </select>
+                <span className="form-hint">
+                  Nothing closes a request yet, so this has never taken effect and the purge job
+                  is still unbuilt. Material collected after the event belongs to a follow-up
+                  stage, under Stages.
+                </span>
               </div>
             </div>
             <div>

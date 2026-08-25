@@ -1,23 +1,34 @@
-# HANDOFF — Where this project actually stands
+# HANDOFF — V2, closed
 
-**Written:** 2026-08-19
-**For:** whoever picks this up next, including a fresh Claude Code session running on the VPS.
+**Written:** 2026-08-25. Replaces the 2026-08-19 version, which described v2
+as written-and-unapplied and the frontend as targeting v1. Both were true
+then and neither is true now.
+**For:** whoever picks this up next, including a fresh Claude Code session on
+the VPS.
 
-> Read this before touching anything. It is deliberately blunt about what is
-> proven, what is written but unproven, and what is quietly incompatible.
-> ARCH.md is **stale** (it describes the v1 schema through `0003` only) —
-> trust the migration files and this document over it.
+> This document is the state of the project. It is deliberately blunt about
+> what is proven, what merely compiles, and what is a known gap wearing a
+> finished-looking surface. `ARCH.md` is **stale** — it describes the v1
+> schema through `0003` only. When it and the migration files disagree, the
+> files are right.
+
+From here on the project is versioned **`x.xx.xxx`** — major (a change in
+structure) . minor . update. What follows closes V2. V3 begins with the
+participants panel and pdfme.
 
 ---
 
 ## 1. The one-paragraph version
 
-Basecamp is a self-hosted request/ticketing platform, first configured for
-OD approvals at SRM Trichy. **v1 is deployed and working** at
-`https://basecamp.hackerxploit.org` — captain account created, invites
-sending real email, the rebranded frontend live. **v2 is fully designed and
-written but has never touched a database**, and the frontend still targets
-the v1 schema. Those two facts are the whole state of the project.
+Basecamp is a self-hosted request/ticketing platform, first configured for OD
+approvals at SRM Trichy, live at `https://basecamp.hackerxploit.org`. **V2 is
+deployed**: `supabase/schema-v2/0001`–`0029` are applied, the frontend targets
+them, and the wizard, MFA, invites, invite email, org admin, people admin,
+documents and signatures have all been exercised against the running stack.
+V2 ends with the workflow layer — a captain can now write the stages a request
+walks, the tasks that have to be filled in at each, who may file it, and what
+is collected after the event — and with the screen that authors it. What V2
+does **not** have is a browser pass over the last seven commits of UI.
 
 ---
 
@@ -29,192 +40,224 @@ the v1 schema. Those two facts are the whole state of the project.
 | Stack | `docker compose` — db, auth, rest, realtime, storage, garage, meta, studio, kong, frontend, mailer |
 | Public entry | Cloudflare Tunnel → Kong on `127.0.0.1:8000`. No inbound ports for the app. |
 | Mail | Mailcow **on the same host**, serving `hackerxploit.org` |
-| Schema applied | `supabase/migrations/0001`–`0008` (v1) |
-| Accounts | one captain (`basecamp@hackerxploit.org`) |
+| Schema applied | `supabase/schema-v2/0001`–`0029`, all 29 rows in `basecamp_meta.schema_migrations` |
+| Accounts | one captain, plus the handful of people invited by hand since |
 | Frontend | The Countersigned Slip rebrand, SRM palette, live |
 
-**Verified working end to end**, not merely reviewed: setup wizard, TOTP
-enrolment, login, invite creation, invite email delivery to both Zoho and
-Gmail, and the `/invite/<token>` accept screen.
+`supabase/migrations/` (v1) is **retired**. It does not describe this database
+and cannot be applied over it. `scripts/apply-migrations.sh` defaults
+`MIGRATION_DIR` to `supabase/schema-v2`, keys the ledger on filename, wraps
+each file in `psql -1`, and is safe to re-run — it only ever applies what is
+missing. Its header still tells the pre-reset story and should be read as
+history.
 
-**Known and accepted:** invite mail lands in spam on first contact. SPF,
-DKIM, DMARC and rDNS are all correct and the IP is off every blocklist —
-this is an unwarmed domain, not a misconfiguration. Before onboarding at
-scale, consider relaying outbound through a service with existing reputation.
-
----
-
-## 3. The critical fact: v2 is written and unapplied
-
-`supabase/schema-v2/` holds a **complete replacement baseline**, not
-migrations onto v1:
-
-```
-0001_foundation.sql   identity, org tree, batches/sections, role assignments,
-                      tags, levels, authorization helpers
-0002_requests.sql     taxonomy, requests, participation, checks, visibility
-                      rules, comments, attachments, signatures
-0003_rls.sql          every policy, plus the column-level trigger on
-                      member_profiles
-0004_bootstrap_...    invites, signup gate, people search, lifecycle RPCs,
-                      mailer role
-```
-
-**It is applied and live.** The database was reset and this baseline applied
-from scratch on 2026-08-18/19; `basecamp_meta.schema_migrations` is the ledger
-and carries `0001`–`0023` with no v1 filenames in it. The paragraph that used
-to stand here said the opposite and was wrong — it was written before the
-reset and never revisited, which is exactly the failure mode the "verify
-against the real system" principle exists to catch. Query the ledger, do not
-trust this file.
-
-Files past the original baseline:
-
-```
-0021_lock_down_anon_rpcs.sql        EXECUTE taken from anon on RPCs that were
-                                    never public — claim_invite_emails() was
-                                    handing live invite tokens to anyone
-0022_people_search_facets.sql       search_people() gains batch/section/level
-                                    facets and an optional query
-0023_person_cards_and_sticky_notes.sql
-                                    Tier 1 card widened to any MFA-verified
-                                    member; sticky notes derived from
-                                    role_assignments
-```
-
-### Applying it
-
-The intended path is a full reset — there is one account and no real data,
-so nothing is lost:
-
-```bash
-docker compose down -v          # destroys the volume, and therefore the captain
-docker compose up -d db
-./scripts/bootstrap-db-roles.sh
-docker compose up -d auth       # MUST be healthy before migrations
-# point apply-migrations.sh at schema-v2/, or apply the four files in order
-./scripts/bootstrap-db-roles.sh # again — the mailer role only exists after 0004
-docker compose up -d
-```
-
-`scripts/apply-migrations.sh` currently reads `supabase/migrations/`. Either
-repoint it or swap the directories. It tracks applied files in
-`basecamp_meta.schema_migrations`, so re-running is safe and only new files
-apply.
+**Deploys happen on build.** `docker-compose.yml` bind-mounts
+`./app/dist:/usr/share/nginx/html:ro`, so `npm run build` publishes straight
+to production. There is no separate deploy step and no staging.
 
 ---
 
-## 4. The incompatibility nobody has dealt with yet
+## 3. What V2 ends with: the workflow layer
 
-**The frontend targets the v1 schema.** Applying schema-v2 breaks it. This
-is expected and planned, not an oversight — but it is real work and nobody
-has started it.
+`0026`–`0029` are the last thing V2 built, and they exist because the
+configuration that looked configurable was not:
 
-What changed underneath `app/src/lib/`:
+- `level_checks` had been in the schema since `0002` with **no write RPC and
+  no UI**, and its `check_type` was one of three fixed strings — so even with
+  a screen, nobody could have written "parent permission taken [yes/no]".
+- `category_level_roles.participation = 'approves'` was **read by nothing**.
+  There was no stage sequence in the runtime at all; a request moved because
+  somebody forwarded it and named a person.
 
-| v1 | v2 |
+So stages are a new mechanism rather than a config table over an old one:
+
+| Piece | Where |
 |---|---|
-| `student_profiles` | `member_profiles` (students **and** staff, `member_type`) |
-| `user_levels` (one level per user) | `role_assignments` (several, scoped, time-boxed) |
-| `departments` + `classes` | `org_units` (faculty→programme) + `batches` + `sections` |
-| `my_rank()` | `my_best_rank()` / `my_rank_in(org_unit)` |
-| `is_base_level()` | `is_lowest_level()` |
-| `create_department` / `create_batch` | org-unit RPCs (not yet written) |
-| `list_public_departments` | `list_public_org_units` |
-| `search_forward_targets` (name/email) | `search_people` (reg-no first) |
+| `category_stages`, `stage_tasks`, `category_initiators`, participants phase/window | `0026` |
+| authoring RPCs (`save_category_stages`, `save_stage_tasks`, `save_category_initiators`, `category_workflow`), `advance_stage`, `record_task_result`, `stage_tasks_outstanding`, `add_participant_by_reg_no`, `can_print` | `0027` |
+| the three lifecycle RPCs re-issued with stage gates | `0028` |
+| `stage_kind`, follow-up after approval | `0029` |
+| the editor | `app/src/components/workflow/StagesEditor.tsx`, `app/src/lib/workflow.ts` |
 
-New surfaces v2 implies that have **no UI at all yet**: the "acting as"
-context switcher (PRD-V2 D-1), person cards (§9), CGPA submission and
-verification (§9.3), level-check ticking (§5), and org-tree admin (§3.2).
+Three rules hold across all of it. **Tasks carry an actor** (`stage_role`,
+`requester`, `any_participant`) because a single stage genuinely has two —
+the mentor ticks parent permission, the student uploads proof of selection —
+and `request_check_results`' insert policy admits neither of the second case's
+people; that is why filling a task is an RPC and not a widened policy.
+**`result` and `answer` are different questions**: `result` is "did this
+clear", `answer` is what was chosen, and `passing_answers` maps between them,
+so answering *no* to "parent permission taken" records the answer and does not
+clear the stage. **A follow-up stage never gates approval or printing** — it
+opens once the chain finishes, sits on nobody's desk, and its tasks are
+answered by the requester.
+
+The reasoning, the rejected alternatives, and every verification run are in
+`V3-WORKFLOW.md`. It is the design document for this layer and is current.
+
+---
+
+## 4. Proven, and not proven
+
+**Exercised against the running stack:** setup wizard, TOTP enrolment, login,
+invite creation, invite email to Zoho and Gmail, `/invite/<token>` accept,
+org-unit and batch admin, people admin, document templates, signature capture
+and public verification.
+
+**Exercised against the live database inside rolled-back transactions**
+(`begin; … rollback;`, which is how every stage change was tested): stage
+authoring round-trips through `category_workflow`; a stage with recorded
+answers refuses removal; a submitted request lands on the first stage somebody
+holds and skips one nobody holds; all three actor rules; a required
+per-participant task blocking an empty ticket; approval advancing rather than
+closing; the last approval closing with signatures and `can_print` true; the
+participant window opening; scanning being idempotent; both follow-up
+refusals; two chained follow-up stages.
+
+**Not proven, and this is the real debt:** *seven commits of UI have never
+been opened in a browser.* The rail dropdown opening upward, the dashboard
+tile counts, the mobile facet toggle at 390px, the person card at phone width,
+the error-detail and signature-size changes, and now every path through the
+stages editor — its three RPCs, two re-reads, dirty diff and kind-flip. They
+typecheck and build. "It typechecks" is not "it works", and this project has
+repeatedly found bugs that only appear when run. A browser pass needs a fresh
+session token from the captain and should be the first thing V3 does.
 
 ---
 
 ## 5. Conventions that are not negotiable
 
-**Commit as the git default author.** Do not add `Co-Authored-By` trailers
-or otherwise attribute commits. Stated directly by the user 2026-08-18.
+**Commit as the git default author.** No `Co-Authored-By` trailers, no other
+attribution. Stated directly, 2026-08-18.
 
-**No fixture data, ever.** A real deployment gets exactly one account from
-the wizard — the captain. Every level, tag, org unit, and account after that
-is created by hand by a human at the right level. `supabase/seed.sql` is
+**No fixture data, ever.** A real deployment gets exactly one account from the
+wizard — the captain. Every level, tag, org unit and account after that is
+created by hand by a human at the right level. `supabase/seed.sql` is
 demo-only and must never run on a real instance.
 
-**RLS is the authorization boundary.** Never a frontend check. Every
-relationship check is written once as a `security definer` function and
-reused — never inlined into a policy. Every such function pins
-`set search_path = public`; v1 left eight unpinned and that is exactly how a
-trigger silently resolves the wrong tables.
+**Frontend → RPC → database.** The browser never writes a table directly: no
+`insert`, `update`, `delete` or `upsert` from `app/src/lib/`. Reads may be
+plain selects where RLS already says the right thing.
 
-**Verify against a running stack.** This project has repeatedly found bugs
-that only appear when actually run — the migration ordering blocker, the
-role passwords, the CORS headers, the blank-page env var. "It typechecks" is
-not "it works."
+**RLS is the authorization boundary**, never a frontend check. Relationship
+checks are `security definer` functions, written once, reused, always pinning
+`set search_path = public`.
+
+**`GOTRUE_MAILER_AUTOCONFIRM` stays `"false"`.** Do not flip it, not even to
+get past a signup problem while testing.
+
+**Verify against a running stack**, and say plainly what was and was not
+verified.
 
 ---
 
 ## 6. Traps that have already cost time
 
-Each of these has bitten at least once. All are documented in DEPLOY.md.
-
+- **`create or replace function` replaces the SECURITY attribute along with
+  the body.** Omit `security definer` on a replacement and the function
+  silently becomes SECURITY INVOKER. `0024` did this to two MFA helpers and
+  took the site down for a day — every login looped back to the sign-in
+  screen. `0025` restored it. Every migration since repeats the word
+  explicitly, including on replacements.
+- **A SQL (non-plpgsql) function is inlined by the planner**, so a `case`
+  branch that "can never be reached" still has its sublink evaluated. `case`
+  is not a guard against a privileged table read.
+- **`set_config(..., true)` is transaction-local**, and psql autocommits — so
+  simulated JWT claims vanish between statements. Test inside an explicit
+  `begin; … rollback;`.
+- **`0003_rls.sql` and `0009_editing_and_deletes.sql` build policies by
+  iterating literal arrays of table names**, so a new table arrives with no
+  policies at all. New tables need hand-written RLS plus a repeat of `0003`'s
+  "every table in public has RLS" assertion. `admin_delete()`'s allowlist is a
+  literal array too.
 - **Migrations before `auth` is up** → `relation "auth.mfa_factors" does not
-  exist`. GoTrue creates that table on first connect. The file rolls back
-  whole (`psql -1`) so retrying is safe.
+  exist`. GoTrue creates that table on first connect.
 - **`bootstrap-db-roles.sh` runs twice**, and the two runs do different
-  things. First: Supabase role passwords, before `auth` can connect at all.
-  Second: the mailer password, for a role that does not exist until the
-  invite migration.
+  things: Supabase role passwords first, the mailer password later, for a role
+  that does not exist until the invite migration.
 - **`docker compose up -d` before the first frontend build** → Docker creates
-  `app/dist` as root, and the next `npm run build` dies with `EACCES` wearing
-  a Vite stack trace. Build first.
-- **Missing `app/.env.local`** → blank white page, no error. It is gitignored,
-  Vite inlines `VITE_*` at build time, and `supabase.ts` throws before React
-  mounts. Restarting the container cannot fix it; only rebuilding can.
-- **Kong routes `/` to the frontend as a catch-all.** `nginx/frontend.conf`
-  supplies the SPA fallback so `/invite/<token>` resolves on a cold load.
+  `app/dist` as root and the next `npm run build` dies with `EACCES` wearing a
+  Vite stack trace. Build first.
+- **Missing `app/.env.local`** → blank white page, no error. Vite inlines
+  `VITE_*` at build time; only a rebuild fixes it.
+- **Kong routes `/` to the frontend as a catch-all**, and
+  `nginx/frontend.conf` supplies the SPA fallback so `/invite/<token>`
+  resolves on a cold load.
+- **GoTrue carries `aal2` across refresh-token rotation**, so `aal2` is
+  sticky and is not a freshness signal. The `amr` array's `totp` timestamp is.
+- **`mfa_satisfied()` returns TRUE for anon and for a user with no verified
+  factor** — MFA is opt-in-by-enrolment at the database level.
 
 ---
 
-## 7. Open questions, still unanswered
+## 7. Known gaps — surfaces that look finished and are not
 
-From PRD-V2, and they gate real work:
+- **Nothing ever writes `status = 'closed'`.** The only reader is
+  `schedule_attachment_purge`, so `retain_attachments_after_close` has never
+  fired once, and the job that would act on `purge_after` is unbuilt
+  (`SECURITY.md` R-24). Introducing a close state would fire that trigger for
+  the first time with nothing behind it — a decision to take deliberately.
+- **`category_stages.is_optional`** is written by the save RPC and read by
+  nothing. No control was built for it. `advance_stage` skips a stage with no
+  holder, which is not the same thing.
+- **Re-answering a task overwrites the previous answer.** There is no
+  per-task audit trail; the "no" before the "yes" leaves no trace.
+- **Flipping a category's `participant_phase` after per-participant tasks are
+  authored is unguarded**, because category edits do not go through an RPC.
+- **`hasCompletedMfa()` in `app/src/lib/auth.ts` is dead code.**
+- **28 CSS findings** from the `impeccable` pass remain unresolved in
+  `components.css` — mostly print/document sanctioned exceptions, plus genuine
+  fallback drift (`var(--ink-soft, #6b7280)`, `var(--accent, #2563eb)`). None
+  came from recent changes.
+- **`ARCH.md` is stale** and has been since `0003`.
+
+---
+
+## 8. Open questions
+
+Carried from `PRD-V2.md`, still gating real work:
 
 - **§8.3** — is the register-number serial always 3 digits, and does it
-  restart per batch? Do lateral-entry students follow the same format? This
-  gates whether signup validation can hard-reject or must warn-and-allow.
-- **§11.1** — is the FET ID format fixed and validatable like a register
-  number, or free-form? Determines whether it gets a prefix check or only
-  uniqueness.
+  restart per batch? Do lateral-entry students follow the same format?
+- **§11.1** — is the FET ID format fixed and validatable, or free-form?
 - **§9.3** — do CGPA collection windows apply per programme, per batch, or
-  institute-wide? `cgpa_windows.org_unit_id` currently allows any of the
-  three, which may be more flexibility than the real process needs.
+  institute-wide?
+
+From the workflow layer (`V3-WORKFLOW.md` §5):
+
+- Should `can_print` be one question per request, as built, or one per
+  document type? One was chosen because "is this finished" is the same
+  question for the NOC and the OD.
+- Should `can_read_signature()` narrow from "a request they signed" to "this
+  request"?
+- Should the MFA re-prompt clock be per level — the `3600` literal in
+  `mfa_satisfied()` becoming a column on `priority_levels`?
+
+Deferred by the captain, on the record: rank-gating for tech/non-tech
+activity counts on the person card, and session/token handling — "sb access
+token, remember in the next version we have to change it."
 
 ---
 
-## 8. Suggested order from here
+## 9. Where V3 starts
 
-1. **Apply `schema-v2` to a throwaway database.** Fix what breaks. This is
-   the only step that turns 2,000 lines of unproven SQL into something
-   trustworthy.
-2. **Repoint `apply-migrations.sh`** at the new directory, and retire
-   `supabase/migrations/` once v2 is proven.
-3. **Migrate `app/src/lib/`** to the v2 names and RPCs — this is where the
-   breakage lands, and it is mechanical but wide.
-4. **Re-run the wizard** on the clean database and rebuild the org.
-5. **Then** the new v2 surfaces: context switcher, person cards, checks,
-   org-tree admin.
-
-Do not start 5 before 1. The whole point of applying early is that a schema
-bug found now costs an afternoon, and the same bug found after the frontend
-is rewritten against it costs the rewrite.
+1. **A browser pass over §4's unproven UI**, with a fresh session token.
+2. **The request-detail participants panel** — accept/decline, and the scan
+   window that `add_participant_by_reg_no` and `participants_open_until`
+   already back.
+3. **pdfme** (`github.com/pdfme/pdfme`) — generated client-side, signatures
+   supplied by the server, never stored, gated on `can_print`.
+4. Then the questions in §8, and the gaps in §7 that turn out to matter.
 
 ---
 
-## 9. Where to read what
+## 10. Where to read what
 
 | Document | What it is | Trust |
 |---|---|---|
+| `HANDOFF.md` | this file — state of the project at the close of V2 | Current |
+| `V3-WORKFLOW.md` | the stages/tasks layer: design, decisions, every verification | Current, authoritative on the workflow |
 | `PRD.md` | v1 product definition | Current |
-| `PRD-V2.md` | v2 design, decisions D-1..D-6, open questions | Current, iterating |
+| `PRD-V2.md` | v2 design, decisions D-1..D-6, open questions | Current |
 | `ARCH.md` | v1 schema, **only through `0003`** | **Stale** — code wins |
 | `NOTE.md` | dated decision and incident log, with reasoning | Current, authoritative on "why" |
 | `TASK.md` | build tracker, known gaps | Current |

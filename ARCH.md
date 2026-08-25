@@ -120,7 +120,17 @@ This is the part that changed most from earlier designs, based directly on how t
 
 ### 3.9 Domain-Restricted Signup
 
-`check_allowed_domain()` runs as a trigger directly on `auth.users` insert — before a profile even exists. Someone hitting the GoTrue signup API directly, bypassing the frontend entirely, still gets rejected if their email domain isn't in `allowed_login_domains`. This was an open question in earlier notes; it's resolved by putting the check at the lowest possible layer rather than trusting the UI.
+`check_allowed_domain()` runs as a trigger directly on `auth.users` insert — before a profile even exists. Someone hitting the GoTrue signup API directly, bypassing the frontend entirely, still gets rejected. The check sits at the lowest possible layer rather than trusting the UI.
+
+**It is not a domain check alone.** As written in v2 (`supabase/schema-v2/0004_bootstrap_invites_rpcs.sql:86`) it demands *both* an allowed domain **and** an unconsumed row in `pending_assignments` for that address, so signup is not open-to-anyone-on-the-domain once the captain exists. Three ways past it, and only three:
+
+1. **Bootstrap** — `is_bootstrapping() and not exists (select 1 from profiles)` returns early with neither domain nor invite. Only the very first account, the captain; the `not exists` clause makes it one-shot even if setup was abandoned before an admin tag was granted.
+2. **Invited staff** — a `pending_assignments` row written by the invite RPC with `invited_by = auth.uid()`, gated by `can_invite()` and the `pa_insert` policy.
+3. **Student self-registration** — `self_register_student()` writes the *same table* with `invited_by = null`, forced to the base level, `member_type = 'student'`, no tags, and `reg_no_matches_batch()`. The `pa_self_register` policy grants this to `anon`.
+
+So the "two signup paths" are two ways a row reaches `pending_assignments` before the gate runs, not two paths through the gate — it asks everyone the same two questions.
+
+Because `pa_self_register` is deliberately not identity-checked (the caller has no session yet), the email confirmation step *is* the authentication of a student account. That is the mechanical reason `GOTRUE_MAILER_AUTOCONFIRM` must stay `"false"` on any instance that is reachable by real people.
 
 ---
 
@@ -158,7 +168,7 @@ Fires when `requests.status` transitions to `closed`. Checks the category's `ret
 **Important gap, called out deliberately:** this trigger only marks rows. Nothing in the current schema actually deletes the object from Garage or removes the row once `purge_after` has passed — that's an external scheduled job reading `attachments_pending_purge` (the partial index on this column), calling the Storage API to delete, then removing the row. Not yet built. See TASK.md.
 
 ### 5.4 `check_allowed_domain()`
-Fires on `auth.users` insert. Rejects signup if the email domain isn't in `allowed_login_domains`.
+Fires on `auth.users` insert. Rejects signup unless the email domain is in `allowed_login_domains` **and** an unconsumed `pending_assignments` row exists for that address — except for the very first account, which is let through while bootstrapping. See §3.9 for the three ways past it.
 
 ### 5.5 Append-only enforcement
 `signatures_no_update` / `signatures_no_delete` raise unconditionally on `UPDATE`/`DELETE` against `signatures`. This can't be bypassed by a careless `GRANT` later — it would take dropping the trigger itself, which the runtime role shouldn't have permission to do.

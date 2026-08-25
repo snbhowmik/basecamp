@@ -102,6 +102,22 @@ Production uses real SMTP (self-hosted Mailcow on the org's own domain — confi
 
 **Resolution:** For local-only verification, temporarily flip `GOTRUE_MAILER_AUTOCONFIRM` to `"true"` in `docker-compose.yml`, test, then revert to `"false"` before committing — real SMTP is required for a real deployment, autoconfirm-true is a local-dev convenience only, never checked in as `"true"`.
 
+> **[2026-08-25] [SUPERSEDED FOR THIS INSTANCE]** The advice above is still
+> correct for a throwaway local stack. It does **not** apply here. This
+> deployment is development work carried out against **real credentials** — a
+> real domain, real Mailcow SMTP, a live captain account and real invited
+> people — so there is no "local-only" window in which flipping the flag is
+> harmless. Do not flip `GOTRUE_MAILER_AUTOCONFIRM` on this instance, not
+> temporarily and not to get past a signup problem while testing.
+>
+> **Why it matters more than convenience:** `pa_self_register` lets anyone,
+> unauthenticated, declare a base-level invitation for any address on an
+> allowed domain — deliberately, because the caller has no session yet. The
+> real check is owning the inbox at confirmation. Autoconfirm removes that
+> check, and with it the entire authentication of a student account: anyone
+> could mint an account for any address on the domain without seeing the mail.
+> See `ARCH.md` §3.9.
+
 ---
 
 ### [2026-03-01] [DECIDED] [AUTH]

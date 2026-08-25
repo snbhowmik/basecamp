@@ -163,7 +163,15 @@ Everything should show `Up` (Studio may show `unhealthy` — it depends on a few
 
 **Local dev without real SMTP:** if you don't have a real SMTP server reachable from your dev machine yet, you have two options:
 1. Point `SMTP_HOST` at a local mail catcher that supports STARTTLS (GoTrue's mailer refuses to send over an unencrypted connection to anything that doesn't resolve as `localhost`). Plain Mailhog doesn't speak TLS at all — this was tried and abandoned in this session as not worth the time (see NOTE.md).
-2. Temporarily set `GOTRUE_MAILER_AUTOCONFIRM: "true"` in `docker-compose.yml`, recreate `auth` (`docker compose up -d auth`), test, then **revert to `"false"` before committing anything**. This is what was actually used to verify the wizard end to end in this session.
+2. Temporarily set `GOTRUE_MAILER_AUTOCONFIRM: "true"` in `docker-compose.yml`, recreate `auth` (`docker compose up -d auth`), test, then **revert to `"false"` before committing anything**. This is what was actually used to verify the wizard end to end before real SMTP existed.
+
+> **Not an option on the live instance.** Option 2 assumes a throwaway stack
+> nobody else can reach. `basecamp.hackerxploit.org` is development work
+> against real credentials — real domain, real Mailcow SMTP, a live captain
+> and real invited people — so the flag stays `"false"` there, permanently and
+> without exception. Confirmation of the emailed link is the only thing
+> authenticating a self-registered student account (`ARCH.md` §3.9); turning
+> it off would let anyone mint an account for any address on the domain.
 
 ### A.8 Run the wizard
 

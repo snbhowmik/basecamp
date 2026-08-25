@@ -294,3 +294,54 @@ request-detail participants panel and scan window, and pdfme.
 
 Steps 2–4 are frontend only. Step 1 is the only thing that touches the live
 database, and per §3 it is additive: every default preserves current behaviour.
+
+## 8. Follow-up after approval (`0029`), and the editor
+
+The captain asked what to do with `retain_attachments_after_close`, and
+whether post-event follow-up should be a stage asked later. Two facts settled
+it.
+
+**Nothing in schema-v2 ever writes `status = 'closed'`.** The only reader of
+that value is `schedule_attachment_purge` in `0002`. So the retention flag has
+never fired once — the same shape as `level_checks`: a column describing a
+behaviour that does not exist. The purge job that would act on `purge_after`
+is still unbuilt (`SECURITY.md` R-24). `0029` deliberately does **not**
+introduce a close state machine, because doing so would fire that trigger for
+the first time with no job behind it. The category form now says this in a
+hint rather than implying the purge happens.
+
+**Stages and tasks already are the follow-up form.** A certificate is a task
+with `answer_type` `'file'`, a project link is `'text'`, "which prize" is
+`'choice'` with options the captain types. So follow-up is a stage marked
+`stage_kind = 'post_approval'`:
+
+- `advance_stage` walks `'approval'` stages only — otherwise an approval would
+  land on the follow-up stage, flip the status back to `in_review` and put the
+  ticket on somebody's desk, waiting for a certificate that cannot exist yet.
+- `can_print` ignores follow-up stages in **both** of its clauses. A required
+  "upload the certificate" task would otherwise stop every OD letter printing,
+  and a follow-up stage is never decided, so it carries no signature either.
+- `decide_request` parks an approved request on the first follow-up stage,
+  status `approved`, holder nobody. `record_task_result` hops to the next
+  follow-up stage when the current one has no required task outstanding.
+- A task only the stage's role can answer is refused on a follow-up stage —
+  approval nulls `current_holder`, so nobody could answer it. Refused from
+  both ends: adding such a task, and flipping a stage that already has one.
+
+Verified end to end against the live database inside a rolled-back
+transaction: both refusals, a submit → HOD approval → park on the follow-up
+stage with `can_print` still true, two chained follow-up stages, and the
+ticket ending on no stage with its status still `approved`.
+
+`is_optional` on `category_stages` is written by the editor's RPC and read by
+nothing. No control was built for it; `advance_stage` skips a stage when it
+has no holder, which is not the same thing.
+
+### The editor
+
+`app/src/components/workflow/StagesEditor.tsx`, opened per category from the
+Request catalog. Two subsections: who can file the category, and its stages
+with their tasks. The draft lives in the component; Save sends whole sets
+(initiators, stages, then tasks per changed stage), Cancel restores the last
+loaded state. It compiles and builds; **no path through it has been run in a
+browser yet.**

@@ -8,9 +8,8 @@ the VPS.
 
 > This document is the state of the project. It is deliberately blunt about
 > what is proven, what merely compiles, and what is a known gap wearing a
-> finished-looking surface. `ARCH.md` is **stale** — it describes the v1
-> schema through `0003` only. When it and the migration files disagree, the
-> files are right.
+> finished-looking surface. When any document and the migration files
+> disagree, the files are right.
 
 From here on the project is versioned **`x.xx.xxx`** — major (a change in
 structure) . minor . update. What follows closes V2. V3 begins with the
@@ -208,7 +207,6 @@ verified.
   `components.css` — mostly print/document sanctioned exceptions, plus genuine
   fallback drift (`var(--ink-soft, #6b7280)`, `var(--accent, #2563eb)`). None
   came from recent changes.
-- **`ARCH.md` is stale** and has been since `0003`.
 
 ---
 
@@ -258,7 +256,7 @@ token, remember in the next version we have to change it."
 | `V3-WORKFLOW.md` | the stages/tasks layer: design, decisions, every verification | Current, authoritative on the workflow |
 | `PRD.md` | v1 product definition | Current |
 | `PRD-V2.md` | v2 design, decisions D-1..D-6, open questions | Current |
-| `ARCH.md` | v1 schema, **only through `0003`** | **Stale** — code wins |
+| `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current |
 | `NOTE.md` | dated decision and incident log, with reasoning | Current, authoritative on "why" |
 | `TASK.md` | build tracker, known gaps | Current |
 | `SECURITY.md` | threat model, risk register R-01..R-32 | Current |

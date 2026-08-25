@@ -1,206 +1,429 @@
 # ARCH — Architecture & Data Design
-**Basecamp v1.0.0**
-**Last Updated:** 2026-08-11
 
-> **⚠ STALE as of 2026-08-19. This document covers `0001`–`0003` only.**
->
-> It does not describe `0004`–`0008` (account provisioning, public
-> registration, the request lifecycle RPCs, the public catalog, invite email
-> delivery), and it predates `supabase/schema-v2/` entirely — which replaces
-> the org model, splits `my_rank()`, and reshapes identity.
->
-> Read [HANDOFF.md](HANDOFF.md) for current state and [PRD-V2.md](PRD-V2.md)
-> for the v2 design. This file will be rewritten from the v2 schema once that
-> schema has actually been applied to a database; writing it earlier would
-> mean documenting something unproven.
->
-> Where this and the code disagree, the code is right.
+**Basecamp 3.00.000** · **Current as of commit `16da814`, 2026-08-25**
+Describes `supabase/schema-v2/0001`–`0029`, all applied. Where this and the
+migration files disagree, **the files are right** — check
+`basecamp_meta.schema_migrations` for what is actually on the instance.
+
+> **Which document to read.** This one is the shape of the live schema and why
+> it is shaped that way. [HANDOFF.md](HANDOFF.md) is what is proven versus
+> merely built, and the known gaps. [PRD-V2.md](PRD-V2.md) is intent and open
+> product questions. Nothing planned-but-unbuilt belongs in this file; that is
+> how the previous version rotted into describing a system that did not exist.
 
 ---
 
 ## 1. Why Self-Hosted Supabase
 
-`auth.uid()` is the whole point. Earlier designs for this project moved to a custom VPS + Keycloak + hand-built authorization engine, which meant no per-user JWT ever reached Postgres, and every RLS policy had to be replaced with a two-layer system built from scratch — the highest-risk, highest-effort piece of that design.
+`auth.uid()` is the whole point. Earlier designs moved to a custom VPS +
+Keycloak + hand-built authorization engine, which meant no per-user JWT ever
+reached Postgres, and every RLS policy had to be replaced with a two-layer
+system built from scratch — the highest-risk, highest-effort piece of that
+design.
 
-Self-hosted Supabase is the same open-source stack (Postgres, GoTrue, PostgREST, Storage, Realtime, Studio) in Docker Compose on your own VPS:
+Self-hosted Supabase is the same open-source stack in Docker Compose on your
+own VPS:
 
 - **Self-hosted** — own infrastructure, own control.
-- **`auth.uid()` works** — GoTrue issues the JWT, PostgREST forwards it, Postgres verifies it. RLS is a real, enforced boundary — see `0002_functions_and_rls.sql`.
-- **MFA is native** — TOTP enrollment and `aal1`/`aal2` session claims are built into GoTrue.
-- **No custom API server** — PostgREST generates a REST API from the schema directly.
+- **`auth.uid()` works** — GoTrue issues the JWT, PostgREST forwards it,
+  Postgres verifies it. RLS is a real, enforced boundary (`0003_rls.sql`).
+- **MFA is native** — TOTP enrolment and `aal1`/`aal2` claims are built in.
+- **No custom API server** — PostgREST generates the REST API from the schema,
+  and every write goes through a `security definer` RPC (§4.4).
 
 ---
 
 ## 2. Topology
 
 ```
-Cloudflare (DNS + proxy)
+Cloudflare Tunnel
         │
         ▼
-VPS — docker-compose.yml
-   ┌─────────────────────────────────────────┐
-   │ kong      — the ONLY port reachable,     │
-   │             and only via Cloudflare       │
-   │ auth      — GoTrue: signup, MFA, JWTs    │
-   │ rest      — PostgREST: auto REST API     │
-   │ realtime  — live subscriptions            │
-   │ storage   — file metadata + signed URLs   │
-   │ db        — Postgres, RLS-enforced         │
-   │ studio    — admin DB browser, internal-only│
-   │ garage    — self-hosted object storage     │
-   └─────────────────────────────────────────┘
+VPS — docker-compose.yml (11 services)
+   ┌──────────────────────────────────────────────┐
+   │ kong      — the only published port,          │
+   │             bound to 127.0.0.1:8000           │
+   │ frontend  — nginx serving ./app/dist          │
+   │ auth      — GoTrue: signup, TOTP, JWTs        │
+   │ rest      — PostgREST (PGRST_DB_PRE_REQUEST)  │
+   │ realtime  — live subscriptions                │
+   │ storage   — storage-api over Garage           │
+   │ garage    — self-hosted S3-compatible object  │
+   │ db        — Postgres, RLS-enforced            │
+   │ meta      — schema introspection for studio   │
+   │ studio    — admin DB browser, internal only   │
+   │ mailer    — invite email worker               │
+   └──────────────────────────────────────────────┘
 ```
 
-Frontend: a static SPA served from Cloudflare Pages, using the Supabase JS client directly against Kong. No BFF, no Worker.
+The SPA is **not** on Cloudflare Pages. `docker-compose.yml` bind-mounts
+`./app/dist:/usr/share/nginx/html:ro`, which makes **`npm run build` the
+deploy** — there is no separate publish step and no staging. `nginx/frontend.conf`
+supplies the SPA fallback so `/invite/<token>` resolves on a cold load, because
+Kong routes `/` to the frontend as a catch-all.
 
-Only `kong` publishes a port, and it's bound to `127.0.0.1:8000` — reachable only through whatever's proxying in front of it (Cloudflare Tunnel or a reverse proxy on the same box), never directly from the internet. Everything else — `db`, `garage`, `studio` — sits on the internal Docker network with no published port at all.
+Only `kong` publishes a port. Everything else sits on the internal Docker
+network with no published port at all.
 
 ---
 
 ## 3. Database Schema
 
-Full DDL lives in `supabase/migrations/0001_schema.sql`. Summary by concern:
+Thirty-five tables. Grouped by what they are for rather than by migration.
 
 ### 3.1 Identity
 
-`profiles` mirrors `auth.users`, extended with `mfa_enrolled` (kept in sync by a trigger on `auth.mfa_factors`) and `is_active`. A trigger on `auth.users` insert (`handle_new_user`) creates the profile row automatically.
+`profiles` mirrors `auth.users` (created by `handle_new_user()`), and
+`member_profiles` carries the academic record — `reg_no`, `member_type`
+(student or staff), org unit, batch, section, CGPA. Students and staff share
+one table; v1's `student_profiles` is gone.
 
-### 3.2 Hierarchy — Not a Role Enum
+`profiles` is readable by any authenticated user, because you have to be able
+to address a ticket to someone. `member_profiles` is not: the column-level
+trigger `member_profiles_column_rules` decides which columns a given caller may
+change, so "a student may edit their phone number but not their CGPA" is a
+write rule in the database rather than a disabled input in React.
 
-`priority_levels` — ordered by `rank` (1 = highest authority). `tags` — free-form, admin-managed. `user_tags` and `user_levels` — the actual permission assignments. Seeded starting shape (`supabase/seed.sql`):
+### 3.2 Hierarchy — not a role enum
 
-```
-Rank 1  Dean-level
-Rank 2  HOD-level
-Rank 3  Coordinator-level
-Rank 4  Mentor-level
-Rank 5  Student (base)
-```
+Authority is a **rank**, and a job is a **tag**:
 
-Two people at the same rank do different jobs, distinguished by tags (`hod` + a department tag vs `hod` + a different department tag). `departments` and `classes` each carry a `tag_id` — the tag that means "belongs to this org unit" — which is what the relationship-check functions (§4) join against.
+- `priority_levels` — sparse integer ranks, lower is more senior. The captain
+  holds a reserved rung nobody can be invited onto (`0013`).
+- `tags` / `user_tags` — what someone *does*: `admin`, `hod`, `mentor`,
+  `club:robotics`. Two people at the same rank can hold entirely different
+  jobs, and a new job needs no schema change.
+- `role_assignments` — the join that matters: a user holds a level, optionally
+  scoped to an `org_unit_id`, optionally time-boxed (`valid_from`/`valid_until`,
+  read through `assignment_is_current()`), with `is_primary` marking the main
+  one. **A person may hold several at once.** This is the single biggest
+  departure from v1, where a user had exactly one level.
 
-### 3.3 Request Taxonomy
+The org itself is `org_units` (a self-referencing tree: faculty → programme),
+then `batches`, then `sections`. `in_org_subtree(ancestor, descendant)`
+answers containment, and it is the function every scoped check is built on.
 
-`request_types` → `request_categories` (self-referencing tree, unbounded depth) → `category_first_hop_options` (the picker). Two request types are seeded: `od_request` (decision_mode `approval`) and `achievement` (decision_mode `log_only`) — see PRD §8 for what that distinction means functionally.
+### 3.3 Request taxonomy
 
-Each category also carries `retain_attachments_after_close`: `false` for OD categories, `true` for Achievement categories. This is what the purge trigger (§5.3) reads.
+`request_types` (with `decision_mode`: `approval` or `log_only`) →
+`request_categories`, a self-referencing tree of unbounded depth — "OD → Tech →
+Hackathon". A category carries its `classification` (`tech` / `non_tech`),
+because a tech club running a non-tech event counts as non-tech.
 
-`field_definitions` + `request_field_values` give any category custom fields without a schema change — values are typed `jsonb`, validated against the definition in the application layer (Postgres can't enforce this; logged as an accepted tradeoff).
+Around a category hang the things that configure it:
+`category_first_hop_options` (the picker's suggestions, resolved to real people
+by tag at request time), `category_initiators` (who may raise it at all — no
+rows means open to everyone), `category_level_roles`, `level_checks`,
+`field_definitions`, and — the layer that actually drives movement —
+`category_stages` and `stage_tasks` (§5).
+
+> Two of those are **structurally present and not driven by anything**:
+> `level_checks` has no write RPC and no UI, and
+> `category_level_roles.participation = 'approves'` is read by no code. Only
+> its `'notified'` rows do work, through `add_configured_watchers()`. They are
+> named here so the next reader does not mistake them for mechanism.
 
 ### 3.4 Requests
 
-`requests` is the core table. `decision_mode` is copied from the category at creation and never changes afterward — this is deliberate, so a category's mode can be edited later without silently altering requests already in flight.
+`requests` holds `reference_number`, `status` (the `request_status` enum),
+`current_holder`, `current_level_id`, `current_stage_id`, `org_unit_id`, and
+`decision_mode` **copied from the type at creation** — a category's mode
+changing later must not alter tickets already in flight.
 
-`current_holder` is whoever has it right now. `request_assignment_history` is the append-only trail of every forward — who, to whom, when, what action. There is no preset workflow graph; routing is the picker for the first hop, then open search-and-forward, logged.
+Around it: `request_assignment_history` (every hop and decision, append-only in
+practice), `request_watchers`, `request_participants` (group requests, each
+with an `acceptance_status` the named person controls),
+`request_check_results`, `request_field_values`, `request_comments`, and
+`request_attachments`.
 
-`request_watchers` holds Mentor and HOD, added unconditionally by the `add_mandatory_watchers()` trigger the moment a request transitions to `submitted`. This does not depend on who the request was routed to — it fires regardless.
+### 3.5 Signatures, documents, verification
 
-### 3.5 Signatures, Consent, and Generated Documents
+A staff member registers **one** signature (`signature_assets`), drawn or
+uploaded, and it is stamped onto every document from then on — matching how
+physical signing actually worked.
 
-This is the part that changed most from earlier designs, based directly on how the institution actually works:
+`signatures` is the decision record: signer, level, decision, and
+`state_hash`. `request_state_hash()` (`0017_document_templates.sql:32`) defines
+"what was signed" — reference number, title, body, category, **and every custom
+field value**, in explicit `order by field_key`, because a hash over an
+unordered aggregate is not reproducible and reproducibility is the entire
+point. Field *values* are hashed; field definition *ids* are not, so renaming a
+label does not invalidate a signed document but changing a value does.
 
-- **`signatures`** — one row per approval-flow decision (approve/reject/changes-requested), append-only (triggers block `UPDATE` and `DELETE`), carrying a `state_hash` of the request at the moment of signing.
-- **`signature_assets`** — a person's *stamp*, not a per-document signature. Registered once (drawn on a canvas or uploaded and cleaned), reused on every generated document that needs their signature. `one_active_signature_per_user` enforces exactly one active stamp per person.
-- **`request_participants`** — for outstation OD, this is where **parent consent lives as a structured record**, not a file: `parent_consent_verified`, `parent_consent_verified_by`, `parent_name`, `parent_contact`, `transport_mode`. The Mentor calls the parent, confirms, and fills this in. There is no undertaking document anywhere in the schema.
-- **`generated_documents`** — Annexure 4.4 and NOC are the same pattern: a `reference_code` printed on the output, a `state_hash`, and the `signature_ids` that were stamped in. The `cached_object_key` is optional and disposable — the row is the source of truth, the PDF is a rendering of it that can be regenerated identically at any time.
+`document_templates` are authored by the captain in the dashboard, per
+category. No fixture data: Annexure 4.4 and the NOC are not shipped as
+hardcoded strings. `render_document()` (`0020:13`) populates a template and
+stamps the signatures; `generated_documents` stores the reference code, the
+hash, and which signatures were used. `verify_document()` (`0017:361`) looks up
+a code and compares the hash — **it does not care whether any file exists**.
+The PDF is disposable; the row is what is protected.
 
-### 3.6 Attachments and Their Lifecycle
+### 3.6 Attachments and their lifecycle
 
-`request_attachments` carries a `purge_after` timestamp, `null` by default. The `schedule_attachment_purge()` trigger (§5.3) sets it when a request closes, based on the category's `retain_attachments_after_close` flag. OD evidence (posters, letters, receipts) gets a 7-day grace period then deletion. Achievement uploads — certificates — never get `purge_after` set; they're permanent.
+`request_attachments` carries a `purge_after` column and a partial index,
+`attachments_pending_purge`, over the rows that have one.
 
-**This is the only category of file that needs to survive indefinitely.** Everything else — generated PDFs, OD evidence — is either regeneratable or intentionally temporary.
+**Nothing fills it in, and nothing acts on it.** The trigger
+`schedule_attachment_purge()` (`0002_requests.sql:362`) stamps `purge_after`
+when a request's status becomes `closed` and the category's
+`retain_attachments_after_close` is false — but **no code path anywhere in
+schema-v2 writes `status = 'closed'`**, so the trigger has never fired, and the
+external job that would read the index and delete from Garage was never built
+(`SECURITY.md` R-24). Attachment retention is therefore *configuration
+describing an intention*, not behaviour. Material collected after an event
+belongs to a follow-up stage (§5.4) instead.
 
-### 3.7 Comments, Canvas
+### 3.7 Comments and visibility
 
-`request_comments.visibility` is `public` or `internal`. The `block_student_internal_comment()` trigger makes it structurally impossible for a base-level (student) user to author an `internal` comment — not just a policy denying reads, a trigger denying the write outright. `canvases`/`canvas_revisions` inherit the same visibility split.
+`request_comments.visibility` is `public` or `internal`, and the trigger
+`block_base_level_internal_comment()` makes it structurally impossible for a
+base-level (student) user to author an `internal` one — a denied write, not a
+hidden read.
 
-### 3.8 Dashboard Access
+`level_visibility_rules(viewer_level_id, target_level_id, scope, mode)`
+configures peer visibility: `mode` is `none` / `search_only` / `list`, and
+`scope` is `same_subtree` or `any`. RLS honours both modes identically; the
+*list versus search* distinction is applied by the query layer, because RLS
+cannot know whether it is answering a list or a lookup.
 
-`dashboard_grants(user_id, department_id)` — a flat grant table, deliberately independent of `priority_levels` and `tags`. A Dean's dashboard scope is whichever departments this table says, decided by Admin, unrelated to their approval authority.
+### 3.8 Signup and provisioning
 
-### 3.9 Domain-Restricted Signup
+`allowed_login_domains` is a flat allowlist — one org, several login domains,
+not multi-tenancy. `pending_assignments` is the invite: an email, the level and
+tags it will grant, and who issued it. `apply_pending_assignment()`
+(`0004:123`) fires on `profiles` insert and grants the declared role
+server-side, so no client ever holds an elevated key.
 
-`check_allowed_domain()` runs as a trigger directly on `auth.users` insert — before a profile even exists. Someone hitting the GoTrue signup API directly, bypassing the frontend entirely, still gets rejected. The check sits at the lowest possible layer rather than trusting the UI.
+`check_allowed_domain()` (`0004:86`) is a trigger on `auth.users` insert —
+before a profile exists, so someone hitting the GoTrue signup API directly is
+still rejected. **It is not a domain check alone.** It demands an allowed
+domain **and** an unconsumed `pending_assignments` row. Three ways past it, and
+only three:
 
-**It is not a domain check alone.** As written in v2 (`supabase/schema-v2/0004_bootstrap_invites_rpcs.sql:86`) it demands *both* an allowed domain **and** an unconsumed row in `pending_assignments` for that address, so signup is not open-to-anyone-on-the-domain once the captain exists. Three ways past it, and only three:
+1. **Bootstrap** — `is_bootstrapping() and not exists (select 1 from profiles)`
+   returns early with neither domain nor invite. Only the very first account,
+   the captain; the `not exists` clause makes it one-shot even if setup was
+   abandoned before an admin tag was granted.
+2. **Invited staff** — a `pending_assignments` row written by `create_invite()`
+   with `invited_by = auth.uid()`, gated by `can_invite()` and the `pa_insert`
+   policy.
+3. **Student self-registration** — `self_register()`
+   (`0012_remaining_write_rpcs.sql:90`) writes the *same table* with
+   `invited_by = null`, forced to the base level, `member_type = 'student'`, no
+   tags, and `reg_no_matches_batch()`. The `pa_self_register` policy grants
+   this to `anon`.
 
-1. **Bootstrap** — `is_bootstrapping() and not exists (select 1 from profiles)` returns early with neither domain nor invite. Only the very first account, the captain; the `not exists` clause makes it one-shot even if setup was abandoned before an admin tag was granted.
-2. **Invited staff** — a `pending_assignments` row written by the invite RPC with `invited_by = auth.uid()`, gated by `can_invite()` and the `pa_insert` policy.
-3. **Student self-registration** — `self_register_student()` writes the *same table* with `invited_by = null`, forced to the base level, `member_type = 'student'`, no tags, and `reg_no_matches_batch()`. The `pa_self_register` policy grants this to `anon`.
+So the "two signup paths" are two ways a row reaches `pending_assignments`
+before the gate runs, not two paths through the gate — it asks everyone the
+same two questions.
 
-So the "two signup paths" are two ways a row reaches `pending_assignments` before the gate runs, not two paths through the gate — it asks everyone the same two questions.
-
-Because `pa_self_register` is deliberately not identity-checked (the caller has no session yet), the email confirmation step *is* the authentication of a student account. That is the mechanical reason `GOTRUE_MAILER_AUTOCONFIRM` must stay `"false"` on any instance that is reachable by real people.
+`pa_self_register` is deliberately not identity-checked, because the caller has
+no session yet. **The email confirmation step is therefore the entire
+authentication of a student account**, which is the mechanical reason
+`GOTRUE_MAILER_AUTOCONFIRM` must stay `"false"` on any instance real people can
+reach (`NOTE.md` 2026-08-25, `DEPLOY.md` A.7).
 
 ---
 
-## 4. Authorization — Helper Functions
+## 4. Authorization
 
-`0002_functions_and_rls.sql`. The rule: any relationship check gets written once as a `security definer` SQL function and reused everywhere. Never inline the same join in multiple policies.
+### 4.1 The rank rule
 
-```sql
-my_rank()                        -- caller's priority rank
-has_tag(tag_code)                 -- does the caller hold this tag
-is_hod_of(dept_id)                 -- HOD of a specific department
-is_mentor_of(class_id)               -- mentor of a specific class
-has_dashboard_access(dept_id)          -- explicit grant, not derived from rank/tags
-has_mfa()                                -- session carries aal2
-is_base_level()                            -- shorthand for "is a student"
+v1 had one `my_rank()` returning a scalar, because a user had exactly one
+level. v2 splits it, and choosing wrong is an authorization hole that RLS will
+enforce confidently and silently:
+
+| Function | Answers | Use for |
+|---|---|---|
+| `my_best_rank()` (`0001:350`) | most senior rank held **anywhere** | coarse "may this person reach the admin area at all" |
+| `my_rank_in(org_unit)` (`0001:374`) | rank **within that part of the org** | everything row-scoped |
+
+An HOD of Cyber Security outranks a Cyber student and **not** an AIML one, and
+only the second function can tell the difference. Every policy in `0003` states
+which it uses and why; a row-scoped policy reaching for `my_best_rank()` is the
+bug that comment exists to prevent.
+
+### 4.2 Helper functions, written once
+
+Any relationship check is a `security definer` SQL function, reused everywhere,
+never inlined twice into policies — and every one pins `set search_path =
+public`, because a trigger that resolves the wrong tables is silent.
+
+```
+my_best_rank()          my_rank_in(org_unit)     in_org_subtree(a, d)
+has_tag(code)           has_tag_or_ancestor()    holds_kind(kind)
+is_lowest_level()       assignment_is_current()  has_mfa()
+is_bootstrapping()      can_bootstrap()          can_see_request(id)
+can_invite(level, unit) can_read_signature(key)  can_print(id)
 ```
 
-Every RLS policy in the file calls these rather than repeating the underlying joins. If the definition of "HOD of a department" ever needs to change, it changes in one function and every policy using it is automatically correct.
+`can_see_request()` (`0003:37`) is the single definition of request visibility,
+reused by every request-related table's policy: your own ticket, one sitting
+with you, one you are a participant on, one you were notified about or have
+held, one you outrank *within its own org scope*, one a
+`level_visibility_rules` row exposes, or `has_tag('admin')`. It is a function
+rather than a repeated subquery because referencing an RLS-protected table from
+inside another table's policy is how recursive-policy surprises happen.
 
-`FORCE ROW LEVEL SECURITY` is applied on every user-data table, not just `ENABLE` — the latter doesn't apply to a table's owner, and if the connecting role ever turns out to own the tables, plain `ENABLE` would be silently bypassed.
+**`FORCE ROW LEVEL SECURITY` everywhere**, not merely `ENABLE`: plain `ENABLE`
+does not apply to a table's owner, so if the connecting role ever turned out to
+own these tables the whole model would be bypassed in silence.
+
+> **Trap for new tables.** `0003_rls.sql` and `0009_editing_and_deletes.sql`
+> build policies by iterating **literal arrays of table names**, so a table
+> added later arrives with no policies at all. A new table needs hand-written
+> RLS plus a repeat of `0003`'s "every table in public has RLS" assertion, and
+> `admin_delete()`'s allowlist (`0026:217`) is a literal array too.
+
+### 4.3 Two-layer MFA
+
+Signing in with a password alone produced a persisted `aal1` session, and
+nothing below the frontend cared. `0016_require_mfa.sql` fixed that in two
+layers, deliberately:
+
+1. **`require_mfa()` (`0016:84`) on `PGRST_DB_PRE_REQUEST`.** This is the only
+   thing that covers RPCs — they are `security definer` and bypass RLS
+   entirely. It runs before every request, so an RPC added later is covered
+   without anyone remembering to guard it.
+2. **`mfa_satisfied()` folded into every RLS policy.** Layer 1 lives in an
+   environment variable, and a control that disappears when an env var is
+   dropped is not the boundary `CLAUDE.md` says RLS is.
+
+**Coupling warning:** `docker-compose.yml` sets `PGRST_DB_PRE_REQUEST` to
+`public.require_mfa`. Dropping or renaming that function takes the entire REST
+API down.
+
+Two sharp edges worth knowing before trusting either layer:
+
+- `mfa_satisfied()` (`0025_restore_mfa_definer.sql`) returns **true** for anon,
+  for `service_role`, and for a signed-in user with **no verified factor** —
+  MFA is opt-in-by-enrolment at the database level, not universal.
+- GoTrue carries `aal2` across refresh-token rotation, so **`aal2` is sticky
+  and is not a freshness signal.** The `amr` array's `totp` timestamp is, which
+  is what `totp_freshness()` (`0014:9`) reads — its own default is five
+  minutes, and `mfa_satisfied()` calls it with 3600.
+
+`0024` replaced these two functions and omitted `security definer`, which
+silently downgraded them to SECURITY INVOKER and took the site down for a day;
+`0025` restored it. **`create or replace function` replaces the SECURITY
+attribute along with the body** — every migration since repeats the word
+explicitly.
+
+### 4.4 Everything writes through an RPC
+
+The browser never writes a table: no `insert`, `update`, `delete` or `upsert`
+from `app/src/lib/`. Reads may be plain selects where RLS already says the
+right thing. Writes go to `security definer` functions — `create_invite`,
+`assign_role`, `update_member_profile`, `save_field_values`,
+`save_category_stages`, `record_task_result`, and the rest — which is why RLS
+policies can stay narrow: the RPC checks the intent, RLS backs it up.
+
+`admin_delete(table, id)` is the one generic destructive path, and it refuses
+anything not in its allowlist and anything with `blocking_references()`.
 
 ---
 
-## 5. Triggers Doing Real Work
+## 5. The request lifecycle
 
-### 5.1 `add_mandatory_watchers()`
-Fires on submit. Resolves the requester's mentor and HOD via their class/department tags, inserts both into `request_watchers` unconditionally.
+### 5.1 Raising one
 
-### 5.2 `block_student_internal_comment()`
-Fires on `request_comments` insert. Raises if a base-level user attempts `visibility = 'internal'`.
+`create_and_submit_request()` (`0028_stage_gates.sql:22`) checks
+`may_file_category()` first — a category with no `category_initiators` rows
+stays open to everyone, so this changes nothing until configured. It copies the
+type's `decision_mode` onto the row, stamps a reference number, records the
+submission in `request_assignment_history`, and then calls `advance_stage()`.
 
-### 5.3 `schedule_attachment_purge()`
-Fires when `requests.status` transitions to `closed`. Checks the category's `retain_attachments_after_close`; if false, stamps every attachment on that request with `purge_after = now() + 7 days`.
+### 5.2 Stages
 
-**Important gap, called out deliberately:** this trigger only marks rows. Nothing in the current schema actually deletes the object from Garage or removes the row once `purge_after` has passed — that's an external scheduled job reading `attachments_pending_purge` (the partial index on this column), calling the Storage API to delete, then removing the row. Not yet built. See TASK.md.
+`category_stages` (`0026:42`) gives a category an ordered walk: each stage has a
+`stage_no`, a name, the `level_id` that checks it, and a `stage_kind`
+(`approval` or `post_approval`). A stage is its own row rather than a
+(category, level) pair, so "mentor verifies, HOD reviews, mentor countersigns"
+is representable.
 
-### 5.4 `check_allowed_domain()`
-Fires on `auth.users` insert. Rejects signup unless the email domain is in `allowed_login_domains` **and** an unconsumed `pending_assignments` row exists for that address — except for the very first account, which is let through while bootstrapping. See §3.9 for the three ways past it.
+`resolve_stage_holder()` (`0027:289`) turns a stage into a person: a current
+role assignment at that level, never the requester, scoped by
+`in_org_subtree()`, preferring a primary assignment and an org-scoped one over
+an institute-wide one. `advance_stage()` (`0027:343`) walks to the next
+**approval** stage that has a holder, logging `stage_skipped` for the ones
+nobody currently fills.
 
-### 5.5 Append-only enforcement
-`signatures_no_update` / `signatures_no_delete` raise unconditionally on `UPDATE`/`DELETE` against `signatures`. This can't be bypassed by a careless `GRANT` later — it would take dropping the trigger itself, which the runtime role shouldn't have permission to do.
+### 5.3 Tasks
+
+`stage_tasks` (`0026:67`) is what "the options are baked in" was about before
+v3: a task has a `label` and an `answer_type` (`yes_no`, `choice`, `text`,
+`number`, `date`, `file`, `acknowledge`), with `options` the captain types.
+
+Three dimensions make it work:
+
+- **`actor`** — `stage_role`, `requester`, or `any_participant`. One stage
+  genuinely has two: the mentor ticks parent permission while the *student*
+  uploads proof of selection. `request_check_results`' insert policy admits
+  neither of the second case's people, which is why filling a task is
+  `record_task_result()` (`0027:401`) rather than a widened policy.
+- **`result` versus `answer`** — `result` is "did this clear", `answer` is what
+  was chosen, and `passing_answers` maps between them. Answering *no* to
+  "parent permission taken" records the answer and does not clear the stage.
+- **`scope`** — `request` or `per_participant`. A per-participant requirement
+  is floored at one in `stage_tasks_outstanding()` (`0027:317`), so a required
+  task cannot pass vacuously on a ticket with nobody on it.
+
+`forward_request()` and an *approving* `decide_request()` both refuse while a
+required task is outstanding. A rejection is always possible — a mentor who
+cannot approve must still be able to say no rather than strand the ticket.
+
+### 5.4 Follow-up after approval
+
+A `post_approval` stage never gates approval and never gates printing. On the
+last approval, `decide_request()` (`0029:375`) parks the request on the first
+follow-up stage with its status still `approved` and its holder still nobody;
+`record_task_result()` hops to the next one when a stage's required tasks are
+answered. A task only the stage's role could answer is refused on such a stage,
+since an approved request is on nobody's desk.
+
+`can_print()` (`0029:339`) asks the approval chain only: the request is
+visible, its status is approved/reviewed/closed, every held approval stage
+carries a signature at its level (for an `approval` type — a `log_only` type
+writes none by design), and no required approval-stage task is outstanding.
 
 ---
 
 ## 6. Storage
 
-### 6.1 Garage as Primary, Not Local Disk, Not R2
+### 6.1 Garage as primary, cloud as backup only
 
-Files live in **Garage**, self-hosted, on a Docker volume that should be mounted on a separately attached, independently growable block volume — not the VPS boot disk. `garage/garage.toml` configures single-node operation (`replication_mode = "none"`); Supabase's `storage-api` service points at it as its S3-compatible backend (`docker-compose.yml`, `storage` service environment).
+Files live in **Garage**, self-hosted, on a Docker volume that should sit on a
+separately attached block volume rather than the boot disk.
+`garage/garage.toml` configures single-node operation
+(`replication_mode = "none"`), and `storage-api` points at it as its
+S3-compatible backend. This reversed an earlier plan to use Cloudflare R2 as
+primary; R2 or B2 is now an encrypted offsite backup target only. Self-hosting
+the thing users touch constantly was judged more consistent with the goal, at
+the cost of owning durability directly.
 
-This was a deliberate reversal from an earlier plan to use Cloudflare R2 as primary storage — R2 (or Backblaze B2) is used now **only as an encrypted offsite backup target**, not live storage. Garage being self-hosted was weighed as more consistent with the actual goal (self-hosting, not depending on a third-party API for the thing users touch constantly) at the accepted cost of owning durability directly rather than inheriting it from a managed provider.
+### 6.2 The durability tradeoff, explicitly
 
-### 6.2 The Durability Tradeoff, Explicitly
+Single-node Garage has no replication. A disk failure loses everything on it,
+which is why the offsite encrypted backup is not optional polish. **A backup
+that has never been restored is a hypothesis, not a backup** — the restore
+drill is a go-live gate (`SECURITY.md`, `TASK.md`).
 
-Single-node Garage has no built-in replication. A disk failure loses everything on it. This is why the offsite encrypted backup isn't optional polish — it's the only thing standing between a hardware failure and losing every student's certificates. **A backup that's never been restored is a hypothesis, not a backup** — the restore drill is a go-live gate (SECURITY.md, TASK.md).
-
-### 6.3 What Actually Needs Protecting
-
-Narrower than it looked a few iterations ago:
+### 6.3 What actually needs protecting
 
 | | Needs real backup discipline | Why |
 |---|---|---|
-| Certificates | **Yes** | Irreplaceable, permanent, the only thing `retain_attachments_after_close = true` applies to |
-| OD evidence attachments | No | Auto-purged 7 days after ticket close; transient by design |
-| Generated PDFs (Annexure 4.4, NOC) | No | Regeneratable from `generated_documents` + `signature_assets` + the request row |
-| `signature_assets` | Mildly | Losing one means re-registering a stamp; not catastrophic, but worth including in backups since it's small |
+| Certificates and post-event evidence | **Yes** | Irreplaceable and permanent. Note that nothing purges anything today (§3.6), so *every* attachment is currently permanent by accident rather than by policy. |
+| Generated PDFs (Annexure 4.4, NOC) | No | Regenerated identically from `generated_documents` + `signature_assets` + the request row |
+| `signature_assets` | Mildly | Losing one means re-registering a stamp; small, so include it |
 
-### 6.4 Upload Pipeline
+### 6.4 Who may read a signature
 
-Not yet implemented as code (flagged in TASK.md), but designed as: sniff real MIME type server-side, reject on mismatch with the field's allowlist, re-encode images to WebP with EXIF stripped, linearize and compress PDFs. No exceptions remain in this pipeline — since parent consent is a database record now, not a file, there's no "preserve byte-for-byte" special case anymore.
+`can_read_signature()` (`0018:27`) is not "anyone signed in". A signature image
+is the raw material for forging a document, so a stamp is fetchable only by
+someone who can see a request that person actually signed — in practice the
+student downloading their own approved OD and the staff in its chain. Forgery
+is separately defeated by the reference code that a fabricated PDF cannot
+carry, but "the ingredients were never handed out" is the stronger position.
 
 ---
 
@@ -208,13 +431,17 @@ Not yet implemented as code (flagged in TASK.md), but designed as: sniff real MI
 
 | Decision | Rationale |
 |---|---|
-| Self-hosted Supabase over custom Keycloak+Node | Restores `auth.uid()`/RLS as a real boundary without building and proving correct a custom authorization engine from scratch. |
-| Priority levels + tags over a fixed role enum | Two people at the same rank can hold entirely different jobs; tags carry that distinction without a schema change per org. |
-| `decision_mode` copied onto the request, not looked up live | A category's mode changing later must not silently alter requests already in flight. |
-| Parent consent as a structured record, not a file | The institution's actual process is a phone call and a verbal confirmation — there was never a scanned document to preserve. |
-| Generated documents are cache, not source of truth | Annexure 4.4 and NOC can be recreated identically from data already in the database plus a stored signature. The `state_hash` + `reference_code` protect authenticity; the PDF file itself is disposable. |
-| One stored signature asset per person, reused everywhere | Matches how physical signing actually worked — sign once, stamp is valid on every subsequent document — rather than re-collecting a signature per document. |
-| Attachment retention is a per-category flag, not hardcoded | OD evidence is transient by nature; achievements are permanent by nature. A future category might need either behavior. |
-| Garage self-hosted as primary, cloud storage as backup-only | Consistent with the project's actual goal (self-hosting), at the cost of owning durability directly — mitigated by treating the offsite backup as load-bearing, not optional. |
-| Helper functions for every relationship check | Prevents the same join logic being duplicated and drifting across a dozen RLS policies. |
-| `FORCE ROW LEVEL SECURITY` everywhere | Plain `ENABLE` doesn't apply to the table owner; forcing it is a backstop against a future misconfiguration silently disabling the whole authorization model. |
+| Self-hosted Supabase over custom Keycloak+Node | Restores `auth.uid()`/RLS as a real boundary without building and proving correct a custom authorization engine. |
+| Priority levels + tags over a fixed role enum | Two people at the same rank can hold entirely different jobs; tags carry that without a schema change per org. |
+| Several scoped `role_assignments` per person, not one level | The real org has HODs who are also mentors, and authority that is scoped and time-boxed. |
+| `my_rank_in()` for every row-scoped decision | A rank held in one programme must not confer authority in another. |
+| `decision_mode` copied onto the request | A category's mode changing later must not silently alter requests in flight. |
+| Every write through a `security definer` RPC | The frontend states intent; the database decides. RLS stays the boundary underneath. |
+| MFA enforced in two layers | The pre-request hook is the only thing covering RPCs; the policy fold is what survives a misconfigured env var. |
+| Stages as their own table, not (category, level) | A pair is primary-keyed on both columns and cannot represent the same role appearing twice in one walk. |
+| Filling a task is an RPC, not a widened policy | One stage has two actors, and the existing insert policy admits neither the student nor a club coordinator. |
+| Follow-up stages never gate printing | The OD letter is needed before the event; the certificate cannot exist until after it. |
+| Generated documents are cache, not source of truth | `state_hash` + `reference_code` protect authenticity; the PDF is disposable. |
+| One stored signature per person, reused | Matches how physical signing worked — sign once, stamp thereafter. |
+| Garage self-hosted as primary, cloud as backup only | Consistent with self-hosting, at the cost of owning durability — mitigated by treating the offsite backup as load-bearing. |
+| `FORCE ROW LEVEL SECURITY` everywhere | Plain `ENABLE` does not apply to the table owner. |

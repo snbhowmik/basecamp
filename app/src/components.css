@@ -1293,3 +1293,6 @@ button.chip:hover { border-color: var(--ink-body); }
 }
 .sticky-pick.on { border-color: var(--srm-blue); background: var(--srm-blue-wash); color: var(--srm-blue); }
 .sticky-pick input { accent-color: var(--srm-blue); }
+
+/* The stages editor carries a table inside each stage card. */
+.modal-content.modal-lg { width: min(64rem, 100%); }

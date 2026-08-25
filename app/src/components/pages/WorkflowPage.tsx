@@ -20,10 +20,11 @@ import {
   deleteFirstHopOption,
   type FirstHopOption,
 } from '../../lib/org';
-import { listTags } from '../../lib/invites';
+import { listTags, listPriorityLevels } from '../../lib/invites';
+import StagesEditor from '../workflow/StagesEditor';
 import { adminDelete, type DeletableTable } from '../../lib/admin';
 import ConfirmDestructive from '../ui/ConfirmDestructive';
-import type { OrgUnit, OrgUnitType, Batch, RequestType, RequestCategory, Tag } from '../../types';
+import type { OrgUnit, OrgUnitType, Batch, RequestType, RequestCategory, Tag, PriorityLevel } from '../../types';
 
 type Section = 'org' | 'catalog';
 
@@ -422,6 +423,8 @@ function CatalogSection() {
   const [catRetain, setCatRetain] = useState(false);
 
   const [routingFor, setRoutingFor] = useState<RequestCategory | null>(null);
+  const [stagesFor, setStagesFor] = useState<RequestCategory | null>(null);
+  const [levels, setLevels] = useState<PriorityLevel[]>([]);
   const [editType, setEditType] = useState<string | null>(null);
   const [editTypeName, setEditTypeName] = useState('');
   const [editCat, setEditCat] = useState<string | null>(null);
@@ -431,10 +434,13 @@ function CatalogSection() {
 
   const reload = async () => {
     try {
-      const [t, c, tg] = await Promise.all([listRequestTypes(), listCategories(), listTags()]);
+      const [t, c, tg, lv] = await Promise.all([
+        listRequestTypes(), listCategories(), listTags(), listPriorityLevels(),
+      ]);
       setTypes(t);
       setCategories(c);
       setTags(tg);
+      setLevels(lv);
     } catch (err) {
       setError(errorMessage(err, 'Failed to load.'));
     } finally {
@@ -653,7 +659,7 @@ function CatalogSection() {
             </div>
             <div className="grid-cols-2">
               <div className="form-group">
-                <label className="form-label">Attachments after close</label>
+                <label className="form-label">Attachments once it is decided</label>
                 <select className="form-input" value={catRetain ? 'keep' : 'purge'} onChange={(e) => setCatRetain(e.target.value === 'keep')}>
                   <option value="purge">Purge after a grace period</option>
                   <option value="keep">Keep permanently (certificates)</option>
@@ -714,6 +720,7 @@ function CatalogSection() {
                           ) : (
                             <>
                               <button className="btn btn-secondary btn-sm" onClick={() => setRoutingFor(c)}>Routing</button>
+                              <button className="btn btn-secondary btn-sm" onClick={() => setStagesFor(c)}>Stages</button>
                               <button className="btn-icon" title="Rename"
                                 onClick={() => { setEditCat(c.id); setEditCatName(c.name); }}>
                                 <Pencil size={15} />
@@ -740,6 +747,15 @@ function CatalogSection() {
 
       {routingFor && (
         <RoutingEditor category={routingFor} tags={tags} onClose={() => setRoutingFor(null)} />
+      )}
+
+      {stagesFor && (
+        <StagesEditor
+          category={stagesFor}
+          levels={levels}
+          tags={tags}
+          onClose={() => setStagesFor(null)}
+        />
       )}
     </>
   );

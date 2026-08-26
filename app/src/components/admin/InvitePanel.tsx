@@ -17,6 +17,7 @@ import {
 import type {
   PriorityLevel, Tag, OrgUnit, Batch, Section, MemberType, RoleKind, PendingAssignment,
 } from '../../types';
+import ConfirmDestructive from '../ui/ConfirmDestructive';
 
 // Delivery is asynchronous — the mailer worker (services/mailer) polls every
 // ~20s. So "not sent yet" is the normal state for the first minute and is
@@ -63,6 +64,13 @@ export default function InvitePanel() {
   const [fetId, setFetId] = useState('');
   const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  const [mode, setMode] = useState<'single' | 'bulk'>('single');
+  const [bulkText, setBulkText] = useState('');
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkResults, setBulkResults] = useState<
+    { email: string; regNo: string; status: 'pending' | 'ok' | 'error'; message?: string }[]
+  >([]);
 
   useEffect(() => {
     load();
@@ -183,13 +191,67 @@ export default function InvitePanel() {
     }
   };
 
-  const handleRevoke = async (id: string) => {
-    try {
-      await revokeInvite(id);
-      setInvites(invites.filter((i) => i.id !== id));
-    } catch (err) {
-      setError(errorMessage(err, 'Failed to revoke.'));
+  // One line per student: "email, reg_no" (comma or whitespace separated).
+  // No name column — create_invite() has nowhere to put one; the invitee
+  // supplies their own name at accept time, same as the single-invite path.
+  const parseBulkLines = () => bulkText
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(/[,\s]+/).filter(Boolean);
+      return { email: parts[0] ?? '', regNo: parts[1] ?? '' };
+    });
+
+  const handleBulkSubmit = async () => {
+    setError('');
+    setSuccess('');
+    const rows = parseBulkLines();
+    if (rows.length === 0) {
+      setError('Paste at least one line: email, registration number.');
+      return;
     }
+    if (!levelId) {
+      setError('Choose a level.');
+      return;
+    }
+    const bad = rows.find((r) => !r.email || !r.regNo);
+    if (bad) {
+      setError(`Every line needs both an email and a registration number — check "${bad.email || '(blank)'}".`);
+      return;
+    }
+    setBulkSubmitting(true);
+    setBulkResults(rows.map((r) => ({ email: r.email, regNo: r.regNo, status: 'pending' })));
+    for (let i = 0; i < rows.length; i++) {
+      try {
+        await createInvite({
+          email: rows[i].email,
+          levelId,
+          tagCodes: selectedTagCodes,
+          memberType: 'student',
+          roleKind: 'academic',
+          orgUnitId: orgUnitId || null,
+          batchId: batchId || null,
+          sectionId: sectionId || null,
+          regNo: rows[i].regNo,
+          fetId: null,
+        });
+        setBulkResults((prev) => prev.map((r, n) => (n === i ? { ...r, status: 'ok' } : r)));
+      } catch (err) {
+        setBulkResults((prev) => prev.map((r, n) => (
+          n === i ? { ...r, status: 'error', message: errorMessage(err, 'Failed.') } : r
+        )));
+      }
+    }
+    setBulkSubmitting(false);
+    setInvites(await listMyInvites());
+  };
+
+  const [pendingRevoke, setPendingRevoke] = useState<PendingAssignment | null>(null);
+
+  const handleRevoke = async (id: string) => {
+    await revokeInvite(id);
+    setInvites(invites.filter((i) => i.id !== id));
   };
 
   const handleResend = async (id: string) => {
@@ -220,8 +282,49 @@ export default function InvitePanel() {
           No account is created yet — they get the level and tags below automatically the moment they sign up with this email.
         </p>
 
+        <div className="chip-list" style={{ marginBottom: '1.25rem' }}>
+          <button
+            type="button"
+            className="chip"
+            style={{
+              cursor: 'pointer',
+              background: mode === 'single' ? 'var(--primary-light)' : undefined,
+              borderColor: mode === 'single' ? 'var(--primary)' : undefined,
+              color: mode === 'single' ? 'var(--primary)' : undefined,
+            }}
+            onClick={() => setMode('single')}
+          >
+            One invite
+          </button>
+          <button
+            type="button"
+            className="chip"
+            style={{
+              cursor: 'pointer',
+              background: mode === 'bulk' ? 'var(--primary-light)' : undefined,
+              borderColor: mode === 'bulk' ? 'var(--primary)' : undefined,
+              color: mode === 'bulk' ? 'var(--primary)' : undefined,
+            }}
+            onClick={() => setMode('bulk')}
+          >
+            Bulk invite (students)
+          </button>
+        </div>
+
         {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
         {success && <div className="alert alert-success" style={{ marginBottom: '1rem' }}>{success}</div>}
+        {pendingRevoke && (
+          <ConfirmDestructive
+            title="Revoke invite"
+            recordName={pendingRevoke.email}
+            description={`Revoking the invite for "${pendingRevoke.email}".`}
+            onCancel={() => setPendingRevoke(null)}
+            onConfirmed={async () => {
+              await handleRevoke(pendingRevoke.id);
+              setPendingRevoke(null);
+            }}
+          />
+        )}
         {lastInviteLink && (
           <div className="repeatable-row" style={{ marginBottom: '1rem' }}>
             <input className="form-input" readOnly value={lastInviteLink} onFocus={(e) => e.target.select()} />
@@ -238,6 +341,7 @@ export default function InvitePanel() {
           </div>
         )}
 
+        {mode === 'single' && (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="grid-cols-2">
             <div className="form-group">
@@ -347,6 +451,114 @@ export default function InvitePanel() {
             </button>
           </div>
         </form>
+        )}
+
+        {mode === 'bulk' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="grid-cols-2">
+            <div className="form-group">
+              <label className="form-label">Level</label>
+              <select className="form-input" required value={levelId} onChange={(e) => setLevelId(e.target.value)}>
+                <option value="">Select a level...</option>
+                {invitableLevels.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Org unit</label>
+              <select className="form-input" value={orgUnitId} onChange={(e) => setOrgUnitId(e.target.value)}>
+                <option value="">No org scoping</option>
+                {orgUnits.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid-cols-2">
+            <div className="form-group">
+              <label className="form-label">Batch</label>
+              <select className="form-input" value={batchId} onChange={(e) => setBatchId(e.target.value)} disabled={!orgUnitId}>
+                <option value="">No batch scoping</option>
+                {batches.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Section</label>
+              <select className="form-input" value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!batchId}>
+                <option value="">No section scoping</option>
+                {sections.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Tags (role identity)</label>
+            <div className="chip-list">
+              {tags.map((t) => (
+                <button
+                  type="button"
+                  key={t.id}
+                  className="chip"
+                  style={{
+                    cursor: 'pointer',
+                    background: selectedTagCodes.includes(t.code) ? 'var(--primary-light)' : undefined,
+                    borderColor: selectedTagCodes.includes(t.code) ? 'var(--primary)' : undefined,
+                    color: selectedTagCodes.includes(t.code) ? 'var(--primary)' : undefined,
+                  }}
+                  onClick={() => toggleTag(t.code)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Students, one per line: email, registration number</label>
+            <textarea
+              className="form-input"
+              rows={8}
+              style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+              placeholder={'ra2211003001@srmist.edu.in, RA2211003001\nra2211003002@srmist.edu.in, RA2211003002'}
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <button type="button" className="btn btn-primary" disabled={bulkSubmitting} onClick={handleBulkSubmit}>
+              {bulkSubmitting ? 'Sending...' : `Send ${parseBulkLines().length || ''} invite${parseBulkLines().length === 1 ? '' : 's'}`}
+            </button>
+          </div>
+
+          {bulkResults.length > 0 && (
+            <div className="table-container">
+              <table>
+                <thead><tr><th>Email</th><th>Reg No</th><th>Status</th></tr></thead>
+                <tbody>
+                  {bulkResults.map((r) => (
+                    <tr key={r.email}>
+                      <td className="cell-mono">{r.email}</td>
+                      <td className="cell-mono">{r.regNo}</td>
+                      <td>
+                        {r.status === 'pending' && <span className="form-hint">Sending…</span>}
+                        {r.status === 'ok' && <span style={{ color: 'var(--success, green)' }}>Sent</span>}
+                        {r.status === 'error' && <span className="alert-danger" style={{ padding: '0.15rem 0.5rem' }}>{r.message}</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        )}
       </div>
 
       <div className="card">
@@ -393,7 +605,7 @@ export default function InvitePanel() {
                           >
                             <Send size={16} />
                           </button>
-                          <button className="btn-icon danger" title="Revoke" onClick={() => handleRevoke(inv.id)}>
+                          <button className="btn-icon danger" title="Revoke" onClick={() => setPendingRevoke(inv)}>
                             <X size={16} />
                           </button>
                         </>

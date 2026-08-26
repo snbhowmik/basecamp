@@ -13,10 +13,11 @@ the VPS.
 
 From here on the project is versioned **`x.xx.xxx`** — major (a change in
 structure) . minor . update. V2 closed with the workflow layer (`0001`–`0029`).
-V3 is underway: `0030`–`0031` fixed two bugs the browser pass surfaced, and
-the task-completion UI — a real gap this document originally failed to name
-as a starting point — is built. Dark mode / a DESIGN.md rewrite is agreed in
-scope but not started — see §11.
+V3 is underway: `0030`–`0032` fixed three bugs (two the browser pass
+surfaced, one the participants panel did), and the task-completion UI and
+participants panel — real gaps this document originally failed to name as
+starting points — are both built. Dark mode / a DESIGN.md rewrite is agreed
+in scope but not started — see §11.
 
 ---
 
@@ -24,7 +25,7 @@ scope but not started — see §11.
 
 Basecamp is a self-hosted request/ticketing platform, first configured for OD
 approvals at SRM Trichy, live at `https://basecamp.hackerxploit.org`.
-`supabase/schema-v2/0001`–`0031` are applied, the frontend targets them, and
+`supabase/schema-v2/0001`–`0032` are applied, the frontend targets them, and
 the wizard, MFA, invites, invite email, org admin, people admin, documents,
 signatures, the workflow editor and task completion have all been exercised
 against the running stack — the editor and task RPCs live, with a real
@@ -43,7 +44,7 @@ Bulk invite is deployed but has not been run against a real batch.
 | Stack | `docker compose` — db, auth, rest, realtime, storage, garage, meta, studio, kong, frontend, mailer |
 | Public entry | Cloudflare Tunnel → Kong on `127.0.0.1:8000`. No inbound ports for the app. |
 | Mail | Mailcow **on the same host**, serving `hackerxploit.org` |
-| Schema applied | `supabase/schema-v2/0001`–`0031`, all rows in `basecamp_meta.schema_migrations` |
+| Schema applied | `supabase/schema-v2/0001`–`0032`, all rows in `basecamp_meta.schema_migrations` |
 | Accounts | one captain, plus the handful of people invited by hand since |
 | Frontend | The Countersigned Slip rebrand, SRM palette, live |
 
@@ -99,12 +100,13 @@ The reasoning, the rejected alternatives, and every verification run are in
 
 ---
 
-## 4. What V3 has done so far (`0030`–`0031`)
+## 4. What V3 has done so far (`0030`–`0032`)
 
 The browser pass this document called for happened, with the captain,
 against the live stack and a real category the captain built live
-("Internal OD", two stages).
-It found two real bugs, both fixed and applied:
+("Internal OD", two stages). It found two real bugs; building the
+participants panel afterward found a third, a security gap rather than a
+broken feature. All three fixed and applied:
 
 - **`0030`** — `create_first_hop_option()` inserted into
   `category_first_hop_options.resolve_tag`, a column that has never existed
@@ -153,6 +155,22 @@ over the existing `create_invite()` RPC, looped client-side, no migration.
 Deployed and typechecks. **Not run against a real batch yet** — the captain
 deferred testing it. Don't move this into "proven" until that happens.
 
+And the request-detail participants panel
+(`app/src/components/workflow/ParticipantsPanel.tsx`) — lists
+`request_participants`, adds by register number, accept/decline. Building
+it surfaced a third bug, this one a security gap rather than a broken
+feature: 0003's `participants_update` RLS policy has no `WITH CHECK`, so
+it constrains which *row* a participant may update but not which
+*columns* — `parent_consent_verified` and the `snapshot_*` fields sit on
+the same row as `acceptance_status`, and 0002's own comment says parent
+consent is the mentor's to fill in by phone, never the student's to
+self-certify. A frontend that scopes its own update to two columns doesn't
+close that; a raw PATCH to the same row could touch any of them. `0032`
+adds `respond_to_participation()`, writing exactly `acceptance_status` and
+a server-stamped `accepted_at`, and narrows the policy to the holder/admin
+arms only. Verified live: the RPC works for the participant, and the
+direct-update tamper path now affects 0 rows.
+
 ---
 
 ## 5. Proven, and not proven
@@ -177,13 +195,18 @@ a required per-participant task blocking an empty ticket; approval advancing
 rather than closing; the last approval closing with signatures and
 `can_print` true; the participant window opening; scanning being idempotent;
 both follow-up refusals; two chained follow-up stages; `record_task_result`
-clearing a task with no `passing_answers` (post-`0031`).
+clearing a task with no `passing_answers` (post-`0031`); `add_participant_by_
+reg_no` and `respond_to_participation` against a real request and real
+accounts (post-`0032`), including confirming `0032` actually closed the
+column-tamper hole it was written for — a direct `update ... set is_leader`
+as the participant now affects 0 rows.
 
 **Not proven:** the mobile facet toggle at 390px and the person card at
 phone width — window resize didn't take effect in this session's browser
 automation, and both are student-only UI the captain role can't reach
-directly. The task-completion UI and bulk invite, per §4. The
-error-detail and signature-size changes from earlier commits.
+directly. The task-completion UI, the participants panel, and bulk invite —
+all built and RPC-verified per §4, none driven in a real browser session
+yet. The error-detail and signature-size changes from earlier commits.
 
 ---
 
@@ -323,21 +346,23 @@ token, remember in the next version we have to change it."
    yet acted on: `self_register()` is still granted to `anon`, and the
    `pa_self_register` RLS policy still allows a direct anon insert into
    `pending_assignments` — closing registration means revoking both, not
-   just removing the `/register`
-   route, per §6's RLS rule).
-2. **The task-completion UI in a real browser** — needs a login as someone
-   other than the captain (the captain role doesn't route to `/requests` at
-   all; test as the HOD or the requester on `REQ-2026-E25A93`, or any account
-   holding a stage role).
-3. **The request-detail participants panel** — accept/decline (direct update,
-   already RLS-permitted, no RPC needed — see `0003`'s `participants_update`
-   policy), and the scan window that `add_participant_by_reg_no` and
-   `participants_open_until` already back.
-4. **Attachments** — `request_attachments` and its RLS policy exist since
-   `0002`/`0003`; no upload UI or storage-bucket wiring exists yet.
-5. **pdfme** (`github.com/pdfme/pdfme`) — generated client-side, signatures
+   just removing the `/register` route, per §6's RLS rule.
+2. **The task-completion UI and the participants panel in a real browser** —
+   both built (§4), both RPC-verified via rolled-back transactions, neither
+   driven as an actual React component yet. Needs a login as someone other
+   than the captain — the captain role doesn't route to `/requests` at all.
+   Test as the HOD or the requester on `REQ-2026-E25A93`, or any account
+   holding a stage role or a participant place.
+3. **Attachments** — `request_attachments` and its RLS policy exist since
+   `0002`/`0003`. A storage upload path already exists for signatures
+   (`app/src/lib/documents.ts` — `supabase.storage.from('signatures').upload()`
+   paired with an RPC to record the object key), which is the template to
+   follow; no bucket, upload UI, or wiring for attachments exists yet. Also
+   the actual dependency `StageTasks.tsx` is waiting on — `answer_type ===
+   'file'` tasks are stubbed with "coming with attachments."
+4. **pdfme** (`github.com/pdfme/pdfme`) — generated client-side, signatures
    supplied by the server, never stored, gated on `can_print`.
-6. Then the questions in §9, and the gaps in §8 that turn out to matter.
+5. Then the questions in §9, and the gaps in §8 that turn out to matter.
 
 ---
 
@@ -376,7 +401,7 @@ plus full light/dark theming. Two things to hold onto before starting:
 | `V3-WORKFLOW.md` | the stages/tasks layer: design, decisions, every verification | Current, authoritative on the workflow |
 | `PRD.md` | v1 product definition | Current |
 | `PRD-V2.md` | v2 design, decisions D-1..D-6, open questions | Current |
-| `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current on structure; doesn't yet mention `0030`–`0031` (bug fixes, not schema changes) |
+| `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current on structure; doesn't yet mention `0030`–`0032` (bug fixes and one RLS narrowing, not schema changes) |
 | `NOTE.md` | dated decision and incident log, with reasoning | Current, authoritative on "why" |
 | `TASK.md` | build tracker, known gaps | **Stale** — dated 2026-08-11, "v1.0.0", predates V2's close. Several items it flags as open (custom fields) are done; some it doesn't mention (attachments UI) are still gaps. Read `HANDOFF.md` §8 instead. |
 | `SECURITY.md` | threat model, risk register R-01..R-32 | Current |

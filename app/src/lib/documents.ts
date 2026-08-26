@@ -107,6 +107,16 @@ async function inlineSignatureImages(html: string, keys: string[]): Promise<stri
   return out;
 }
 
+// Completeness gate: the row can render (renderDocument) any time, but
+// printing should wait until every approval-stage signature and required
+// task is actually in — otherwise the printed reference code points at a
+// request still moving through the workflow.
+export async function canPrint(requestId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('can_print', { p_request_id: requestId });
+  if (error) throw error;
+  return Boolean(data);
+}
+
 export async function renderDocument(requestId: string, docType: string): Promise<RenderedDocument> {
   const { data, error } = await supabase.rpc('render_document', {
     p_request_id: requestId,

@@ -402,16 +402,30 @@ token, remember in the next version we have to change it."
    still has nothing to point at (`request_attachments` has no `task_id`).
    Whether to add one, or answer a file task with an object key directly,
    is a design question for the captain, not something to resolve silently.
-4. **pdfme** (`github.com/pdfme/pdfme`) — generated client-side, signatures
-   supplied by the server, never stored, gated on `can_print`. Read
-   `V3-WORKFLOW.md` §2.5 first — it's the design section for this and
-   already answers most of the "how." Two things to raise with the captain
-   before starting: the JS bundle is already 617KB raw / 161KB gzipped with
-   Vite's size warning firing on every build, and pdfme plus `pdf-lib` and
-   font handling is a real jump for a self-hosted app behind a Cloudflare
-   Tunnel — worth asking whether that's an acceptable cost before pulling it
-   in. Also, `can_print()` has never been called from the frontend at all,
-   so the gate itself is unexercised, not just the renderer.
+4. **pdfme — decided against, not deferred.** `V3-WORKFLOW.md` §2.5 (the
+   design section that recommended it) is stale: it predates
+   `DocumentView.tsx`, which already ships a working PDF path —
+   `window.print()` on sanitised HTML, no server renderer, by PRD-V2 §14. The
+   artefact the system protects is the `generated_documents` row (its
+   `reference_code`/`state_hash`), not the file; `/verify/<code>` recomputes
+   from that row regardless of which browser rendered the printout. Byte-
+   identical output across browsers, which is pdfme's actual selling point,
+   buys nothing on top of that. Pulling in pdfme now would mean replacing
+   working, load-bearing code with a heavier dependency to solve a problem
+   this design already argued doesn't apply. Not revisiting unless the
+   captain has a concrete reason `window.print()` is failing in practice.
+
+   What *was* a real gap: `can_print()` had a grant to `authenticated` and
+   was fully correct (verified live — it stays `false` even after forcing a
+   request to `status = 'approved'` in a rolled-back transaction, because it
+   also checks unmet required tasks in approval stages) but was never called
+   from the frontend. Fixed: `documents.ts` now exports `canPrint()`,
+   `DocumentView.tsx` calls it alongside `renderDocument()` and disables
+   Print/Save-as-PDF until it returns true, with a tooltip explaining why.
+
+   Still open per `V3-WORKFLOW.md` §2.5: `can_read_signature()` is scoped to
+   "a request the signer signed," not "this specific request" — a real
+   looseness in the print path, listed in §9, not tightened here.
 5. Then the questions in §9, and the gaps in §8 that turn out to matter.
 
 ---
@@ -448,7 +462,7 @@ plus full light/dark theming. Two things to hold onto before starting:
 | Document | What it is | Trust |
 |---|---|---|
 | `HANDOFF.md` | this file — state of the project, V3 in progress | Current |
-| `V3-WORKFLOW.md` | the stages/tasks layer: design, decisions, every verification | Current, authoritative on the workflow |
+| `V3-WORKFLOW.md` | the stages/tasks layer: design, decisions, every verification | Current, authoritative on the workflow — except §2.5's pdfme recommendation, which predates `DocumentView.tsx` and was decided against, see §10 item 4 |
 | `PRD.md` | v1 product definition | Current |
 | `PRD-V2.md` | v2 design, decisions D-1..D-6, open questions | Current |
 | `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current on structure; doesn't yet mention `0030`–`0034` (bug fixes, one RLS narrowing, one hardening pass — not schema changes) |

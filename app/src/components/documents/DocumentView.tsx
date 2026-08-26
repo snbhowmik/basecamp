@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Printer, X, ShieldCheck } from 'lucide-react';
 import { errorMessage } from '../../lib/errors';
-import { renderDocument, sanitizeDocumentHtml, type RenderedDocument } from '../../lib/documents';
+import { renderDocument, canPrint, sanitizeDocumentHtml, type RenderedDocument } from '../../lib/documents';
 
 interface DocumentViewProps {
   requestId: string;
@@ -20,11 +20,13 @@ interface DocumentViewProps {
 export default function DocumentView({ requestId, docType, onClose }: DocumentViewProps) {
   const [doc, setDoc] = useState<RenderedDocument | null>(null);
   const [error, setError] = useState('');
+  const [printable, setPrintable] = useState(false);
 
   useEffect(() => {
     renderDocument(requestId, docType)
       .then(setDoc)
       .catch((err) => setError(errorMessage(err, 'Could not generate the document.')));
+    canPrint(requestId).then(setPrintable).catch(() => setPrintable(false));
   }, [requestId, docType]);
 
   return (
@@ -62,7 +64,13 @@ export default function DocumentView({ requestId, docType, onClose }: DocumentVi
 
         <div className="modal-footer no-print">
           <button type="button" className="btn btn-secondary" onClick={onClose}>Close</button>
-          <button type="button" className="btn btn-primary" onClick={() => window.print()} disabled={!doc}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => window.print()}
+            disabled={!doc || !printable}
+            title={doc && !printable ? 'This request still has an unresolved approval or required task.' : undefined}
+          >
             <Printer size={16} /> Print / Save as PDF
           </button>
         </div>

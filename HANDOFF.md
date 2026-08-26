@@ -13,11 +13,12 @@ the VPS.
 
 From here on the project is versioned **`x.xx.xxx`** — major (a change in
 structure) . minor . update. V2 closed with the workflow layer (`0001`–`0029`).
-V3 is underway: `0030`–`0034` fixed four bugs and one hardening pass (two the browser pass
-surfaced, one the participants panel did), and the task-completion UI and
-participants panel — real gaps this document originally failed to name as
-starting points — are both built. Dark mode / a DESIGN.md rewrite is agreed
-in scope but not started — see §11.
+V3 is underway: `0030`–`0035` fixed four bugs and two hardening/narrowing
+passes (two the browser pass surfaced, one the participants panel did, one
+self-review of the print path), and the task-completion UI, participants
+panel, attachments, and a two-tier QR-verify flow are all built. `pdfme` was
+considered and decided against — see §10. Dark mode / a DESIGN.md rewrite is
+agreed in scope but not started — see §11.
 
 ---
 
@@ -25,7 +26,7 @@ in scope but not started — see §11.
 
 Basecamp is a self-hosted request/ticketing platform, first configured for OD
 approvals at SRM Trichy, live at `https://basecamp.hackerxploit.org`.
-`supabase/schema-v2/0001`–`0034` are applied, the frontend targets them, and
+`supabase/schema-v2/0001`–`0035` are applied, the frontend targets them, and
 the wizard, MFA, invites, invite email, org admin, people admin, documents,
 signatures, and the workflow editor have all been exercised against the
 running stack, the editor live with a real category the captain built.
@@ -46,7 +47,7 @@ invite against a real batch specifically (the captain deferred it).
 | Stack | `docker compose` — db, auth, rest, realtime, storage, garage, meta, studio, kong, frontend, mailer |
 | Public entry | Cloudflare Tunnel → Kong on `127.0.0.1:8000`. No inbound ports for the app. |
 | Mail | Mailcow **on the same host**, serving `hackerxploit.org` |
-| Schema applied | `supabase/schema-v2/0001`–`0034`, all rows in `basecamp_meta.schema_migrations` |
+| Schema applied | `supabase/schema-v2/0001`–`0035`, all rows in `basecamp_meta.schema_migrations` |
 | Accounts | one captain, plus the handful of people invited by hand since |
 | Frontend | The Countersigned Slip rebrand, SRM palette, live |
 
@@ -102,7 +103,7 @@ The reasoning, the rejected alternatives, and every verification run are in
 
 ---
 
-## 4. What V3 has done so far (`0030`–`0034`)
+## 4. What V3 has done so far (`0030`–`0035`)
 
 The browser pass this document called for happened, with the captain,
 against the live stack and a real category the captain built live
@@ -191,10 +192,47 @@ client-claimed `mime_type`/`size_bytes` with the real ones once the object
 exists. The upload UI itself, and the actual multipart HTTP path through
 storage-api, haven't been driven by a real browser session.
 
-`StageTasks.tsx`'s `answer_type === 'file'` stub is unchanged — wiring a
-task's answer to a specific attachment needs a `task_id` column on
-`request_attachments` that doesn't exist, a separate design question from
-"general per-request attachments."
+`StageTasks.tsx`'s `answer_type === 'file'` stub is wired up. Decided against
+a `task_id` column on `request_attachments`: `record_task_result()`'s answer
+is already an unscoped `jsonb`, same as every other answer type, so a file
+task answers with `{"attachment_id": ..., "file_name": ...}` pointing at a
+row in the existing general-purpose `request_attachments` table —
+`uploadAttachment()` (now returning the new row's id instead of discarding
+it) followed by `recordTaskResult()`, no migration. The file still shows up
+in the request's general attachments list too; that's one upload, not two
+concepts.
+
+**`0035`** — two follow-ups the captain raised together, both touching the
+document-view code path:
+
+- `can_read_signature()` (`0017`) checked "does this key's owner have a
+  signature on *any* request the caller can see" — flagged loose in
+  `V3-WORKFLOW.md` §5, not fixed because `storage.objects` RLS only ever
+  sees the object key, never a request id, so there was no request to narrow
+  *to* at that layer. Fixed properly this time: `render_document()` already
+  knows exactly which signature keys it is about to hand a specific caller
+  for a specific request, so it now stamps a 15-minute
+  `signature_access_grants` row for each one, and the storage policy checks
+  that grant instead of "any request they can see." New table, RLS-forced,
+  no policies — only the two security-definer functions touch it. Verified
+  live: the person who rendered the document can read the signature key
+  afterward; an uninvolved account, signed in, cannot.
+- `verify_document()` (`0017`) returned signer name/role/date to anyone with
+  the reference code, which was the deliberate original design ("who signed
+  it" was part of "public by design"). The captain wants two tiers instead:
+  scanning the QR code with no account confirms the document is genuine and
+  nothing more; signed in, any role, shows who signed it and when. Fixed by
+  gating the `signatures` key on `auth.uid()` — `null` when the caller has
+  no session, a (possibly empty) array otherwise. `VerifyPage.tsx` renders a
+  "sign in to see who signed this" line when it gets `null`; no other
+  client-side gating, the RPC already decided. Verified live: same reference
+  code, `anon` role gets `signatures: null`, `authenticated` gets an array.
+- Also added: every printed document now carries a QR code
+  (`documents.ts`'s `verifyQrDataUrl()`, the `qrcode` package) encoding
+  `/verify/<reference_code>`, next to the existing printed reference-code
+  text. Adds ~26KB raw / ~10KB gzipped to the bundle — small next to the
+  pdfme number in §10 because this is one focused, justified feature, not a
+  competing renderer for something that already works.
 
 ---
 
@@ -370,8 +408,6 @@ From the workflow layer (`V3-WORKFLOW.md` §5):
 - Should `can_print` be one question per request, as built, or one per
   document type? One was chosen because "is this finished" is the same
   question for the NOC and the OD.
-- Should `can_read_signature()` narrow from "a request they signed" to "this
-  request"?
 - Should the MFA re-prompt clock be per level — the `3600` literal in
   `mfa_satisfied()` becoming a column on `priority_levels`?
 
@@ -389,20 +425,19 @@ token, remember in the next version we have to change it."
    `pa_self_register` RLS policy still allows a direct anon insert into
    `pending_assignments` — closing registration means revoking both, not
    just removing the `/register` route, per §6's RLS rule.
-2. **Task completion, the participants panel, and attachments, in a real
-   browser** — all three built (§4), all RPC-verified via rolled-back
-   transactions, none driven as an actual React component yet. Needs a
-   login as someone other than the captain — the captain role doesn't route
-   to `/requests` at all. Test as the HOD or the requester on
-   `REQ-2026-E25A93`, or any account holding a stage role or a participant
-   place. Attachments specifically also needs the actual multipart upload
-   HTTP path through `storage-api` exercised, not just the SQL policies.
-3. **`StageTasks.tsx`'s `answer_type === 'file'` stub** — attachments now
-   exist as general per-request uploads, but a stage task's file answer
-   still has nothing to point at (`request_attachments` has no `task_id`).
-   Whether to add one, or answer a file task with an object key directly,
-   is a design question for the captain, not something to resolve silently.
-4. **pdfme — decided against, not deferred.** `V3-WORKFLOW.md` §2.5 (the
+2. **Task completion (including the file-answer path), the participants
+   panel, and attachments, in a real browser** — all built (§4), all
+   RPC-verified via rolled-back transactions, none driven as an actual React
+   component yet. Needs a login as someone other than the captain — the
+   captain role doesn't route to `/requests` at all. Test as the HOD or the
+   requester on `REQ-2026-E25A93`, or any account holding a stage role or a
+   participant place. Attachments specifically also needs the actual
+   multipart upload HTTP path through `storage-api` exercised, not just the
+   SQL policies. Also untested in a real browser: the printed QR code and
+   `can_print`/`can_read_signature` gating in `DocumentView.tsx`, and the
+   two-tier `/verify` page (signed in vs not) in `VerifyPage.tsx` — all
+   RPC-verified live, none clicked through.
+3. **pdfme — decided against, not deferred.** `V3-WORKFLOW.md` §2.5 (the
    design section that recommended it) is stale: it predates
    `DocumentView.tsx`, which already ships a working PDF path —
    `window.print()` on sanitised HTML, no server renderer, by PRD-V2 §14. The
@@ -423,10 +458,9 @@ token, remember in the next version we have to change it."
    `DocumentView.tsx` calls it alongside `renderDocument()` and disables
    Print/Save-as-PDF until it returns true, with a tooltip explaining why.
 
-   Still open per `V3-WORKFLOW.md` §2.5: `can_read_signature()` is scoped to
-   "a request the signer signed," not "this specific request" — a real
-   looseness in the print path, listed in §9, not tightened here.
-5. Then the questions in §9, and the gaps in §8 that turn out to matter.
+   The `can_read_signature()` looseness this paragraph used to flag as still
+   open is fixed — see `0035` in §4.
+4. Then the questions in §9, and the gaps in §8 that turn out to matter.
 
 ---
 
@@ -465,7 +499,7 @@ plus full light/dark theming. Two things to hold onto before starting:
 | `V3-WORKFLOW.md` | the stages/tasks layer: design, decisions, every verification | Current, authoritative on the workflow — except §2.5's pdfme recommendation, which predates `DocumentView.tsx` and was decided against, see §10 item 4 |
 | `PRD.md` | v1 product definition | Current |
 | `PRD-V2.md` | v2 design, decisions D-1..D-6, open questions | Current |
-| `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current on structure; doesn't yet mention `0030`–`0034` (bug fixes, one RLS narrowing, one hardening pass — not schema changes) |
+| `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current on structure; doesn't yet mention `0030`–`0035` (bug fixes, RLS narrowing, hardening passes, one new table for signature grants — not a structural schema change) |
 | `NOTE.md` | dated decision and incident log, with reasoning | Current, authoritative on "why" |
 | `TASK.md` | build tracker, known gaps | **Stale** — dated 2026-08-11, "v1.0.0", predates V2's close. Several items it flags as open (custom fields) are done; some it doesn't mention (attachments UI) are still gaps. Read `HANDOFF.md` §8 instead. |
 | `SECURITY.md` | threat model, risk register R-01..R-32 | Current |

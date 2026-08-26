@@ -11,10 +11,14 @@ interface VerifyPageProps {
 // The public verification page — PRD.md §14.4.
 //
 // Deliberately reachable without an account: someone holding a printed
-// document must be able to check it. It shows only whether the record exists,
-// whether the request still matches what was signed, and who signed it. Never
-// the document's contents — otherwise a reference code would be a way to read
-// somebody else's ticket.
+// document, or scanning the QR code printed on it, must be able to check
+// whether it is genuine with no login. Never the document's contents —
+// otherwise a reference code would be a way to read somebody else's ticket.
+//
+// Signer detail is tiered server-side (verify_document(), 0035): signed in
+// or not, this page renders the same way — it just gets back `signatures:
+// null` instead of an array when the viewer has no session, and skips the
+// list. No client-side gating here; the RPC already decided.
 export default function VerifyPage({ code }: VerifyPageProps) {
   const [input, setInput] = useState(code ?? '');
   const [result, setResult] = useState<VerificationResult | null>(null);
@@ -96,6 +100,9 @@ export default function VerifyPage({ code }: VerifyPageProps) {
                   sent back for changes and resubmitted will also read this way. Ask the holder for a freshly
                   generated copy, which will carry a new reference code.
                 </p>
+              )}
+              {result.signatures === null && (
+                <p className="text-muted">Sign in to see who signed this and when.</p>
               )}
               {(result.signatures ?? []).length > 0 && (
                 <ul className="verify-signers">

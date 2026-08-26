@@ -712,9 +712,10 @@ button.chip:hover { border-color: var(--ink-body); }
 .doc-sheet td, .doc-sheet th { border: 1px solid #d1d5db; padding: 0.4rem 0.6rem; }
 .doc-footer {
   margin-top: 2.5rem; padding-top: 0.75rem; border-top: 1px solid #d1d5db;
-  display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap;
   font-size: 0.75rem; color: #4b5563;
 }
+.doc-verify-qr { width: 4.5rem; height: 4.5rem; flex-shrink: 0; }
 
 /* --- signature stamps --- */
 .sig-stamp { display: inline-flex; flex-direction: column; gap: 0.1rem; min-width: 12rem; }

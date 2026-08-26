@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Printer, X, ShieldCheck } from 'lucide-react';
 import { errorMessage } from '../../lib/errors';
-import { renderDocument, canPrint, sanitizeDocumentHtml, type RenderedDocument } from '../../lib/documents';
+import { renderDocument, canPrint, verifyQrDataUrl, sanitizeDocumentHtml, type RenderedDocument } from '../../lib/documents';
 
 interface DocumentViewProps {
   requestId: string;
@@ -21,10 +21,14 @@ export default function DocumentView({ requestId, docType, onClose }: DocumentVi
   const [doc, setDoc] = useState<RenderedDocument | null>(null);
   const [error, setError] = useState('');
   const [printable, setPrintable] = useState(false);
+  const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
     renderDocument(requestId, docType)
-      .then(setDoc)
+      .then((d) => {
+        setDoc(d);
+        verifyQrDataUrl(d.reference_code).then(setQrUrl).catch(() => setQrUrl(''));
+      })
       .catch((err) => setError(errorMessage(err, 'Could not generate the document.')));
     canPrint(requestId).then(setPrintable).catch(() => setPrintable(false));
   }, [requestId, docType]);
@@ -49,8 +53,12 @@ export default function DocumentView({ requestId, docType, onClose }: DocumentVi
                 {/* Printed onto the document itself, because a reference code
                     that only exists on screen cannot be checked from paper. */}
                 <div className="doc-footer">
-                  <span>Reference: <strong>{doc.reference_code}</strong></span>
-                  <span>Verify at {window.location.origin}/verify</span>
+                  <div>
+                    <span>Reference: <strong>{doc.reference_code}</strong></span>
+                    <br />
+                    <span>Verify at {window.location.origin}/verify</span>
+                  </div>
+                  {qrUrl && <img src={qrUrl} alt="Scan to verify" className="doc-verify-qr" />}
                 </div>
               </div>
 

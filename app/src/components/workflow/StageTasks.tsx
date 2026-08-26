@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Paperclip } from 'lucide-react';
 import { errorMessage } from '../../lib/errors';
 import {
   getRequestStageStatus, recordTaskResult,
   type StageStatus, type StageStatusTask, type TaskResult, type StageParticipant,
 } from '../../lib/workflow';
+import { uploadAttachment } from '../../lib/attachments';
 import type { RequestRow } from '../../lib/requests';
 import type { UserContext } from '../../lib/context';
 
@@ -112,6 +114,7 @@ function TaskRow({
   ));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const submit = async () => {
     if (value === '') return;
@@ -128,13 +131,55 @@ function TaskRow({
     }
   };
 
+  const submitFile = async (file: File) => {
+    setBusy(true);
+    setError('');
+    try {
+      const attachmentId = await uploadAttachment(requestId, file);
+      await recordTaskResult(
+        requestId, task.id, { attachment_id: attachmentId, file_name: file.name }, participant?.id ?? null,
+      );
+      onSaved();
+    } catch (err) {
+      setError(errorMessage(err, 'Could not save that file.'));
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   const label = participant ? `${task.label} — ${participant.snapshot_name}` : task.label;
 
   if (task.answer_type === 'file') {
+    const fileName = result ? (result.answer as { file_name?: string } | null)?.file_name : undefined;
     return (
       <div className="card" style={{ padding: '0.75rem 1rem' }}>
-        <div style={{ fontWeight: 550, fontSize: '0.9rem' }}>{label}</div>
-        <span className="form-hint">File uploads aren't wired up yet — coming with attachments.</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: 550, fontSize: '0.9rem' }}>
+              {label}{task.is_required && <span style={{ color: 'var(--state-rejected)' }}> *</span>}
+            </div>
+            {result ? (
+              <span className="status-badge status-success">Uploaded: {fileName ?? 'file'}</span>
+            ) : (
+              <span className="form-hint">{hint}</span>
+            )}
+          </div>
+          {editable && (
+            <div>
+              <input
+                ref={fileRef}
+                type="file"
+                style={{ display: 'none' }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) submitFile(f); }}
+              />
+              <button className="btn btn-secondary btn-sm" disabled={busy} onClick={() => fileRef.current?.click()}>
+                <Paperclip size={14} /> {busy ? 'Uploading...' : result ? 'Replace file' : 'Attach file'}
+              </button>
+            </div>
+          )}
+        </div>
+        {error && <div className="alert alert-danger" style={{ marginTop: '0.5rem' }}>{error}</div>}
       </div>
     );
   }

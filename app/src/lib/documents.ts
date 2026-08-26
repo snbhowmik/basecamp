@@ -1,3 +1,4 @@
+import QRCode from 'qrcode';
 import { supabase } from './supabase';
 
 // Document templates and generated documents — PRD.md §14.3/§14.4.
@@ -42,7 +43,10 @@ export interface VerificationResult {
   doc_type?: string;
   issued_at?: string;
   intact?: boolean;
-  signatures?: { signer: string; role: string; signed_at: string }[];
+  // null when the viewer isn't signed in — 0035_signature_grants_and_verify_tiers.sql
+  // tiers this: anyone can confirm a document is genuine, only a signed-in
+  // viewer sees who actually signed it and when.
+  signatures?: { signer: string; role: string; signed_at: string }[] | null;
 }
 
 export async function listBindingKeys(categoryId: string): Promise<BindingKey[]> {
@@ -126,6 +130,16 @@ export async function renderDocument(requestId: string, docType: string): Promis
 
   const doc = data as RenderedDocument;
   return { ...doc, html: await inlineSignatureImages(doc.html, doc.signature_keys ?? []) };
+}
+
+// Printed on the document so a camera scan lands straight on /verify/<code>.
+// Anyone can scan it — verify_document() itself decides how much the
+// scanner gets to see (0035_signature_grants_and_verify_tiers.sql).
+export function verifyQrDataUrl(referenceCode: string): Promise<string> {
+  return QRCode.toDataURL(`${window.location.origin}/verify/${referenceCode}`, {
+    margin: 1,
+    width: 120,
+  });
 }
 
 // Unauthenticated by design: someone holding a printed document must be able

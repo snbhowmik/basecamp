@@ -26,14 +26,16 @@ export async function listAttachments(requestId: string): Promise<Attachment[]> 
   return data ?? [];
 }
 
-export async function uploadAttachment(requestId: string, file: File): Promise<void> {
+// Returns the new row's id — a task answer of type "file" points at it
+// rather than duplicating the upload path (StageTasks.tsx).
+export async function uploadAttachment(requestId: string, file: File): Promise<string> {
   const key = `${requestId}/${crypto.randomUUID()}-${file.name}`;
   const { error: upErr } = await supabase.storage
     .from('attachments')
     .upload(key, file, { contentType: file.type || 'application/octet-stream', upsert: false });
   if (upErr) throw upErr;
 
-  const { error } = await supabase.rpc('record_attachment', {
+  const { data, error } = await supabase.rpc('record_attachment', {
     p_request_id: requestId,
     p_object_key: key,
     p_file_name: file.name,
@@ -41,6 +43,7 @@ export async function uploadAttachment(requestId: string, file: File): Promise<v
     p_size_bytes: file.size,
   });
   if (error) throw error;
+  return data as string;
 }
 
 export async function getAttachmentUrl(objectKey: string): Promise<string | null> {

@@ -179,6 +179,8 @@ export interface RequestCategory {
   retain_attachments_after_close: boolean;
   is_active: boolean;
   sort_order: number;
+  participant_phase: 'before_submit' | 'after_approval';
+  participant_window_days: number;
 }
 
 // ------------------------------------------------------------------

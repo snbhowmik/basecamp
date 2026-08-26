@@ -19,6 +19,7 @@ export interface RequestRow {
   current_holder: string | null;
   current_level_id: string | null;
   current_stage_id: string | null;
+  participants_open_until: string | null;
   org_unit_id: string | null;
   submitted_at: string | null;
   closed_at: string | null;

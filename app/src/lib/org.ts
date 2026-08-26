@@ -138,6 +138,12 @@ export async function listCategories(): Promise<RequestCategory[]> {
   return data ?? [];
 }
 
+export async function getCategory(id: string): Promise<RequestCategory | null> {
+  const { data, error } = await supabase.from('request_categories').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 // decision_mode moved from request_categories onto the type in v2 — every
 // category under a type shares its mode.
 export async function createRequestType(

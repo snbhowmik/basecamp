@@ -31,6 +31,7 @@ import { listTemplates } from '../../lib/documents';
 import DocumentView from '../documents/DocumentView';
 import StageTasks from '../workflow/StageTasks';
 import ParticipantsPanel from '../workflow/ParticipantsPanel';
+import Attachments from '../documents/Attachments';
 import { getOutstandingTaskCount } from '../../lib/workflow';
 
 type Filter = 'all' | 'mine' | 'desk';
@@ -592,6 +593,8 @@ function RequestDetailModal({
       />
 
       <ParticipantsPanel ctx={ctx} request={request} />
+
+      <Attachments requestId={request.id} />
 
       {showForward && isHolder && isOpen && (
         <div className="card" style={{ padding: '1rem' }}>

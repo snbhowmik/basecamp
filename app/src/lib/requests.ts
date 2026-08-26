@@ -18,6 +18,7 @@ export interface RequestRow {
   requested_as: string | null;
   current_holder: string | null;
   current_level_id: string | null;
+  current_stage_id: string | null;
   org_unit_id: string | null;
   submitted_at: string | null;
   closed_at: string | null;

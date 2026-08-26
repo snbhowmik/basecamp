@@ -29,6 +29,8 @@ import StatusBadge from '../ui/StatusBadge';
 import Modal from '../ui/Modal';
 import { listTemplates } from '../../lib/documents';
 import DocumentView from '../documents/DocumentView';
+import StageTasks from '../workflow/StageTasks';
+import { getOutstandingTaskCount } from '../../lib/workflow';
 
 type Filter = 'all' | 'mine' | 'desk';
 
@@ -431,6 +433,7 @@ function RequestDetailModal({
   const [showForward, setShowForward] = useState(false);
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [openDoc, setOpenDoc] = useState<string | null>(null);
+  const [outstandingTasks, setOutstandingTasks] = useState(0);
 
   const isHolder = request.current_holder === ctx.profile.id;
   const isOpen = !['approved', 'rejected', 'reviewed', 'cancelled', 'closed'].includes(request.status);
@@ -444,7 +447,8 @@ function RequestDetailModal({
     listTemplates(request.category_id)
       .then((t) => setDocTypes(Array.from(new Set(t.map((x) => x.doc_type)))))
       .catch(() => setDocTypes([]));
-  }, [request.id, request.category_id]);
+    getOutstandingTaskCount(request.id).then(setOutstandingTasks).catch(() => setOutstandingTasks(0));
+  }, [request.id, request.category_id, request.current_stage_id]);
 
   useEffect(() => {
     if (!forwardQuery.trim()) {
@@ -508,7 +512,12 @@ function RequestDetailModal({
                 <button className="btn btn-danger" disabled={busy} onClick={() => act(() => decideRequest(request.id, 'rejected', note))}>
                   Reject
                 </button>
-                <button className="btn btn-success" disabled={busy} onClick={() => act(() => decideRequest(request.id, 'approved', note))}>
+                <button
+                  className="btn btn-success"
+                  disabled={busy || outstandingTasks > 0}
+                  title={outstandingTasks > 0 ? `${outstandingTasks} required task${outstandingTasks === 1 ? '' : 's'} outstanding` : undefined}
+                  onClick={() => act(() => decideRequest(request.id, 'approved', note))}
+                >
                   Approve
                 </button>
               </>
@@ -574,6 +583,12 @@ function RequestDetailModal({
           <p style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{request.body}</p>
         </div>
       )}
+
+      <StageTasks
+        ctx={ctx}
+        request={request}
+        onTaskSaved={() => getOutstandingTaskCount(request.id).then(setOutstandingTasks).catch(() => {})}
+      />
 
       {showForward && isHolder && isOpen && (
         <div className="card" style={{ padding: '1rem' }}>

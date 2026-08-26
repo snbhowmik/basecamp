@@ -13,7 +13,7 @@ the VPS.
 
 From here on the project is versioned **`x.xx.xxx`** — major (a change in
 structure) . minor . update. V2 closed with the workflow layer (`0001`–`0029`).
-V3 is underway: `0030`–`0032` fixed three bugs (two the browser pass
+V3 is underway: `0030`–`0034` fixed four bugs and one hardening pass (two the browser pass
 surfaced, one the participants panel did), and the task-completion UI and
 participants panel — real gaps this document originally failed to name as
 starting points — are both built. Dark mode / a DESIGN.md rewrite is agreed
@@ -25,14 +25,16 @@ in scope but not started — see §11.
 
 Basecamp is a self-hosted request/ticketing platform, first configured for OD
 approvals at SRM Trichy, live at `https://basecamp.hackerxploit.org`.
-`supabase/schema-v2/0001`–`0032` are applied, the frontend targets them, and
+`supabase/schema-v2/0001`–`0034` are applied, the frontend targets them, and
 the wizard, MFA, invites, invite email, org admin, people admin, documents,
-signatures, the workflow editor and task completion have all been exercised
-against the running stack — the editor and task RPCs live, with a real
-category the captain built. What has **not** been browser-driven: the
-mobile facet toggle and person card at phone width, and the task-completion
-UI's own React component (its RPC contract is separately verified — see §4).
-Bulk invite is deployed but has not been run against a real batch.
+signatures, and the workflow editor have all been exercised against the
+running stack, the editor live with a real category the captain built.
+Four newer pieces — task completion, the participants panel, attachments,
+and bulk invite — are built, deployed, and RPC-verified via rolled-back
+transactions against real accounts and a real request, but **none has been
+driven as an actual React component in a browser session**. What also
+hasn't: the mobile facet toggle and person card at phone width, and bulk
+invite against a real batch specifically (the captain deferred it).
 
 ---
 
@@ -44,7 +46,7 @@ Bulk invite is deployed but has not been run against a real batch.
 | Stack | `docker compose` — db, auth, rest, realtime, storage, garage, meta, studio, kong, frontend, mailer |
 | Public entry | Cloudflare Tunnel → Kong on `127.0.0.1:8000`. No inbound ports for the app. |
 | Mail | Mailcow **on the same host**, serving `hackerxploit.org` |
-| Schema applied | `supabase/schema-v2/0001`–`0032`, all rows in `basecamp_meta.schema_migrations` |
+| Schema applied | `supabase/schema-v2/0001`–`0034`, all rows in `basecamp_meta.schema_migrations` |
 | Accounts | one captain, plus the handful of people invited by hand since |
 | Frontend | The Countersigned Slip rebrand, SRM palette, live |
 
@@ -100,7 +102,7 @@ The reasoning, the rejected alternatives, and every verification run are in
 
 ---
 
-## 4. What V3 has done so far (`0030`–`0032`)
+## 4. What V3 has done so far (`0030`–`0034`)
 
 The browser pass this document called for happened, with the captain,
 against the live stack and a real category the captain built live
@@ -171,6 +173,29 @@ a server-stamped `accepted_at`, and narrows the policy to the holder/admin
 arms only. Verified live: the RPC works for the participant, and the
 direct-update tamper path now affects 0 rows.
 
+And attachments (`app/src/lib/attachments.ts`,
+`app/src/components/documents/Attachments.tsx`) — `request_attachments`
+(`0002`) and its table RLS (`0003`) had no bucket, storage policy, or
+upload path until `0033`, which follows `0018`'s signature-storage pattern:
+a private Garage bucket, `storage.objects` policies keyed on
+`can_see_request()` against the object path's request-id segment (anyone
+who can see the request can see its attachments, not just the uploader —
+unlike a signature), and `record_attachment()` to write the row. `0034`
+followed immediately: a defensive regex guard on the storage-policy cast
+(tested safe without it, but see §7), and — the real fix —
+`record_attachment()` now reads the actual `mime_type`/`size_bytes` off
+`storage.objects.metadata` after upload instead of trusting the caller's
+claim, and refuses if the object never finished uploading. Verified live in
+both directions: refuses on a phantom object, and overrides a
+client-claimed `mime_type`/`size_bytes` with the real ones once the object
+exists. The upload UI itself, and the actual multipart HTTP path through
+storage-api, haven't been driven by a real browser session.
+
+`StageTasks.tsx`'s `answer_type === 'file'` stub is unchanged — wiring a
+task's answer to a specific attachment needs a `task_id` column on
+`request_attachments` that doesn't exist, a separate design question from
+"general per-request attachments."
+
 ---
 
 ## 5. Proven, and not proven
@@ -199,12 +224,15 @@ clearing a task with no `passing_answers` (post-`0031`); `add_participant_by_
 reg_no` and `respond_to_participation` against a real request and real
 accounts (post-`0032`), including confirming `0032` actually closed the
 column-tamper hole it was written for — a direct `update ... set is_leader`
-as the participant now affects 0 rows.
+as the participant now affects 0 rows; `record_attachment` refusing a
+phantom object and overriding a client-claimed `mime_type`/`size_bytes`
+with the real ones read off `storage.objects.metadata` (post-`0034`).
 
 **Not proven:** the mobile facet toggle at 390px and the person card at
 phone width — window resize didn't take effect in this session's browser
 automation, and both are student-only UI the captain role can't reach
-directly. The task-completion UI, the participants panel, and bulk invite —
+directly. The task-completion UI, the participants panel, attachments, and
+bulk invite —
 all built and RPC-verified per §4, none driven in a real browser session
 yet. The error-detail and signature-size changes from earlier commits.
 
@@ -288,6 +316,20 @@ verified.
   it. `0031` hit this in `save_stage_tasks()` — wrap any such extraction in
   `nullif(t -> 'key', 'null'::jsonb)` when a JSON key is expected to mean "no
   value", not "the JSON null value".
+- **`npx tsc --noEmit` is not the authoritative typecheck in this repo —
+  `npm run build` (`tsc -b`) is.** They disagree: `Attachments.tsx`'s
+  `useEffect(() => promise, [...])` passed `--noEmit` clean and failed the
+  real build (`tsc -b`'s project-reference mode catches an `EffectCallback`
+  returning `Promise<void>` that plain `--noEmit` didn't). Trust the build.
+- **RLS policy quals combine with `AND`/`OR`, which do short-circuit at
+  execution time in Postgres** — unlike the SQL-function-inlining trap above,
+  which is about the *planner* substituting a function body and evaluating a
+  `case` branch's sublink regardless of reachability. A guard like
+  `bucket_id = 'attachments' and (...)::uuid` is safe in practice (verified:
+  inserting a non-uuid-named object into another bucket and querying it under
+  RLS raised no cast error), but the two mechanisms look similar enough to
+  worry about, so `0034` added a regex guard anyway — cheap, and it removes
+  the question rather than resting on observed-not-guaranteed behaviour.
 
 ---
 
@@ -347,21 +389,29 @@ token, remember in the next version we have to change it."
    `pa_self_register` RLS policy still allows a direct anon insert into
    `pending_assignments` — closing registration means revoking both, not
    just removing the `/register` route, per §6's RLS rule.
-2. **The task-completion UI and the participants panel in a real browser** —
-   both built (§4), both RPC-verified via rolled-back transactions, neither
-   driven as an actual React component yet. Needs a login as someone other
-   than the captain — the captain role doesn't route to `/requests` at all.
-   Test as the HOD or the requester on `REQ-2026-E25A93`, or any account
-   holding a stage role or a participant place.
-3. **Attachments** — `request_attachments` and its RLS policy exist since
-   `0002`/`0003`. A storage upload path already exists for signatures
-   (`app/src/lib/documents.ts` — `supabase.storage.from('signatures').upload()`
-   paired with an RPC to record the object key), which is the template to
-   follow; no bucket, upload UI, or wiring for attachments exists yet. Also
-   the actual dependency `StageTasks.tsx` is waiting on — `answer_type ===
-   'file'` tasks are stubbed with "coming with attachments."
+2. **Task completion, the participants panel, and attachments, in a real
+   browser** — all three built (§4), all RPC-verified via rolled-back
+   transactions, none driven as an actual React component yet. Needs a
+   login as someone other than the captain — the captain role doesn't route
+   to `/requests` at all. Test as the HOD or the requester on
+   `REQ-2026-E25A93`, or any account holding a stage role or a participant
+   place. Attachments specifically also needs the actual multipart upload
+   HTTP path through `storage-api` exercised, not just the SQL policies.
+3. **`StageTasks.tsx`'s `answer_type === 'file'` stub** — attachments now
+   exist as general per-request uploads, but a stage task's file answer
+   still has nothing to point at (`request_attachments` has no `task_id`).
+   Whether to add one, or answer a file task with an object key directly,
+   is a design question for the captain, not something to resolve silently.
 4. **pdfme** (`github.com/pdfme/pdfme`) — generated client-side, signatures
-   supplied by the server, never stored, gated on `can_print`.
+   supplied by the server, never stored, gated on `can_print`. Read
+   `V3-WORKFLOW.md` §2.5 first — it's the design section for this and
+   already answers most of the "how." Two things to raise with the captain
+   before starting: the JS bundle is already 617KB raw / 161KB gzipped with
+   Vite's size warning firing on every build, and pdfme plus `pdf-lib` and
+   font handling is a real jump for a self-hosted app behind a Cloudflare
+   Tunnel — worth asking whether that's an acceptable cost before pulling it
+   in. Also, `can_print()` has never been called from the frontend at all,
+   so the gate itself is unexercised, not just the renderer.
 5. Then the questions in §9, and the gaps in §8 that turn out to matter.
 
 ---
@@ -401,7 +451,7 @@ plus full light/dark theming. Two things to hold onto before starting:
 | `V3-WORKFLOW.md` | the stages/tasks layer: design, decisions, every verification | Current, authoritative on the workflow |
 | `PRD.md` | v1 product definition | Current |
 | `PRD-V2.md` | v2 design, decisions D-1..D-6, open questions | Current |
-| `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current on structure; doesn't yet mention `0030`–`0032` (bug fixes and one RLS narrowing, not schema changes) |
+| `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current on structure; doesn't yet mention `0030`–`0034` (bug fixes, one RLS narrowing, one hardening pass — not schema changes) |
 | `NOTE.md` | dated decision and incident log, with reasoning | Current, authoritative on "why" |
 | `TASK.md` | build tracker, known gaps | **Stale** — dated 2026-08-11, "v1.0.0", predates V2's close. Several items it flags as open (custom fields) are done; some it doesn't mention (attachments UI) are still gaps. Read `HANDOFF.md` §8 instead. |
 | `SECURITY.md` | threat model, risk register R-01..R-32 | Current |

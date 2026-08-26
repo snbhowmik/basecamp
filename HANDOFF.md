@@ -1,8 +1,8 @@
-# HANDOFF — V2, closed
+# HANDOFF — V3 in progress
 
-**Written:** 2026-08-25. Replaces the 2026-08-19 version, which described v2
-as written-and-unapplied and the frontend as targeting v1. Both were true
-then and neither is true now.
+**Written:** 2026-08-25, revised 2026-08-26. Replaces the 2026-08-19 version,
+which described v2 as written-and-unapplied and the frontend as targeting v1.
+Both were true then and neither is true now.
 **For:** whoever picks this up next, including a fresh Claude Code session on
 the VPS.
 
@@ -12,22 +12,26 @@ the VPS.
 > disagree, the files are right.
 
 From here on the project is versioned **`x.xx.xxx`** — major (a change in
-structure) . minor . update. What follows closes V2. V3 begins with the
-participants panel and pdfme.
+structure) . minor . update. V2 closed with the workflow layer (`0001`–`0029`).
+V3 is underway: `0030`–`0031` fixed two bugs the browser pass surfaced, and
+the task-completion UI — a real gap this document originally failed to name
+as a starting point — is built. Dark mode / a DESIGN.md rewrite is agreed in
+scope but not started — see §11.
 
 ---
 
 ## 1. The one-paragraph version
 
 Basecamp is a self-hosted request/ticketing platform, first configured for OD
-approvals at SRM Trichy, live at `https://basecamp.hackerxploit.org`. **V2 is
-deployed**: `supabase/schema-v2/0001`–`0029` are applied, the frontend targets
-them, and the wizard, MFA, invites, invite email, org admin, people admin,
-documents and signatures have all been exercised against the running stack.
-V2 ends with the workflow layer — a captain can now write the stages a request
-walks, the tasks that have to be filled in at each, who may file it, and what
-is collected after the event — and with the screen that authors it. What V2
-does **not** have is a browser pass over the last seven commits of UI.
+approvals at SRM Trichy, live at `https://basecamp.hackerxploit.org`.
+`supabase/schema-v2/0001`–`0031` are applied, the frontend targets them, and
+the wizard, MFA, invites, invite email, org admin, people admin, documents,
+signatures, the workflow editor and task completion have all been exercised
+against the running stack — the editor and task RPCs live, with a real
+category the captain built. What has **not** been browser-driven: the
+mobile facet toggle and person card at phone width, and the task-completion
+UI's own React component (its RPC contract is separately verified — see §4).
+Bulk invite is deployed but has not been run against a real batch.
 
 ---
 
@@ -39,7 +43,7 @@ does **not** have is a browser pass over the last seven commits of UI.
 | Stack | `docker compose` — db, auth, rest, realtime, storage, garage, meta, studio, kong, frontend, mailer |
 | Public entry | Cloudflare Tunnel → Kong on `127.0.0.1:8000`. No inbound ports for the app. |
 | Mail | Mailcow **on the same host**, serving `hackerxploit.org` |
-| Schema applied | `supabase/schema-v2/0001`–`0029`, all 29 rows in `basecamp_meta.schema_migrations` |
+| Schema applied | `supabase/schema-v2/0001`–`0031`, all rows in `basecamp_meta.schema_migrations` |
 | Accounts | one captain, plus the handful of people invited by hand since |
 | Frontend | The Countersigned Slip rebrand, SRM palette, live |
 
@@ -95,35 +99,95 @@ The reasoning, the rejected alternatives, and every verification run are in
 
 ---
 
-## 4. Proven, and not proven
+## 4. What V3 has done so far (`0030`–`0031`)
 
-**Exercised against the running stack:** setup wizard, TOTP enrolment, login,
-invite creation, invite email to Zoho and Gmail, `/invite/<token>` accept,
-org-unit and batch admin, people admin, document templates, signature capture
-and public verification.
+The browser pass this document called for happened, with the captain,
+against the live stack and a real category the captain built live
+("Internal OD", two stages).
+It found two real bugs, both fixed and applied:
 
-**Exercised against the live database inside rolled-back transactions**
-(`begin; … rollback;`, which is how every stage change was tested): stage
-authoring round-trips through `category_workflow`; a stage with recorded
-answers refuses removal; a submitted request lands on the first stage somebody
-holds and skips one nobody holds; all three actor rules; a required
-per-participant task blocking an empty ticket; approval advancing rather than
-closing; the last approval closing with signatures and `can_print` true; the
-participant window opening; scanning being idempotent; both follow-up
-refusals; two chained follow-up stages.
+- **`0030`** — `create_first_hop_option()` inserted into
+  `category_first_hop_options.resolve_tag`, a column that has never existed
+  on that table (it has been `tag_id` since `0002`). First-hop routing
+  configuration was broken from the moment it was written; nobody had tried
+  to configure it on a real category until the captain did. Fixed to resolve
+  the tag code to an id. The frontend read side (`org.ts`) had the matching
+  bug — reading the same nonexistent column, plus a `is_default` field the
+  schema never had at all.
+- **`0031`** — `save_stage_tasks()` wrote `passing_answers` and `options`
+  with `t -> 'key'`, which turns a JSON `null` in the payload into the jsonb
+  scalar `null`, not SQL `NULL`. `record_task_result()`'s `passing_answers is
+  null` check — meant to mean "any answer clears this task" — never fired, so
+  every task saved with no `passing_answers` configured was marked `failed`
+  regardless of the answer given. Fixed, and the three tasks already written
+  wrong were backfilled in the same migration.
 
-**Not proven, and this is the real debt:** *seven commits of UI have never
-been opened in a browser.* The rail dropdown opening upward, the dashboard
-tile counts, the mobile facet toggle at 390px, the person card at phone width,
-the error-detail and signature-size changes, and now every path through the
-stages editor — its three RPCs, two re-reads, dirty diff and kind-flip. They
-typecheck and build. "It typechecks" is not "it works", and this project has
-repeatedly found bugs that only appear when run. A browser pass needs a fresh
-session token from the captain and should be the first thing V3 does.
+Also fixed, frontend-only, no migration: the routing-option delete button and
+the invite-revoke button both swallowed `admin_delete()`/`revoke_invite()`'s
+TOTP re-verification failure instead of showing the confirm dialog every
+other delete in the app uses — clicking delete just silently did nothing.
+Both now go through `ConfirmDestructive`.
+
+**Two things learned about the live data, not bugs:** nobody currently holds
+the `mentor` tag, so `advance_stage`'s no-holder skip is doing real work on
+the one live request (`REQ-2026-E25A93` landed on `HOD Approval` without ever
+sitting on stage 1) — worth knowing before assuming a stage 1 gate is being
+enforced. And `category_initiators` restricted to the `student` tag will
+block any account that hasn't been granted it explicitly — `student` is not
+auto-granted at registration the way `hod`/`mentor` are. The captain's call:
+leave it manual, granted deliberately (through invite, including the new bulk
+invite below) rather than automatic.
+
+**Built, not yet browser-verified:** the task-completion UI
+(`app/src/components/workflow/StageTasks.tsx`) — renders the current stage's
+tasks on request detail, gated by the same actor rules the RPC enforces,
+disables Approve while required tasks are outstanding. The RPC contract
+(`record_task_result`, `stage_tasks_outstanding`) is verified correct via a
+rolled-back transaction against the live "HOD Approval" task, both before
+`0031` (wrong) and after (right). The component itself has not been driven in
+a real browser session — that needs the HOD's own login, which wasn't
+available this session.
+
+Also built, same caveat: bulk invite (`InvitePanel.tsx`) — a paste-list UI
+over the existing `create_invite()` RPC, looped client-side, no migration.
+Deployed and typechecks. **Not run against a real batch yet** — the captain
+deferred testing it. Don't move this into "proven" until that happens.
 
 ---
 
-## 5. Conventions that are not negotiable
+## 5. Proven, and not proven
+
+**Exercised against the running stack, this session, live with the
+captain:** the rail dropdown opening upward, dashboard tile counts, org
+units & batches, the stages editor's three RPCs (round-tripped a real
+category's real config), first-hop routing insert/delete after `0030`,
+invite revoke after its fix.
+
+**Exercised against the running stack, earlier sessions:** setup wizard,
+TOTP enrolment, login, invite creation, invite email to Zoho and Gmail,
+`/invite/<token>` accept, org-unit and batch admin, people admin, document
+templates, signature capture and public verification.
+
+**Exercised against the live database inside rolled-back transactions**
+(`begin; … rollback;`, which is how every stage change was tested, including
+`0031`'s fix): stage authoring round-trips through `category_workflow`; a
+stage with recorded answers refuses removal; a submitted request lands on the
+first stage somebody holds and skips one nobody holds; all three actor rules;
+a required per-participant task blocking an empty ticket; approval advancing
+rather than closing; the last approval closing with signatures and
+`can_print` true; the participant window opening; scanning being idempotent;
+both follow-up refusals; two chained follow-up stages; `record_task_result`
+clearing a task with no `passing_answers` (post-`0031`).
+
+**Not proven:** the mobile facet toggle at 390px and the person card at
+phone width — window resize didn't take effect in this session's browser
+automation, and both are student-only UI the captain role can't reach
+directly. The task-completion UI and bulk invite, per §4. The
+error-detail and signature-size changes from earlier commits.
+
+---
+
+## 6. Conventions that are not negotiable
 
 **Commit as the git default author.** No `Co-Authored-By` trailers, no other
 attribution. Stated directly, 2026-08-18.
@@ -149,7 +213,7 @@ verified.
 
 ---
 
-## 6. Traps that have already cost time
+## 7. Traps that have already cost time
 
 - **`create or replace function` replaces the SECURITY attribute along with
   the body.** Omit `security definer` on a replacement and the function
@@ -185,10 +249,26 @@ verified.
   sticky and is not a freshness signal. The `amr` array's `totp` timestamp is.
 - **`mfa_satisfied()` returns TRUE for anon and for a user with no verified
   factor** — MFA is opt-in-by-enrolment at the database level.
+- **A rolled-back-transaction test of a table read needs a full simulated
+  JWT, not just `sub`.** `set_config('request.jwt.claims', ...)` with only
+  `sub`/`role` passes every `SECURITY DEFINER` function called directly (they
+  don't check `mfa_satisfied()`'s AAL clause the same way), but every
+  `requests`/`request_*` RLS policy also requires `mfa_satisfied()`, which for
+  `aal2` needs `totp_freshness(3600) = 'fresh'` — a fresh `amr` entry
+  (`{"method":"totp","timestamp":<now>}`) in the same claims. Without it, a
+  plain `select * from requests` under `set local role authenticated` returns
+  zero rows for every request, with no error, which looks exactly like an RLS
+  bug and isn't one.
+- **`jsonb`'s `->` operator turns a JSON `null` in an RPC payload into the
+  jsonb scalar `null`, not SQL `NULL`.** `t -> 'passing_answers'` on
+  `{"passing_answers": null}` is `'null'::jsonb`, and `x is null` is false for
+  it. `0031` hit this in `save_stage_tasks()` — wrap any such extraction in
+  `nullif(t -> 'key', 'null'::jsonb)` when a JSON key is expected to mean "no
+  value", not "the JSON null value".
 
 ---
 
-## 7. Known gaps — surfaces that look finished and are not
+## 8. Known gaps — surfaces that look finished and are not
 
 - **Nothing ever writes `status = 'closed'`.** The only reader is
   `schedule_attachment_purge`, so `retain_attachments_after_close` has never
@@ -210,7 +290,7 @@ verified.
 
 ---
 
-## 8. Open questions
+## 9. Open questions
 
 Carried from `PRD-V2.md`, still gating real work:
 
@@ -236,29 +316,69 @@ token, remember in the next version we have to change it."
 
 ---
 
-## 9. Where V3 starts
+## 10. Where V3 goes next
 
-1. **A browser pass over §4's unproven UI**, with a fresh session token.
-2. **The request-detail participants panel** — accept/decline, and the scan
-   window that `add_participant_by_reg_no` and `participants_open_until`
-   already back.
-3. **pdfme** (`github.com/pdfme/pdfme`) — generated client-side, signatures
+1. **Bulk invite against a real batch** — deployed, untested. Do this before
+   closing public registration, a decision the captain has asked for but not
+   yet acted on: `self_register()` is still granted to `anon`, and the
+   `pa_self_register` RLS policy still allows a direct anon insert into
+   `pending_assignments` — closing registration means revoking both, not
+   just removing the `/register`
+   route, per §6's RLS rule).
+2. **The task-completion UI in a real browser** — needs a login as someone
+   other than the captain (the captain role doesn't route to `/requests` at
+   all; test as the HOD or the requester on `REQ-2026-E25A93`, or any account
+   holding a stage role).
+3. **The request-detail participants panel** — accept/decline (direct update,
+   already RLS-permitted, no RPC needed — see `0003`'s `participants_update`
+   policy), and the scan window that `add_participant_by_reg_no` and
+   `participants_open_until` already back.
+4. **Attachments** — `request_attachments` and its RLS policy exist since
+   `0002`/`0003`; no upload UI or storage-bucket wiring exists yet.
+5. **pdfme** (`github.com/pdfme/pdfme`) — generated client-side, signatures
    supplied by the server, never stored, gated on `can_print`.
-4. Then the questions in §8, and the gaps in §7 that turn out to matter.
+6. Then the questions in §9, and the gaps in §8 that turn out to matter.
 
 ---
 
-## 10. Where to read what
+## 11. Dark mode and the DESIGN.md rewrite — agreed, not started
+
+The captain asked for `sd.srmist.edu.in` (SRM's generic ManageEngine
+ServiceDesk instance) as design inspiration, filtered through `/impeccable`,
+plus full light/dark theming. Two things to hold onto before starting:
+
+- `sd.srmist.edu.in`'s dark chrome is stock vendor default, not a designed
+  system — useful for layout/interaction ideas (category tree, field
+  density, attachment placement), not as a palette to copy.
+- DESIGN.md currently forbids this outright: "the topbar is the letterhead:
+  white paper... never dark console chrome." The captain chose **full
+  dual-theme, DESIGN.md gets rewritten** (not console-only-dark,
+  not dropped) when asked directly. That is a reversal of the documented
+  visual identity, and it also has to answer for print/document surfaces —
+  a printed OD letter is white paper regardless of which theme the browser
+  is in, so the rewrite needs to say explicitly which surfaces stay
+  light-only and why.
+- Do this with the captain looking at real screens, not by inferring taste
+  from a stock ITSM palette. Concrete first step: define the token pairs in
+  `components.css`, get one screen approved, then propagate. This also
+  finally settles §8's 28 unresolved CSS findings and the type-ramp
+  question — `0.9rem` literals appear unflagged in several places
+  (`RequestsPage.tsx`) and should become a real step on the ramp or get
+  replaced, not silently ignored.
+
+---
+
+## 12. Where to read what
 
 | Document | What it is | Trust |
 |---|---|---|
-| `HANDOFF.md` | this file — state of the project at the close of V2 | Current |
+| `HANDOFF.md` | this file — state of the project, V3 in progress | Current |
 | `V3-WORKFLOW.md` | the stages/tasks layer: design, decisions, every verification | Current, authoritative on the workflow |
 | `PRD.md` | v1 product definition | Current |
 | `PRD-V2.md` | v2 design, decisions D-1..D-6, open questions | Current |
-| `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current |
+| `ARCH.md` | the live v2 schema and why it is shaped that way, `0001`–`0029` | Current on structure; doesn't yet mention `0030`–`0031` (bug fixes, not schema changes) |
 | `NOTE.md` | dated decision and incident log, with reasoning | Current, authoritative on "why" |
-| `TASK.md` | build tracker, known gaps | Current |
+| `TASK.md` | build tracker, known gaps | **Stale** — dated 2026-08-11, "v1.0.0", predates V2's close. Several items it flags as open (custom fields) are done; some it doesn't mention (attachments UI) are still gaps. Read `HANDOFF.md` §8 instead. |
 | `SECURITY.md` | threat model, risk register R-01..R-32 | Current |
 | `DEPLOY.md` | deployment runbook, Part C covers host rebuild | Current, battle-tested |
-| `DESIGN.md` | the frontend's visual system | Current |
+| `DESIGN.md` | the frontend's visual system | Current, but §11 commits to rewriting it for dual-theme — not started |

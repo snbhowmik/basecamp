@@ -21,12 +21,6 @@
         "value": "#000",
         "createdAt": "2026-08-18T15:53:01.976Z",
         "reason": "mask-image alpha stop in .bg-pattern, not a rendered colour: only the alpha channel of a mask gradient is read, and #000 is the conventional fully-opaque value. Never paints."
-      },
-      {
-        "rule": "design-system-font-size",
-        "value": "0.9rem",
-        "createdAt": "2026-08-26T13:57:55.522Z",
-        "reason": "matches existing unflagged precedent in RequestsPage.tsx (e.g. line 574); consistent with codebase convention, not new drift"
       }
     ]
   }

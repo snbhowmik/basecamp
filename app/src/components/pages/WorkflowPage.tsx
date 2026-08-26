@@ -774,6 +774,7 @@ function RoutingEditor({ category, tags, onClose }: { category: RequestCategory;
   const [tagCode, setTagCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<FirstHopOption | null>(null);
 
   const reload = () => listFirstHopOptions(category.id).then(setOptions).catch(() => setOptions([]));
   useEffect(() => { reload(); }, [category.id]);
@@ -793,11 +794,6 @@ function RoutingEditor({ category, tags, onClose }: { category: RequestCategory;
     }
   };
 
-  const remove = async (id: string) => {
-    await deleteFirstHopOption(id).catch(() => {});
-    await reload();
-  };
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -812,6 +808,20 @@ function RoutingEditor({ category, tags, onClose }: { category: RequestCategory;
             own batch, not a fixed person.
           </p>
           {error && <div className="alert alert-danger">{error}</div>}
+
+          {pendingDelete && (
+            <ConfirmDestructive
+              title="Delete routing option"
+              recordName={pendingDelete.label}
+              description={`Removing "${pendingDelete.label}".`}
+              onCancel={() => setPendingDelete(null)}
+              onConfirmed={async () => {
+                await deleteFirstHopOption(pendingDelete.id);
+                setPendingDelete(null);
+                await reload();
+              }}
+            />
+          )}
 
           <form onSubmit={add} className="grid-cols-2" style={{ alignItems: 'end' }}>
             <div className="form-group">
@@ -846,7 +856,7 @@ function RoutingEditor({ category, tags, onClose }: { category: RequestCategory;
                       <td className="cell-strong">{o.label}</td>
                       <td className="cell-mono">{o.resolve_tag}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <button className="btn-icon danger" onClick={() => remove(o.id)}><Trash2 size={15} /></button>
+                        <button className="btn-icon danger" onClick={() => setPendingDelete(o)}><Trash2 size={15} /></button>
                       </td>
                     </tr>
                   ))}

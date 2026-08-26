@@ -180,18 +180,23 @@ export interface FirstHopOption {
   category_id: string;
   label: string;
   resolve_tag: string;
-  is_default: boolean;
   sort_order: number;
 }
 
 export async function listFirstHopOptions(categoryId: string): Promise<FirstHopOption[]> {
   const { data, error } = await supabase
     .from('category_first_hop_options')
-    .select('*')
+    .select('id, category_id, label, sort_order, tags(code)')
     .eq('category_id', categoryId)
     .order('sort_order');
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((o) => ({
+    id: o.id,
+    category_id: o.category_id,
+    label: o.label,
+    sort_order: o.sort_order,
+    resolve_tag: (o.tags as unknown as { code: string } | null)?.code ?? '',
+  }));
 }
 
 export async function createFirstHopOption(categoryId: string, label: string, resolveTag: string) {

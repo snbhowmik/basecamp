@@ -234,6 +234,37 @@ document-view code path:
   pdfme number in §10 because this is one focused, justified feature, not a
   competing renderer for something that already works.
 
+**File uploads — signatures and attachments — have been silently broken
+since first boot (2026-08-19).** Found this session, the first time anything
+was actually uploaded through a real browser instead of verified via RPC:
+every multipart upload to `storage-api`, to either bucket, failed with
+`Limit fileSize is not a valid number`, a 400 from the storage container
+itself, never reaching the database. Root cause: `storage-api`'s
+`uploadFileSizeLimit` config is `Number(env var)` with no fallback — neither
+`FILE_SIZE_LIMIT` nor `UPLOAD_FILE_SIZE_LIMIT` was ever set in
+`docker-compose.yml`'s `storage` service, so that's `Number(undefined)` =
+`NaN`, which `fastify-multipart` rejects outright before the request body is
+even read. No RLS policy, no RPC, no rolled-back transaction could have
+caught this — it only exists on the real multipart HTTP path, which this
+project's whole testing convention (§6) deliberately never exercises.
+Fixed: `FILE_SIZE_LIMIT: "20971520"` (20MB, plain bytes — this config path
+uses `Number()`, not the `"50MB"`-string parser `storage-api` uses
+elsewhere) added to the `storage` service, container recreated. Verified
+live end to end as the HOD on `REQ-2026-E25A93`: uploaded a real file
+through the actual UI, it listed with the right size, the signed-URL
+download opened the real content, deleted it back out (both the storage
+object and the `request_attachments` row) since it was test data, not
+something to leave on a live request. **Signature capture was hit by the
+exact same bug** — `storage-1`'s own logs show failed signature uploads
+going back to 2026-08-19, which is why `signature_assets` was empty and
+`REQ-2026-E25A93`'s HOD signature has never had an image, something earlier
+sessions read as "nobody's gotten around to capturing a signature yet"
+rather than "signature capture has never once worked." Not re-tested live
+this session — doing so would mean capturing a real signature image for the
+HOD's actual account, not a disposable test artefact, so that's left for
+the captain to exercise deliberately rather than something to trigger
+unprompted.
+
 ---
 
 ## 5. Proven, and not proven
@@ -247,7 +278,25 @@ invite revoke after its fix.
 **Exercised against the running stack, earlier sessions:** setup wizard,
 TOTP enrolment, login, invite creation, invite email to Zoho and Gmail,
 `/invite/<token>` accept, org-unit and batch admin, people admin, document
-templates, signature capture and public verification.
+templates, public verification. **Signature capture was believed exercised
+but was not** — it has failed with the `storage-api` file-size bug (§4)
+since first boot; nobody had actually clicked the real upload button to
+notice.
+
+**Exercised against the running stack, this session, live as the HOD on
+`REQ-2026-E25A93` (real session JWT, not the captain):** the request-detail
+view end to end, including the attachments list, `can_print`-gated
+Print/Save-as-PDF button (correctly disabled earlier, correctly enabled now
+the request is fully approved), and the printed QR code. A real attachment
+upload through the actual UI — which surfaced the `storage-api` bug above —
+then, after the fix, a second upload that worked: listed with the right
+size, the signed-URL download served the real content, both the storage
+object and the `request_attachments` row removed afterward since it was
+test data, not something to leave on a live request. `/verify`'s two-tier
+signer disclosure confirmed over real HTTP (not a DB transaction) straight
+through Kong and PostgREST: the same reference code returns
+`signatures: []` with a valid bearer token and `signatures: null` with
+none.
 
 **Exercised against the live database inside rolled-back transactions**
 (`begin; … rollback;`, which is how every stage change was tested, including
@@ -269,10 +318,14 @@ with the real ones read off `storage.objects.metadata` (post-`0034`).
 **Not proven:** the mobile facet toggle at 390px and the person card at
 phone width — window resize didn't take effect in this session's browser
 automation, and both are student-only UI the captain role can't reach
-directly. The task-completion UI, the participants panel, attachments, and
-bulk invite —
-all built and RPC-verified per §4, none driven in a real browser session
-yet. The error-detail and signature-size changes from earlier commits.
+directly. The task-completion UI and the participants panel are still
+untested in a browser — `REQ-2026-E25A93`, the only real request in the
+system, is fully `approved` with no active stage, so there was nothing for
+either component to render against; both still need a request mid-workflow
+and a login other than the HOD's. Bulk invite against a real batch (still
+the captain's call to defer, per §10). Signature capture itself, now that
+the upload bug is fixed — deliberately not exercised this session, see §4.
+The error-detail and signature-size changes from earlier commits.
 
 ---
 
@@ -425,18 +478,21 @@ token, remember in the next version we have to change it."
    `pa_self_register` RLS policy still allows a direct anon insert into
    `pending_assignments` — closing registration means revoking both, not
    just removing the `/register` route, per §6's RLS rule.
-2. **Task completion (including the file-answer path), the participants
-   panel, and attachments, in a real browser** — all built (§4), all
-   RPC-verified via rolled-back transactions, none driven as an actual React
-   component yet. Needs a login as someone other than the captain — the
-   captain role doesn't route to `/requests` at all. Test as the HOD or the
-   requester on `REQ-2026-E25A93`, or any account holding a stage role or a
-   participant place. Attachments specifically also needs the actual
-   multipart upload HTTP path through `storage-api` exercised, not just the
-   SQL policies. Also untested in a real browser: the printed QR code and
-   `can_print`/`can_read_signature` gating in `DocumentView.tsx`, and the
-   two-tier `/verify` page (signed in vs not) in `VerifyPage.tsx` — all
-   RPC-verified live, none clicked through.
+2. **Task completion (including the file-answer path) and the participants
+   panel, in a real browser.** Both built (§4), both RPC-verified, neither
+   driven as an actual React component yet — `REQ-2026-E25A93` is now fully
+   `approved` with no active stage, so there is currently no live request
+   either one has anything to render against. Needs a new request still
+   mid-workflow, and a login other than the HOD's (which this session used
+   to clear item 2's other half, below). Attachments, the printed QR code,
+   `can_print` gating, and the two-tier `/verify` page are now proven live
+   in a real browser, over real HTTP, as the HOD on `REQ-2026-E25A93` — see
+   §4 and §5. That pass also found and fixed a real bug: file uploads (both
+   buckets) had been silently failing since first boot over a `storage-api`
+   config gap, never caught by any RPC-level test. Signature capture hits
+   the same storage path and should now work, but has not been re-tried
+   live — left for the captain, since testing it means capturing a real
+   signature image on a real account, not disposable test data.
 3. **pdfme — decided against, not deferred.** `V3-WORKFLOW.md` §2.5 (the
    design section that recommended it) is stale: it predates
    `DocumentView.tsx`, which already ships a working PDF path —

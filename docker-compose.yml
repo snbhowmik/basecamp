@@ -163,6 +163,17 @@ services:
       AWS_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY}
       AWS_SECRET_ACCESS_KEY: ${GARAGE_SECRET_KEY}
       AWS_DEFAULT_REGION: garage
+      # storage-api computes its multipart size limit as Number(this env var)
+      # with no fallback — unset, that's Number(undefined) = NaN, which
+      # fastify-multipart's busboy wrapper rejects outright with "Limit
+      # fileSize is not a valid number" on every upload, to every bucket.
+      # Silent since first boot (2026-08-19): nothing in this project's own
+      # rolled-back-transaction testing exercises a real multipart HTTP
+      # request, so neither signature capture nor request attachments ever
+      # actually worked despite both passing RPC/RLS verification. Plain
+      # bytes, not a unit suffix — storage-api's config.js does Number() on
+      # this, not the "50MB" parser it uses elsewhere.
+      FILE_SIZE_LIMIT: "20971520"
     networks: [internal]
 
   garage:

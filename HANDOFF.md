@@ -265,6 +265,22 @@ HOD's actual account, not a disposable test artefact, so that's left for
 the captain to exercise deliberately rather than something to trigger
 unprompted.
 
+**The QR code's target URL had a trailing-slash hole that defeated the
+entire point of `/verify` being public.** Found by the captain scanning a
+printed document's real QR code and landing on the TOTP re-entry screen
+instead of the verify page. `App.tsx`'s `verifyCodeFrom()` matched
+`/verify/<code>` exactly — a trailing slash (several phone QR
+scanners/share sheets add one) failed the regex, so the app fell through to
+the normal `bootstrap()`/session flow instead of short-circuiting to the
+public `VerifyPage`. With no session in the browser that lands on login; with
+a signed-in-but-MFA-stale session — exactly what a captain's own phone would
+have sitting around — it lands on `VerifyMfa`, demanding a TOTP code to see
+whether someone else's document is genuine. Reproduced live (navigated to
+`/verify/<code>/` with a stale session present, landed on the dashboard
+instead of the verify page), fixed by trimming trailing slashes before the
+match, rebuilt, and reconfirmed live: the same URL with the same stale
+session now correctly shows "Genuine" with no auth prompt.
+
 ---
 
 ## 5. Proven, and not proven

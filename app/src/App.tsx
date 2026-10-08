@@ -33,10 +33,18 @@ function inviteTokenFrom(pathname: string): string | null {
 // /verify and /verify/<code>. Public by design (PRD.md §14.4) — someone
 // holding a printed document must be able to check it without an account, so
 // this is matched before the session gate rather than inside the app shell.
+//
+// Trailing-slash tolerant: a bare /verify/<code>/ (several phone QR
+// scanners and share sheets append the slash) used to fail the match and
+// fall through to the normal login/session flow instead — turning the one
+// page designed to need no session at all into one that could land a
+// signed-in-but-MFA-stale scanner on the TOTP re-entry screen, defeating
+// the entire "public by design" point.
 function verifyCodeFrom(pathname: string): string | null | undefined {
-  if (pathname === '/verify') return null;
-  const m = pathname.match(/^\/verify\/([^/]+)$/);
-  return m ? m[1] : undefined;
+  const trimmed = pathname.replace(/\/+$/, '') || '/';
+  if (trimmed === '/verify') return null;
+  const m = trimmed.match(/^\/verify\/([^/]+)$/);
+  return m ? decodeURIComponent(m[1]) : undefined;
 }
 
 function App() {

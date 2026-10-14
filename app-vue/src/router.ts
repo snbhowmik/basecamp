@@ -11,6 +11,7 @@ export const router = createRouter({
     { path: '/requests', component: () => import('./pages/RequestsPage.vue'), meta: { label: 'Requests', icon: 'lucide-inbox' } },
     { path: '/invite', component: () => import('./pages/InvitePage.vue'), meta: { label: 'Invite', icon: 'lucide-user-plus' } },
     { path: '/accounts', component: () => import('./pages/AccountsPage.vue'), meta: { label: 'Accounts', icon: 'lucide-users' } },
+    { path: '/workflow', component: () => import('./pages/WorkflowPage.vue'), meta: { label: 'Workflow', icon: 'lucide-git-branch' } },
     { path: '/hierarchy', component: () => import('./pages/HierarchyPage.vue'), meta: { label: 'Organisation', icon: 'lucide-network' } },
     { path: '/register', component: () => import('./pages/RegisterPage.vue'), meta: { public: true } },
     { path: '/invite/:token', component: () => import('./pages/AcceptInvitePage.vue'), meta: { public: true } },

@@ -14,7 +14,7 @@ const tabs = computed(() => {
   const byPath = (p: string) => all.find((r) => r.path === p);
   const ctx = session.ctx;
   const paths = ctx?.isCaptain
-    ? ['/dashboard', '/hierarchy', '/invite', '/accounts']
+    ? ['/dashboard', '/hierarchy', '/workflow', '/invite', '/accounts']
     : ['/dashboard', '/requests', '/hierarchy', ...(ctx?.isStaff ? ['/invite'] : [])];
   return paths.map(byPath).filter((r): r is NonNullable<typeof r> => !!r);
 });
@@ -39,7 +39,7 @@ async function logout() {
                 :key="t.path"
                 :label="String(t.meta.label)"
                 :icon="String(t.meta.icon)"
-                :to="t.path"
+                :route="t.path"
                 :active="route.path === t.path"
               />
             </div>

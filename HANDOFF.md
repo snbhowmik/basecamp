@@ -989,3 +989,16 @@ arrow-key roving between rungs is not ported (buttons are still tabbable).
 Build + typecheck only; the live check was cut off by the TOTP freshness lapse
 (the browser session needs a code roughly hourly). Still React-only: Workflow,
 Templates, signature capture and account settings, Levels setup, setup wizard.
+
+**Update — sidebar links fixed; Workflow ported to `app-vue/`:** the sidebar
+items weren't clickable because `SidebarItem` takes `route`, not `to` (an
+unknown prop is silently ignored and `vue-tsc` doesn't flag it). Now they are
+real `<a href="/next/…">` links, active state inferred from the route.
+`/next/workflow` has both halves: org units and batches (create, rename,
+edit, delete behind `ConfirmDestructive`), and the request catalog (types,
+categories, routing options, and the stages editor with tasks and "who can
+file"). **Live, as the captain:** sidebar navigation, org units/batches list,
+catalog (the real "Internal OD" type and category) and the Stages editor (the
+real Mentor and HOD stages with their tasks) all rendered. Nothing was saved,
+created or deleted. Not yet ported: Templates, Levels setup, signature capture
+and account settings, setup wizard.

@@ -880,3 +880,28 @@ separately; out of scope for the stage-naming work this section covers.
   labelled `.form-input` fields (needed for its selects) and showed no
   defect. Screenshots were taken with Chrome autofill covering the fields,
   so the unfilled outline was verified by computed style, not by eye.
+
+---
+
+## 18. `app-vue/` — frappe-ui scaffold, alongside the React app
+
+frappe-ui is a **Vue 3** library (Tailwind v3, Vite 7); it has no React build.
+Decision (captain): build a new Vue app next to `app/` and switch over only at
+parity — the React app stays what nginx serves (`./app/dist`) until then.
+
+**What exists** (`app-vue/`, typechecks with `vue-tsc` and builds; versions
+pinned per frappe-ui's SETUP.md): Vite/Tailwind/PostCSS config with the three
+Frappe-site sub-plugins off; `FrappeUIProvider` root; `DesktopShell` +
+`Sidebar` layout; vue-router; the same Supabase client; the MFA-first sign-in
+gate ported from `lib/auth.ts` (`lib/session.ts`); login, TOTP verify (existing
+factor only — enrolment is not ported), a stub dashboard, and a public
+`/verify/:code` that calls the same `verify_document` RPC.
+
+**Not verified:** nothing has been *run* in a browser — the Chrome extension
+cannot reach this host's dev server, and serving it on the live domain would
+change production. Build + typecheck only.
+
+**Not ported:** every other page, registration/invite/wizard, theming of the
+SRM palette (it currently uses stock frappe-ui tokens), the Bencho components,
+the receipt/ticket/stamp pieces. Frappe's `use*` data composables assume a
+Frappe backend; data stays Supabase RPCs (`supabase.rpc(...)`).

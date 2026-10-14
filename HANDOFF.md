@@ -978,3 +978,14 @@ not flag an unknown prop on a frappe-ui component (`TabButtons :buttons` instead
 of `:options` built clean and rendered nothing) — a live look is the only check.
 Invite links shown for copying still point at the React `/invite/<token>`
 (the mailer worker emits the same), which remains valid.
+
+**Update — Organisation ported to `app-vue/`:** `/next/hierarchy` — the ladder
+with per-rung selection that narrows rungs below, the staff/student people
+search with facets (department, batch, class, role), and the person card dialog.
+`lib/hierarchy.ts` and `lib/account.ts` are copies of the React ones. **Two
+deliberate differences from React:** the student rung loads pages of 100 on
+request ("Load N more") instead of the virtual windowed list, and the
+arrow-key roving between rungs is not ported (buttons are still tabbable).
+Build + typecheck only; the live check was cut off by the TOTP freshness lapse
+(the browser session needs a code roughly hourly). Still React-only: Workflow,
+Templates, signature capture and account settings, Levels setup, setup wizard.

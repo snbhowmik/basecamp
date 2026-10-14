@@ -797,3 +797,68 @@ routing config, which is real clutter in someone else's data, not a
 disposable test the way an attachment upload is. Flagged rather than
 done, same as the no-fixture-data rule applies everywhere else in this
 project.
+
+---
+
+## 16. `/verify` redesigned as an itemized receipt (0036–0038, this session)
+
+Three schema changes, all applied and in the ledger:
+
+- **0036** `verify_stamp_always_visible.sql` — reverses 0035's auth-gated
+  signer tiering. The captain's call: a stamp is checked by whoever is
+  holding the document, signed in or not, so `verify_document()` now
+  returns the full signer list to every caller, always.
+- **0037** `attachment_delete.sql` — DELETE policies on `request_attachments`
+  and the `attachments` storage bucket, uploader-only
+  (`uploaded_by = auth.uid() and can_see_request(...) and mfa_satisfied()`).
+  Verified live via rolled-back transaction (wrong user → 0 rows; real
+  uploader → both the storage object and the row gone) and again as a real
+  round trip in the browser (§15). Frontend must delete the storage object
+  *before* the table row — the storage policy's `EXISTS` check depends on
+  the row still being there.
+- **0038** `verify_document_stages.sql` — adds a `stage` field per signature
+  in `verify_document()`'s output, joined through the request's
+  `category_id` + the signature's `level_id` against `category_stages`
+  (the same pair every other stage lookup in this schema uses), falling
+  back to the priority level's own name when no stage row matches. A stage
+  name ("HOD Approval") is what the request's own Activity timeline already
+  shows — more legible than the level's own title ("Head of Department").
+  Verified two ways: a rolled-back transaction with the real HOD signature
+  on REQ-2026-5BE603 temporarily wired into its generated document
+  (`stage: "HOD Approval"` came back correctly alongside `role: "Head of
+  Department"`), and a live frontend check (below).
+
+`VerifyPage.tsx`'s "found" result no longer ends at a flat bullet list of
+signers. It now renders an itemized receipt inside the status card, reusing
+the `.receipt-*` grammar built for `ReceiptConfirm.tsx` (same paper
+classes, same deterministic decorative barcode, no printer/paper-reveal
+animation since this isn't a submission moment) — one line per approval
+stage showing the stage name and signer, a muted sub-line with the role
+(when it differs from the stage name) and the date, then the barcode and
+reference tag, with the existing `Stamp` (last signer) kept at the bottom
+as the closing element. Chosen over a stamped-document look because a
+receipt is inherently a list of line items (fits the stage data directly),
+shows more than just "who signed last," and a document-styled `/verify`
+risked reading as a confusing duplicate of the real official document
+`DocumentView.tsx` already renders.
+
+**Live-verified for real**, not just built: both real documents in the
+live system (`REQ-2026-E25A93`, `REQ-2026-5BE603`) have `signature_ids: []`
+— a pre-existing gap, not something this session caused — so neither has
+non-empty signatures to render normally. To actually see the itemized
+layout render, a temporary `value.trim() === 'TESTMOCK'` short-circuit
+with inline mock signatures was added to `VerifyPage.tsx`'s `run()`,
+built, and loaded against the real production domain (the frontend
+container mounts `app/dist` directly — no separate deploy step, a build
+here is live there), screenshotted, then removed and rebuilt again before
+anything was committed. No fixture data touched any table; the mock never
+existed outside one throwaway build. The empty-signature document was
+re-checked live after the revert to confirm no regression (identical
+"Genuine — unchanged" card, same as before this session).
+
+**Known pre-existing gap, not addressed here:** both live documents have
+empty `signature_ids` despite being approved — `render_document()` appears
+to cache a document's signature list at generation time, and if that
+happens before (or independent of) the approval signature being recorded,
+the cached row never picks it up on its own. Worth investigating
+separately; out of scope for the stage-naming work this section covers.

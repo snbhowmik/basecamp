@@ -9,6 +9,17 @@ interface VerifyPageProps {
   code?: string;
 }
 
+// Same deterministic decorative pattern as ReceiptConfirm.tsx — a visual
+// cue that this is a receipt, never a real scannable barcode.
+function decorativeBars(seed: string): number[] {
+  const bars: number[] = [];
+  for (let i = 0; i < 40; i++) {
+    const code = seed.charCodeAt(i % seed.length) + i;
+    bars.push(1 + (code % 4));
+  }
+  return bars;
+}
+
 // The public verification page — PRD.md §14.4.
 //
 // Deliberately reachable without an account: someone holding a printed
@@ -105,20 +116,36 @@ export default function VerifyPage({ code }: VerifyPageProps) {
               )}
               {(result.signatures ?? []).length > 0 && (
                 <>
-                  <ul className="verify-signers">
+                  <div className="receipt-paper-inner verify-receipt-body">
+                    <div className="receipt-line receipt-line--head"><span>Approval record</span></div>
+                    <div className="receipt-rule" />
                     {result.signatures!.map((s, i) => (
-                      <li key={i}>
-                        Signed by <strong>{s.signer}</strong>{s.role ? ` (${s.role})` : ''} on{' '}
-                        {new Date(s.signed_at).toLocaleDateString()}
-                      </li>
+                      <div key={i}>
+                        <div className="receipt-line">
+                          <span>{s.stage || s.role || 'Approval'}</span>
+                          <span className="cell-mono">{s.signer}</span>
+                        </div>
+                        <div className="receipt-line receipt-line--sub">
+                          <span>{s.role && s.role !== s.stage ? s.role : ''}</span>
+                          <span className="cell-mono">{new Date(s.signed_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                    <div className="receipt-rule" />
+                    <svg className="receipt-barcode" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
+                      {decorativeBars(input.trim().toUpperCase()).map((w, i, bars) => {
+                        const x = bars.slice(0, i).reduce((a, b) => a + b + 1, 0);
+                        return <rect key={i} x={x} y={0} width={w} height={24} fill="currentColor" />;
+                      })}
+                    </svg>
+                    <div className="receipt-line--tag">{input.trim().toUpperCase()}</div>
+                  </div>
                   {(() => {
                     const last = result.signatures![result.signatures!.length - 1];
                     return (
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                         <Stamp
-                          role={last.role || 'Approved'}
+                          role={last.stage || last.role || 'Approved'}
                           name={last.signer}
                           date={new Date(last.signed_at).toLocaleDateString()}
                           punch={result.intact ? 'var(--state-approved-wash)' : 'var(--state-pending-wash)'}

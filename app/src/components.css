@@ -854,7 +854,19 @@ button.chip:hover { border-color: var(--ink-body); }
 .verify-good { background: var(--state-approved-wash); border-color: var(--state-approved); color: var(--state-approved); }
 .verify-warn { background: var(--state-pending-wash); border-color: var(--state-pending); color: var(--state-pending); }
 .verify-bad  { background: var(--state-rejected-wash); border-color: var(--state-rejected); color: var(--state-rejected); }
-.verify-signers { margin: 0.6rem 0 0; padding-left: 1.1rem; font-size: var(--step--1); }
+/* Itemized receipt list, reusing the receipt grammar built for
+   ReceiptConfirm.tsx — a longer record of who approved what and when,
+   rather than a flat signer list. Static (no printer/paper animation —
+   this isn't a submission moment), so only the paper surface itself is
+   borrowed, boxed to sit inside .verify-result. */
+.verify-receipt-body {
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: var(--sp-3) 0 0;
+  background: transparent;
+  color: inherit;
+}
+.receipt-line--sub { margin-top: -0.2rem; font-size: 0.7rem; opacity: 0.65; }
 
 @media (max-width: 720px) {
   .tpl-fields { grid-template-columns: 1fr; }

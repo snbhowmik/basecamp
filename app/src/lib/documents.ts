@@ -46,7 +46,7 @@ export interface VerificationResult {
   // null when the viewer isn't signed in — 0035_signature_grants_and_verify_tiers.sql
   // tiers this: anyone can confirm a document is genuine, only a signed-in
   // viewer sees who actually signed it and when.
-  signatures?: { signer: string; role: string; signed_at: string }[] | null;
+  signatures?: { signer: string; role: string; stage: string; signed_at: string }[] | null;
 }
 
 export async function listBindingKeys(categoryId: string): Promise<BindingKey[]> {

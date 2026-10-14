@@ -39,6 +39,7 @@ import Attachments from '../documents/Attachments';
 import ReceiptConfirm from '../documents/ReceiptConfirm';
 import Ticket from '../documents/Ticket';
 import { getOutstandingTaskCount } from '../../lib/workflow';
+import { useMediaQuery, SMALL_SCREEN_QUERY } from '../../lib/useMediaQuery';
 
 type Filter = 'all' | 'mine' | 'desk';
 
@@ -457,6 +458,10 @@ function RequestDetailModal({
   const [commentVisibility, setCommentVisibility] = useState<'public' | 'internal'>('public');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Slide-to-approve is for the screens where a slide is the natural
+  // gesture — a thumb on a phone. On a desktop, a cursor click is faster
+  // and a 280px drag track is a worse control than the button it replaced.
+  const smallScreen = useMediaQuery(SMALL_SCREEN_QUERY);
   const [forwardQuery, setForwardQuery] = useState('');
   const [forwardResults, setForwardResults] = useState<ForwardTarget[]>([]);
   const [showForward, setShowForward] = useState(false);
@@ -546,7 +551,7 @@ function RequestDetailModal({
                   <button className="btn btn-success" disabled title={`${outstandingTasks} required task${outstandingTasks === 1 ? '' : 's'} outstanding`}>
                     Approve
                   </button>
-                ) : (
+                ) : smallScreen ? (
                   <SlideConfirm
                     width={240}
                     label="Slide to approve"
@@ -557,6 +562,10 @@ function RequestDetailModal({
                     }}
                     onError={(msg) => setError(msg)}
                   />
+                ) : (
+                  <button className="btn btn-success" disabled={busy} onClick={() => act(() => decideRequest(request.id, 'approved', note))}>
+                    Approve
+                  </button>
                 )}
               </>
             )}

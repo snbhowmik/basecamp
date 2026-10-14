@@ -25,3 +25,8 @@ export function useMediaQuery(query: string): boolean {
 // here rather than duplicated per component so it cannot drift from the
 // `@media (min-width: 60rem)` rule in components.css that reveals it.
 export const AUTH_PANEL_QUERY = '(min-width: 60rem)';
+
+// The app's "character shift" breakpoint — components.css's own term for
+// where density and controls change for a thumb rather than a cursor.
+// Matches that file's `@media (max-width: 48rem)` rule.
+export const SMALL_SCREEN_QUERY = '(max-width: 48rem)';

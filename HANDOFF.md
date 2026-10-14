@@ -731,3 +731,69 @@ Still no working TOTP code for any account this session (see §13's same
 note) — the collapsed rail, the Settings modal reachable both ways, and
 the floating "New request" button are all build-verified and read back
 carefully, not clicked through.
+
+---
+
+## 15. First real live verification pass (this session) — what actually got clicked through
+
+A real session JWT (GOWTHAM/HOD, aal2) finally made it possible to click
+through everything §13/§14 had only build-verified. Logged in, drove the
+real app against real data (two real approved requests, one real
+pre-existing attachment from another uploader), signed out cleanly after.
+
+**Confirmed working, no changes needed:**
+- Collapsible sidebar — expand/collapse toggles correctly, icon-only state
+  renders right, no navigation side effects on the actual toggle action.
+- Settings modal — opens from the rail footer, shows real profile data,
+  the theme toggle switches the *entire app* (sidebar, page, modal itself)
+  to dark instantly, no flash, no stale light patches anywhere.
+- Requests list, real data, dark mode throughout.
+- Attachments: the existing real file from another uploader shows with no
+  delete button (correct — uploader-only); BasecampUpload's dropzone
+  renders and accepts a real upload; a `.txt` was correctly refused (not
+  on the allow-list) before a properly-named `.pdf` was tried.
+- Attachment delete, full round trip: uploaded a disposable test file as
+  myself, trash icon appeared only on my own row, two-click confirm
+  worked, the file disappeared from the list and the other uploader's
+  real file was untouched. Cleaned up immediately after — this was a live
+  test file, not left behind.
+- The floating "New request" button and the Create menu: expands to show
+  the real category list, picking one opens `NewRequestModal` with that
+  category already selected (not landing on an empty dropdown).
+
+**Found and fixed live — a real bug, not a guess:** the Ticket view's QR
+code was in the DOM with a correct, valid image the whole time — just
+entirely invisible. `.ticket-stub-text` had no `min-width: 0`, so the
+32-character unbroken reference code forced the flex row wider than the
+card, and `.ticket { overflow: hidden }` clipped the QR clean off the
+right edge — confirmed by reading `getBoundingClientRect()` directly:
+the image's box was sitting almost entirely past the ticket's own right
+boundary. Fixed (`min-width: 0`, stacked instead of side-by-side, the
+reference code allowed to wrap) and reconfirmed live: the QR renders
+inside the card now, reference code wraps to two lines instead of
+pushing anything out. This is exactly the class of bug that no amount of
+"read the CSS carefully" catches — the element was correct, present, and
+genuinely off-screen.
+
+**Fixed per direct correction:** Slide-to-approve was showing on every
+screen size. The captain's correction: it's for small screens specifically
+— the gesture a thumb does, not a cursor. `useMediaQuery` already existed
+(auth screen's panel breakpoint); added `SMALL_SCREEN_QUERY` alongside it
+(`max-width: 48rem`, matching components.css's existing "character shift"
+breakpoint) and branched the Approve button: slider below it, the original
+plain button at and above it. Confirmed live that `smallScreen` correctly
+evaluates `false` on a real desktop-width session — the actual slider
+toggle couldn't be clicked because no request was awaiting this account's
+decision at the time, and the automation environment's `resize_window`
+didn't actually resize this particular browser window (`window.innerWidth`
+stayed 1920 after the call), so the narrow-viewport branch itself is
+still unclicked, just correctly absent at desktop width.
+
+**Deliberately not tested, and why:** the receipt-printer submission
+animation needs a real `submitRequest()` call — tested by code review and
+build only, not clicked, because the only way to trigger it live is
+raising a real request against a real organisation's live category/
+routing config, which is real clutter in someone else's data, not a
+disposable test the way an attachment upload is. Flagged rather than
+done, same as the no-fixture-data rule applies everywhere else in this
+project.

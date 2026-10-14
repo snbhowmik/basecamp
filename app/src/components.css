@@ -1656,5 +1656,16 @@ button.chip:hover { border-color: var(--ink-body); }
   padding: var(--sp-4) var(--sp-5);
   background: rgba(0, 0, 0, 0.12);
 }
-.ticket-stub-text { display: flex; gap: var(--sp-5); }
+/* min-width: 0 is load-bearing: without it a flex child never shrinks
+   below its content's natural width, so the 32-character reference code
+   (unbroken mono text) pushed the whole row wider than .ticket-stub and
+   shoved .ticket-qr out past the ticket's own `overflow: hidden` — the
+   QR was rendering, with a real src, at the right computed coordinates,
+   entirely clipped and invisible. Caught live, not guessed: the element
+   was in the DOM with a valid image, just off the edge of its own card.
+   Stacked (not side by side with Admit) and allowed to wrap for the
+   same reason — two columns plus an unbroken code is the same overflow
+   by a different route. */
+.ticket-stub-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ticket-stub-text .ticket-field strong { word-break: break-all; }
 .ticket-qr { width: 3.5rem; height: 3.5rem; border-radius: 4px; background: #fff; padding: 2px; flex: none; }

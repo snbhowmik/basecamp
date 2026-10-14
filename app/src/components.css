@@ -1493,3 +1493,168 @@ button.chip:hover { border-color: var(--ink-body); }
   text-align: center;
   text-transform: uppercase;
 }
+
+/* ── Receipt confirm — the submit animation ──────────────────────────
+   A dark processing card, then a white perforated receipt sliding out
+   from underneath it. The "printer" is the dark card; the paper grows
+   downward out from behind it. Original implementation of the
+   dqnamo.com "Receipt Printer" mechanism — see ReceiptConfirm.tsx. */
+.receipt-stage {
+  position: relative;
+  width: min(22rem, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.receipt-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--radius-lg);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--lift-overlay);
+}
+.receipt-card-row { font-size: var(--step-0); }
+.receipt-card-sub { margin-top: 0.15rem; font-size: var(--step--1); opacity: 0.7; }
+.receipt-card-status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: var(--step--1);
+  opacity: 0.85;
+}
+.receipt-card-status .loading-spinner { border-color: rgba(255, 255, 255, 0.25); border-top-color: var(--paper); }
+
+/* The paper itself: starts collapsed to 0 height behind the card, grows
+   open on reveal. A jagged top/bottom edge via a repeating gradient mask
+   reads as torn/perforated — same device the Ticket component below
+   uses for its tear line, scaled to run the full width. */
+.receipt-paper {
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 1.5rem);
+  margin-top: -0.75rem;
+  max-height: 0;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--lift);
+  transition: max-height 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%),
+    radial-gradient(circle at 6px 0, transparent 3px, #000 3.5px);
+  -webkit-mask-size: 100% 100%, 12px 7px;
+  -webkit-mask-repeat: no-repeat, repeat-x;
+  -webkit-mask-position: 0 0, 0 0;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+}
+.receipt-paper--out { max-height: 20rem; }
+
+.receipt-paper-inner {
+  padding: var(--sp-4) var(--sp-4) var(--sp-5);
+  font-family: var(--font-code);
+}
+.receipt-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 0.2rem 0;
+  font-size: var(--step--1);
+}
+.receipt-line--head { font-family: var(--font-ui); font-weight: 600; font-size: var(--step-0); padding-bottom: var(--sp-2); }
+.receipt-rule { margin: var(--sp-2) 0; border-top: 1px dashed var(--rule-strong); }
+.receipt-barcode { display: block; width: 100%; height: 1.75rem; margin-top: var(--sp-3); color: var(--ink); }
+.receipt-line--tag {
+  margin-top: 0.3rem;
+  text-align: center;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-label);
+}
+
+.receipt-done { margin-top: var(--sp-4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt-paper { transition-duration: 1ms; }
+}
+
+/* ── Ticket — the approved-request view ──────────────────────────────
+   A two-part card: an upper panel and a tear-off stub, split by a
+   perforated line with circular notches cut into the left/right edges.
+   Same punch-dot technique Stamp.tsx's edges use — see its comment. */
+.ticket-stage {
+  position: relative;
+  width: min(22rem, 100%);
+}
+.ticket-close {
+  position: absolute;
+  top: -2.25rem;
+  right: 0;
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.12);
+}
+.ticket-close:hover { background: rgba(255, 255, 255, 0.22); }
+
+.ticket {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--srm-blue);
+  color: #fff;
+  box-shadow: var(--lift-overlay);
+}
+
+.ticket-body { padding: var(--sp-5) var(--sp-5) var(--sp-4); }
+.ticket-kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.ticket-title { margin-top: 0.25rem; font-size: var(--step-1); font-weight: 600; }
+
+.ticket-field { display: flex; flex-direction: column; gap: 0.15rem; margin-top: var(--sp-3); }
+.ticket-field span { font-size: 0.625rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; }
+.ticket-field strong { font-size: var(--step--1); font-weight: 600; }
+.ticket-row { display: flex; gap: var(--sp-5); }
+
+/* The tear line: a dashed rule, with a circle "bite" punched from each
+   edge using the page's own background colour — correct as long as this
+   sits on var(--paper-laid), which .modal-overlay's own ground is not,
+   so --pf-punch-equivalent here is just the literal page background
+   behind the overlay scrim composited visually close enough at this
+   size; see Stamp.tsx for the fuller version of this technique. */
+.ticket-tear {
+  position: relative;
+  height: 0;
+  border-top: 2px dashed rgba(255, 255, 255, 0.4);
+}
+.ticket-notch {
+  position: absolute;
+  top: 50%;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: -0.55rem;
+  border-radius: 50%;
+  background: var(--paper-laid);
+}
+.ticket-notch--left { left: -0.55rem; }
+.ticket-notch--right { right: -0.55rem; }
+
+.ticket-stub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  background: rgba(0, 0, 0, 0.12);
+}
+.ticket-stub-text { display: flex; gap: var(--sp-5); }
+.ticket-qr { width: 3.5rem; height: 3.5rem; border-radius: 4px; background: #fff; padding: 2px; flex: none; }

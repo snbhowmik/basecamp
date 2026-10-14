@@ -51,3 +51,13 @@ export async function getAttachmentUrl(objectKey: string): Promise<string | null
   if (error) throw error;
   return data?.signedUrl ?? null;
 }
+
+// Uploader-only (0037) — storage object first, then the row: the storage
+// policy checks request_attachments for a matching uploaded_by, so deleting
+// the row first would leave the real file unreachable but never removed.
+export async function deleteAttachment(a: Pick<Attachment, 'id' | 'object_key'>): Promise<void> {
+  const { error: storageErr } = await supabase.storage.from('attachments').remove([a.object_key]);
+  if (storageErr) throw storageErr;
+  const { error } = await supabase.from('request_attachments').delete().eq('id', a.id);
+  if (error) throw error;
+}

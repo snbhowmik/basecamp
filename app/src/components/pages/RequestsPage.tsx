@@ -6,6 +6,7 @@ import {
   listVisibleRequests,
   listFirstHopCandidates,
   submitRequest,
+  getRequest,
   decideRequest,
   forwardRequest,
   searchForwardTargets,
@@ -35,6 +36,8 @@ import DocumentView from '../documents/DocumentView';
 import StageTasks from '../workflow/StageTasks';
 import ParticipantsPanel from '../workflow/ParticipantsPanel';
 import Attachments from '../documents/Attachments';
+import ReceiptConfirm from '../documents/ReceiptConfirm';
+import Ticket from '../documents/Ticket';
 import { getOutstandingTaskCount } from '../../lib/workflow';
 
 type Filter = 'all' | 'mine' | 'desk';
@@ -269,6 +272,7 @@ function NewRequestModal({
   const [firstHop, setFirstHop] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [receipt, setReceipt] = useState<RequestRow | null>(null);
 
   useEffect(() => {
     if (!categoryId) {
@@ -319,13 +323,21 @@ function NewRequestModal({
         requestId,
         fieldDefs.map((d) => ({ definitionId: d.id, value: coerceFieldValue(d, fieldValues[d.id]) })),
       );
-      onCreated();
+      // The receipt replaces this modal rather than following onCreated()
+      // straight to the list — the submission already happened, this is
+      // just showing the reference number before the list reload sweeps
+      // the moment away.
+      setReceipt(await getRequest(requestId));
     } catch (err) {
       setError(errorMessage(err, 'Could not submit the request.'));
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (receipt) {
+    return <ReceiptConfirm request={receipt} onDone={onCreated} />;
+  }
 
   return (
     <Modal
@@ -450,6 +462,7 @@ function RequestDetailModal({
   const [showForward, setShowForward] = useState(false);
   const [docTypes, setDocTypes] = useState<string[]>([]);
   const [openDoc, setOpenDoc] = useState<string | null>(null);
+  const [showTicket, setShowTicket] = useState(false);
   const [outstandingTasks, setOutstandingTasks] = useState(0);
 
   const isHolder = request.current_holder === ctx.profile.id;
@@ -594,12 +607,21 @@ function RequestDetailModal({
                 <FileText size={14} /> {dt}
               </button>
             ))}
+            {request.status === 'approved' && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowTicket(true)}>
+                <FileText size={14} /> View as ticket
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {openDoc && (
         <DocumentView requestId={request.id} docType={openDoc} onClose={() => setOpenDoc(null)} />
+      )}
+
+      {showTicket && docTypes[0] && (
+        <Ticket requestId={request.id} docType={docTypes[0]} request={request} onClose={() => setShowTicket(false)} />
       )}
 
       {request.body && (
@@ -617,7 +639,7 @@ function RequestDetailModal({
 
       <ParticipantsPanel ctx={ctx} request={request} />
 
-      <Attachments requestId={request.id} />
+      <Attachments requestId={request.id} currentUserId={ctx.profile.id} />
 
       {showForward && isHolder && isOpen && (
         <div className="card" style={{ padding: '1rem' }}>

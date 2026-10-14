@@ -4,6 +4,7 @@ import { Button, FormControl, ErrorMessage } from 'frappe-ui';
 import { supabase } from '../lib/supabase';
 import { session, bootstrap } from '../lib/session';
 import { signOut } from '../lib/auth';
+import MfaEnroll from '../components/MfaEnroll.vue';
 
 const code = ref('');
 const error = ref('');
@@ -36,10 +37,10 @@ async function out() {
   <div class="flex min-h-screen items-center justify-center bg-surface-base p-5">
     <form class="w-full max-w-sm space-y-4" @submit.prevent="submit">
       <div>
-        <h1 class="text-2xl text-ink-gray-9">Two-step check</h1>
-        <p class="text-p-base text-ink-gray-5">Enter the 6-digit code from your authenticator app.</p>
+        <h1 class="text-2xl text-ink-gray-9">{{ session.factorId ? 'Two-step check' : 'Set up two-step sign-in' }}</h1>
+        <p class="text-p-base text-ink-gray-5">{{ session.factorId ? 'Enter the 6-digit code from your authenticator app.' : 'This account has no authenticator yet. Scan the code to finish setting one up.' }}</p>
       </div>
-      <ErrorMessage v-if="!session.factorId" message="No authenticator is enrolled on this account yet. Finish enrolment in the current app." />
+      <MfaEnroll v-if="!session.factorId" @verified="bootstrap" />
       <template v-else>
         <FormControl v-model="code" label="6-digit code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
         <ErrorMessage :message="error" />

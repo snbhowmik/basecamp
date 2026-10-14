@@ -34,6 +34,9 @@ async function submit() {
       <FormControl v-model="password" label="Password" type="password" autocomplete="current-password" required />
       <ErrorMessage :message="error" />
       <Button variant="solid" type="submit" class="w-full" :loading="loading">Sign in</Button>
+      <p class="border-t pt-4 text-p-sm text-ink-gray-5">
+        Student? <router-link to="/register" class="text-ink-blue-link underline">Register here</router-link>
+      </p>
     </form>
   </div>
 </template>

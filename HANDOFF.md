@@ -938,3 +938,16 @@ real database. Two layout bugs found and fixed there (attachment row, comment
 row). Read-only: nothing was submitted, decided or uploaded. Not yet exercised
 live: approve/reject/forward, stage tasks with real tasks, participants, file
 upload/delete, TOTP verify screen, login.
+
+**Update — onboarding ported to `app-vue/`:** `/next/register` (student
+self-registration, emailed-code confirm, mandatory TOTP enrolment),
+`/next/invite/:token` (staff invite acceptance with the same flow), and the
+TOTP verify screen now enrols a first authenticator when the account has none.
+Confirmation links from these pages return to `/next/…`; the React app's own
+links still return to `/…`. Both pages send a session that already has an
+authenticator to the app rather than enrolling a second one (checked live: a
+signed-in visit to `/next/register` redirected to the dashboard and enrolled
+nothing). **Not exercised live:** the signed-out form, email-code confirm,
+enrolment and invite flows — testing them needs a signed-out browser and a
+real new account (no fixture accounts, per project rule), so they need a real
+registration or invite to prove.

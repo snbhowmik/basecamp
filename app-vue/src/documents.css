@@ -1,0 +1,28 @@
+/* Generated documents. The printed letter is a plain white sheet regardless of
+   theme, and printing must yield the document, not a screenshot of the app:
+   #doc-print-root is a copy of the sheet that is hidden on screen and is the
+   only thing shown by @media print. */
+.doc-sheet {
+  background: #fff;
+  color: #16161a;
+  border: 1px solid #e2e0da;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+.doc-sheet h1, .doc-sheet h2 { margin: 0 0 0.6em; font-weight: 600; }
+.doc-sheet table { border-collapse: collapse; width: 100%; }
+.doc-sheet td, .doc-sheet th { border: 1px solid #d1d5db; padding: 0.4rem 0.6rem; }
+.doc-footer {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d1d5db; font-size: 0.8rem;
+}
+.doc-verify-qr { width: 4.5rem; height: 4.5rem; flex-shrink: 0; }
+.sig-stamp { break-inside: avoid; }
+
+#doc-print-root { display: none; }
+@media print {
+  body > *:not(#doc-print-root) { display: none !important; }
+  #doc-print-root { display: block !important; }
+  #doc-print-root .doc-sheet { border: 0; border-radius: 0; padding: 0; }
+  @page { margin: 18mm; }
+}

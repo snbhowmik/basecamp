@@ -951,3 +951,15 @@ nothing). **Not exercised live:** the signed-out form, email-code confirm,
 enrolment and invite flows — testing them needs a signed-out browser and a
 real new account (no fixture accounts, per project rule), so they need a real
 registration or invite to prove.
+
+**Update — documents ported to `app-vue/`:** the request detail now lists the
+category's document types and opens the generated document in a dialog
+(`DocumentView.vue`; print goes through `#doc-print-root`, a teleported copy
+of the sheet that is the only thing `@media print` shows), plus the ticket view
+for approved requests (`TicketView.vue`), and the postage-stamp mark
+(`StampMark.vue`, used on `/next/verify` for the last signer). `lib/documents.ts`
+is a straight copy of the React one. Build + typecheck only: the live check was
+cut short because the browser session's TOTP freshness had lapsed (the Vue
+two-step screen correctly caught it). To verify: sign in at `/next/`, open a
+request with an approved document, and try Document, Ticket and Print preview.
+Signature capture (SignaturePad) is not ported yet.

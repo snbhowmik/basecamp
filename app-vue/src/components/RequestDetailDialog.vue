@@ -5,6 +5,9 @@ import StatusBadge from './StatusBadge.vue';
 import StageTasks from './StageTasks.vue';
 import ParticipantsPanel from './ParticipantsPanel.vue';
 import Attachments from './Attachments.vue';
+import DocumentView from './DocumentView.vue';
+import TicketView from './TicketView.vue';
+import { listTemplates } from '../lib/documents';
 import { getOutstandingTaskCount } from '../lib/workflow';
 import type { UserContext } from '../lib/context';
 import {
@@ -26,6 +29,10 @@ const commentVisibility = ref<'public' | 'internal'>('public');
 const error = ref('');
 const busy = ref(false);
 const outstanding = ref(0);
+const docTypes = ref<string[]>([]);
+const openDoc = ref<string | null>(null);
+const showDoc = ref(false);
+const showTicket = ref(false);
 const showForward = ref(false);
 const forwardQuery = ref('');
 const forwardResults = ref<ForwardTarget[]>([]);
@@ -39,6 +46,10 @@ watch(() => props.request.id, (id) => {
   listComments(id).then((c) => { comments.value = c; }).catch(() => { comments.value = []; });
   listFieldValues(id).then((f) => { fieldValues.value = f; }).catch(() => { fieldValues.value = []; });
   refreshOutstanding();
+  // Several versions of a template are normal; render_document() picks the newest.
+  listTemplates(props.request.category_id)
+    .then((t) => { docTypes.value = Array.from(new Set(t.map((x) => x.doc_type))); })
+    .catch(() => { docTypes.value = []; });
 }, { immediate: true });
 
 const refreshOutstanding = () => getOutstandingTaskCount(props.request.id)
@@ -120,6 +131,18 @@ async function postComment() {
         </template>
       </dl>
 
+      <div v-if="docTypes.length" class="space-y-2">
+        <div class="text-sm text-ink-gray-5">Documents</div>
+        <div class="flex flex-wrap gap-2">
+          <Button v-for="dt in docTypes" :key="dt" size="sm" @click="openDoc = dt; showDoc = true">
+            <template #prefix><span class="lucide-file-text size-4" aria-hidden="true" /></template>{{ dt }}
+          </Button>
+          <Button v-if="request.status === 'approved'" size="sm" @click="showTicket = true">
+            <template #prefix><span class="lucide-ticket size-4" aria-hidden="true" /></template>View as ticket
+          </Button>
+        </div>
+      </div>
+
       <div v-if="request.body">
         <div class="mb-1 text-sm text-ink-gray-5">Details</div>
         <p class="whitespace-pre-wrap text-p-base">{{ request.body }}</p>
@@ -179,4 +202,6 @@ async function postComment() {
       </div>
     </div>
   </Dialog>
+  <DocumentView v-if="openDoc" v-model:open="showDoc" :request-id="request.id" :doc-type="openDoc" />
+  <TicketView v-if="showTicket && docTypes[0]" v-model:open="showTicket" :request-id="request.id" :doc-type="docTypes[0]" :request="request" />
 </template>

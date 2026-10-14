@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { Button, FormControl, ErrorMessage } from 'frappe-ui';
 import { supabase } from '../lib/supabase';
+import StampMark from '../components/StampMark.vue';
 
 interface Sig { signer: string; role: string; stage: string; signed_at: string }
 interface Result { found: boolean; intact?: boolean; doc_type?: string; issued_at?: string; signatures?: Sig[] | null }
@@ -29,6 +30,7 @@ async function run() {
   }
 }
 
+const last = computed(() => result.value?.signatures?.[result.value.signatures.length - 1]);
 onMounted(() => { if (input.value) run(); });
 </script>
 
@@ -56,6 +58,13 @@ onMounted(() => { if (input.value) run(); });
             <span>{{ s.signer }} · {{ new Date(s.signed_at).toLocaleDateString() }}</span>
           </li>
         </ul>
+        <div v-if="result.signatures?.length" class="flex justify-end pt-2">
+          <StampMark
+            :role="last!.stage || last!.role || 'Approved'" :name="last!.signer"
+            :date="new Date(last!.signed_at).toLocaleDateString()"
+            :punch="result.intact ? 'var(--surface-green-2)' : 'var(--surface-amber-2)'"
+          />
+        </div>
       </div>
     </div>
   </div>

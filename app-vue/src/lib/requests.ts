@@ -333,6 +333,10 @@ export interface DashboardSummary {
   last_30: number; prev_30: number; avg_decision_hours: number | null;
   by_status: { status: string; count: number }[];
   by_category: { name: string; count: number }[];
+  by_scope: { scope: 'internal' | 'external' | 'unset'; count: number }[];
+  by_class: { class: 'tech' | 'non_tech' | 'unset'; count: number }[];
+  events: { ongoing: number; upcoming: number; past: number; undated: number };
+  event_list: { title: string; category: string; scope: string | null; classification: string | null; starts: string; ends: string | null; phase: 'ongoing' | 'upcoming' }[];
   by_org_unit: { name: string; count: number }[];
   pipeline: { stage: string; count: number }[];
   by_month: { month: string; approved: number; rejected: number; in_progress: number }[];

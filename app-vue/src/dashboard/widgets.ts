@@ -14,13 +14,23 @@ export const OUTCOME = {
   rejected: { label: 'Rejected', color: '#c54b58' },
 } as const;
 
+// Scope colours are deliberately NOT the outcome colours: violet / amber / grey
+// never appear as an outcome, so one colour never means two things on a page.
+export const SCOPE = {
+  internal: { label: 'Internal', color: '#753cbb' },
+  external: { label: 'External', color: '#c98c28' },
+  unset: { label: 'Not set', color: '#9ca3af' },
+} as const;
+export const CLASS_LABEL = { tech: 'Tech', non_tech: 'Non-tech', unset: 'Not set' } as const;
+
 export type Span = 1 | 2 | 3 | 4;
 
 export type WidgetSpec =
   | { id: string; title: string; kind: 'number'; span: Span; value: (s: DashboardSummary) => number | null; delta?: (s: DashboardSummary) => number | null; suffix?: string; sparkline?: (s: DashboardSummary) => number[]; caption?: string }
   | { id: string; title: string; kind: 'donut'; span: Span; subtitle?: string; rows: (s: DashboardSummary) => { name: string; count: number; color?: string }[]; center: string }
   | { id: string; title: string; kind: 'bars'; span: Span; subtitle?: string; rows: (s: DashboardSummary) => { name: string; count: number }[]; empty: string }
-  | { id: string; title: string; kind: 'trend'; span: Span; subtitle?: string };
+  | { id: string; title: string; kind: 'trend'; span: Span; subtitle?: string }
+  | { id: string; title: string; kind: 'events'; span: Span; subtitle?: string };
 
 // Percent change vs the prior 30 days; null when there is no prior period to compare.
 const pct = (cur: number, prev: number) => (prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null);
@@ -35,6 +45,9 @@ export const WIDGETS: WidgetSpec[] = [
   { id: 'kpi-in-progress', title: 'In progress', kind: 'number', span: 1, value: (s) => s.in_progress },
   { id: 'kpi-decision-time', title: 'Avg. time to decision', kind: 'number', span: 1, value: (s) => s.avg_decision_hours, suffix: ' h' },
 
+  { id: 'kpi-events-now', title: 'Events going on', kind: 'number', span: 1, value: (s) => s.events.ongoing },
+  { id: 'kpi-events-next', title: 'Events coming up', kind: 'number', span: 1, value: (s) => s.events.upcoming },
+
   { id: 'outcomes', title: 'Outcomes', kind: 'donut', span: 1, center: 'requests',
     rows: (s) => [
       { name: OUTCOME.approved.label, count: s.approved, color: OUTCOME.approved.color },
@@ -43,6 +56,12 @@ export const WIDGETS: WidgetSpec[] = [
     ] },
   { id: 'trend', title: 'ODs filed per month', kind: 'trend', span: 3, subtitle: 'By outcome, last 12 months' },
 
+  { id: 'scope', title: 'Internal vs external', kind: 'donut', span: 1, center: 'requests',
+    rows: (s) => s.by_scope.map((r) => ({ name: SCOPE[r.scope].label, count: r.count, color: SCOPE[r.scope].color })) },
+  { id: 'by-class', title: 'Internal: tech vs non-tech', kind: 'bars', span: 1, subtitle: 'Internal events only',
+    rows: (s) => s.by_class.map((r) => ({ name: CLASS_LABEL[r.class], count: r.count })),
+    empty: 'No internal events yet — set a category to Internal under Workflow.' },
+  { id: 'events', title: 'Happening now and next', kind: 'events', span: 2, subtitle: 'Approved events by their dates' },
   { id: 'by-category', title: 'By category', kind: 'bars', span: 2, subtitle: 'Where requests are being filed',
     rows: (s) => s.by_category, empty: 'No requests yet.' },
   { id: 'by-department', title: 'By department', kind: 'bars', span: 2, subtitle: 'Programme the request belongs to',
@@ -55,6 +74,8 @@ export const WIDGETS: WidgetSpec[] = [
 // same default; what differs is what the database lets each of them count.
 export const DEFAULT_LAYOUT: string[] = [
   'kpi-total', 'kpi-approved', 'kpi-in-progress', 'kpi-decision-time',
+  'kpi-events-now', 'kpi-events-next',
   'outcomes', 'trend',
+  'scope', 'by-class', 'events',
   'by-category', 'by-department', 'pipeline',
 ];

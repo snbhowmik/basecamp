@@ -176,6 +176,8 @@ export interface RequestCategory {
   name: string;
   description: string | null;
   classification: Classification | null;
+  // internal | external; null until the captain sets it.
+  scope: 'internal' | 'external' | null;
   retain_attachments_after_close: boolean;
   is_active: boolean;
   sort_order: number;

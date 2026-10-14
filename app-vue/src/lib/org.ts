@@ -162,6 +162,7 @@ export interface CreateCategoryInput {
   parentId: string | null;
   name: string;
   classification: 'tech' | 'non_tech' | null;
+  scope: 'internal' | 'external' | null;
   retainAttachments: boolean;
 }
 
@@ -172,6 +173,7 @@ export async function createCategory(input: CreateCategoryInput) {
     p_name: input.name,
     p_classification: input.classification,
     p_retain: input.retainAttachments,
+    p_scope: input.scope,
   });
   if (error) throw error;
 }
@@ -280,4 +282,32 @@ export async function listAccounts(): Promise<AccountRow[]> {
     tags: tagsByUser.get(p.id) ?? [],
     memberType: typeByUser.get(p.id) ?? null,
   }));
+}
+
+// What kind of event a category is. Scope and tech/non-tech sit on the category
+// because the category is also what carries its stages and routing (0040).
+export async function setCategoryKind(
+  id: string, scope: 'internal' | 'external' | null, classification: 'tech' | 'non_tech' | null,
+) {
+  const { error } = await supabase.rpc('set_category_kind', { p_id: id, p_scope: scope, p_classification: classification });
+  if (error) throw error;
+}
+
+// The form a category asks for. Writes are RPCs; delete goes through admin_delete('field_definitions').
+export async function createFieldDefinition(input: {
+  categoryId: string; key: string; label: string;
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select'; options?: string[] | null; required: boolean;
+}) {
+  const { error } = await supabase.rpc('create_field_definition', {
+    p_category_id: input.categoryId, p_key: input.key, p_label: input.label, p_type: input.type,
+    p_options: input.options ?? null, p_required: input.required,
+  });
+  if (error) throw error;
+}
+
+export async function updateFieldDefinition(id: string, label: string, required: boolean, options?: string[] | null) {
+  const { error } = await supabase.rpc('update_field_definition', {
+    p_id: id, p_label: label, p_required: required, p_options: options ?? null,
+  });
+  if (error) throw error;
 }

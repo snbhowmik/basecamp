@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { Badge } from 'frappe-ui';
 import { NumberCard, DonutChart, BarChart } from 'frappe-ui/charts';
 import { OUTCOME, type WidgetSpec } from '../dashboard/widgets';
 import type { DashboardSummary } from '../lib/requests';
@@ -34,6 +35,7 @@ const monthFmt = (v: unknown) => {
 };
 // Counts of requests are whole numbers: drop the 0.5 ticks.
 const wholeOnly = (v: unknown) => (Number.isInteger(Number(v)) ? String(v) : '');
+const fmtDay = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const hasBars = computed(() => barRows.value.some((r) => r.count > 0));
 const donutTotal = computed(() => donutRows.value.reduce((a, r) => a + r.count, 0));
 const hasTrend = computed(() => trendRows.value.some((r) => r.count > 0));
@@ -72,6 +74,28 @@ const hasTrend = computed(() => trendRows.value.some((r) => r.count > 0));
         :title="spec.title" :subtitle="spec.subtitle" :loading="loading" :error="err"
         :data="barRows" x="name" y="count" horizontal :show-data-labels="true" :y-axis="{ format: wholeOnly }"
       />
+    </div>
+
+    <div v-else-if="spec.kind === 'events'" class="h-72 overflow-auto p-3">
+      <div class="text-base-medium text-ink-gray-9">{{ spec.title }}</div>
+      <div class="mb-2 text-p-sm text-ink-gray-5">{{ spec.subtitle }}</div>
+      <p v-if="err" class="text-p-sm text-ink-red-7">{{ err }}</p>
+      <p v-else-if="loading" class="text-p-sm text-ink-gray-5">Loading…</p>
+      <p v-else-if="!s?.event_list.length" class="pt-6 text-center text-p-sm text-ink-gray-5">
+        No approved events with dates yet. Add <strong>event start</strong> and <strong>end</strong> dates to a category's form fields (Workflow → Request catalog → Fields).
+      </p>
+      <ul v-else class="divide-y divide-outline-gray-1">
+        <li v-for="(e, i) in s.event_list" :key="i" class="flex items-center justify-between gap-3 py-2">
+          <div class="min-w-0">
+            <div class="truncate text-base-medium">{{ e.title }}</div>
+            <div class="text-p-sm text-ink-gray-5">{{ fmtDay(e.starts) }}<template v-if="e.ends && e.ends !== e.starts"> – {{ fmtDay(e.ends) }}</template> · {{ e.category }}</div>
+          </div>
+          <div class="flex flex-none gap-1">
+            <Badge v-if="e.scope" :theme="e.scope === 'external' ? 'amber' : 'violet'" :label="e.scope === 'external' ? 'External' : 'Internal'" />
+            <Badge :theme="e.phase === 'ongoing' ? 'green' : 'gray'" :label="e.phase === 'ongoing' ? 'Going on' : 'Upcoming'" />
+          </div>
+        </li>
+      </ul>
     </div>
 
     <div v-else class="h-72">

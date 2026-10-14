@@ -1056,3 +1056,30 @@ or structured fields on the category with a start/end date and an
 internal/external field. Either needs a decision, and the second needs the
 request form and a field editor (the Workflow page has no field-definition
 editor yet).
+
+**Update — internal/external, tech/non-tech and events (`0040`):** the captain's
+model: events are internal or external; an internal one is tech or non-tech, and
+that decides its route. The category already carried `classification` plus its own
+stages and routing, so **`request_categories.scope` (internal | external)** joins it
+there — the category is the one place that says what kind of event it is and where
+it goes. (How tech vs non-tech *routes* is the captain's hierarchy, still to be
+explained; this migration only records the kind and does not change routing.)
+New RPCs, captain-only and re-checked: `set_category_kind`, `create_field_definition`
+(key validated to `[a-z][a-z0-9_]*`), `update_field_definition`; `create_category`
+gained `p_scope` (the old 5-argument form was replaced, not overloaded — two
+overloads would make `rpc()` ambiguous; the React app still calls it with five
+arguments and gets `scope = null`). Event dates are structured fields, not columns:
+a category gets `event_start` and `event_end` date fields and `dashboard_summary()`
+reads those two keys, so nothing is assumed until the captain adds them.
+`dashboard_summary()` now also returns `by_scope`, `by_class` (internal only),
+`events` (ongoing / upcoming / past / undated, from approved requests) and
+`event_list`. **Workflow → Request catalog** now has an Event kind selector (create
+and edit), a Kind column, and a **Fields** dialog per category with a one-click
+"Add event dates". Dashboard gains: events going on, events coming up, internal vs
+external, internal tech vs non-tech, and a "Happening now and next" list.
+**Verified in a rolled-back transaction as the captain** on the real rows: scope and
+class appear, CTF read as going on, ACM HACK as upcoming, one approved request as
+undated, and a bad field key was refused. **Not seen in a browser** (the session's
+TOTP freshness had lapsed): the new widgets, the Kind column and the Fields dialog.
+**Data to set by hand:** the existing "Internal OD" category has no scope yet
+(it shows as "Not set"); set it to Internal under Workflow → Edit.

@@ -1027,3 +1027,32 @@ the real ladder, narrowing by choosing GOWTHAM (Mentor and Student rungs refetch
 department, batch and class). Not seen live: the member (non-captain)
 dashboard branch. Remaining React-only: Levels setup, the first-run setup
 wizard, sticky-note settings.
+
+**Update — Dashboard is now an analytics view (`0039_dashboard_summary.sql`):**
+the captain asked for ODs counted and charted, not a staff list. The old
+captain/member dashboards and the "Organisation" card are gone. `dashboard_summary()`
+returns every number in one call and is **SECURITY INVOKER on purpose**, so
+`can_see_request` RLS scopes it — captain = whole instance, dean/HOD = their
+programme subtree, mentor = what they can see (checked in rolled-back
+transactions as captain, dean, HOD and mentor: 4, 4, 4 and 2 requests). Widgets
+use frappe-ui's own chart set (`frappe-ui/charts`): KPI tiles (total with
+30-day change and a monthly sparkline, approved, in progress, average hours to
+decision), outcomes donut, filed-per-month stacked bars, and by category / by
+department / "waiting at" bars. Outcome colours are pinned (green / blue / red) so
+a colour always means the same outcome. **Live-verified as the captain**; found
+and fixed a donut colour-shift (a dropped zero slice moved Rejected onto the
+blue slot) and an "Invalid Date" month axis.
+
+**Customisation is designed for, not built:** `src/dashboard/widgets.ts` is a
+registry (`WIDGETS`) plus an ordered id list (`DEFAULT_LAYOUT`); a per-user
+dashboard is that list stored per person plus a picker. It needs one table and
+an RPC (own rows only) — not written yet.
+
+**Not possible yet, because the data does not exist:** *internal vs external*
+and *events going on now*. There are no `field_definitions` at all (so no event
+dates, no travel scope) and only one category, "Internal OD". Options: separate
+categories ("Internal OD" / "External OD", which the dashboard already splits by),
+or structured fields on the category with a start/end date and an
+internal/external field. Either needs a decision, and the second needs the
+request form and a field editor (the Workflow page has no field-definition
+editor yet).

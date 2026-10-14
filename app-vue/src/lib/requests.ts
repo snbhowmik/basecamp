@@ -327,3 +327,20 @@ export async function getCategoryInfo(id: string): Promise<CategoryInfo | null> 
   if (error) throw error;
   return data as CategoryInfo | null;
 }
+
+export interface DashboardSummary {
+  total: number; approved: number; rejected: number; in_progress: number;
+  last_30: number; prev_30: number; avg_decision_hours: number | null;
+  by_status: { status: string; count: number }[];
+  by_category: { name: string; count: number }[];
+  by_org_unit: { name: string; count: number }[];
+  pipeline: { stage: string; count: number }[];
+  by_month: { month: string; approved: number; rejected: number; in_progress: number }[];
+}
+
+// One aggregate call, run as the caller — RLS decides what is counted (0039).
+export async function getDashboardSummary(months = 12): Promise<DashboardSummary> {
+  const { data, error } = await supabase.rpc('dashboard_summary', { p_months: months });
+  if (error) throw error;
+  return data as DashboardSummary;
+}

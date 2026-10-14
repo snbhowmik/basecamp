@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Button, FormControl, ErrorMessage } from 'frappe-ui';
+import { Button, FormControl, ErrorMessage, Password } from 'frappe-ui';
 import { signIn } from '../lib/auth';
 import { bootstrap } from '../lib/session';
 
@@ -31,7 +31,7 @@ async function submit() {
         <p class="text-p-base text-ink-gray-5">Sign in to continue.</p>
       </div>
       <FormControl v-model="email" label="Email" type="email" autocomplete="email" required />
-      <FormControl v-model="password" label="Password" type="password" autocomplete="current-password" required />
+      <Password v-model="password" label="Password" autocomplete="current-password" required />
       <ErrorMessage :message="error" />
       <Button variant="solid" type="submit" class="w-full" :loading="loading">Sign in</Button>
       <p class="border-t pt-4 text-p-sm text-ink-gray-5">

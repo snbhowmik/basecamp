@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, FormControl, ErrorMessage, Alert } from 'frappe-ui';
+import { Button, FormControl, ErrorMessage, Alert, Password } from 'frappe-ui';
 import AuthShell from '../components/AuthShell.vue';
 import MfaEnroll from '../components/MfaEnroll.vue';
+import OneTimeCode from '../components/OneTimeCode.vue';
 import { supabase } from '../lib/supabase';
 import { bootstrap } from '../lib/session';
 import { sessionMfa } from '../lib/auth';
@@ -27,7 +28,6 @@ const orgUnitId = ref('');
 const batches = ref<PublicOption[]>([]);
 const batchId = ref('');
 const catalogError = ref('');
-const confirmCode = ref('');
 
 listPublicOrgUnits()
   .then((d) => {
@@ -64,11 +64,12 @@ async function submit() {
   });
 }
 
-const verifyConfirm = () => run(async () => {
-  const { error: err } = await supabase.auth.verifyOtp({ email: email.value, token: confirmCode.value, type: 'signup' });
-  if (err) throw err;
-  step.value = 'mfa';
-});
+// The emailed code: a wrong one throws, which shakes the row; a right one fuses and moves on.
+async function verifyConfirm(token: string) {
+  error.value = '';
+  const { error: err } = await supabase.auth.verifyOtp({ email: email.value, token, type: 'signup' });
+  if (err) { error.value = err.message; throw err; }
+}
 
 // Arriving from the emailed link lands here already holding a session; pick
 // up at MFA enrolment instead of showing the form again.
@@ -104,17 +105,16 @@ const subtitle = computed(() => step.value === 'form' ? 'Students only — staff
     <form v-if="step === 'form'" class="space-y-4" @submit.prevent="submit">
       <FormControl v-model="fullName" label="Full name" required />
       <FormControl v-model="email" type="email" label="Email" autocomplete="email" required />
-      <FormControl v-model="password" type="password" label="Password" autocomplete="new-password" required />
+      <Password v-model="password" label="Password" autocomplete="new-password" required />
       <FormControl v-model="orgUnitId" type="select" label="Programme" :options="unitOptions" />
       <FormControl v-model="batchId" type="select" label="Batch" :options="batchOptions" :disabled="!orgUnitId" />
       <FormControl v-model="regNo" label="Registration number" required />
       <Button variant="solid" type="submit" class="w-full" :loading="submitting">Register</Button>
     </form>
 
-    <form v-else-if="step === 'confirm'" class="space-y-4" @submit.prevent="verifyConfirm">
-      <FormControl v-model="confirmCode" label="6-digit code" inputmode="numeric" maxlength="6" required />
-      <Button variant="solid" type="submit" class="w-full" :loading="submitting">Verify</Button>
-    </form>
+    <div v-else-if="step === 'confirm'" class="flex justify-center py-2">
+      <OneTimeCode :length="6" :on-submit="verifyConfirm" :on-verified="() => { step = 'mfa'; }" />
+    </div>
 
     <MfaEnroll v-else @verified="done" />
 

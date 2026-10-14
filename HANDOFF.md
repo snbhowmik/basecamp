@@ -1108,3 +1108,39 @@ approvals, a rejection, a stage advance) and as HOD GOWTHAM (3 "assigned"); the
 tabs rendered live as the captain, whose own lists are correctly empty. **Not seen
 populated in a browser** — that needs a student or HOD session. Notifications are
 in-app only (nothing emailed or pushed).
+
+**Update — the dqnamo pieces, the Bencho pieces and a password toggle in `app-vue/`:**
+- **Receipt printer** (`ReceiptPrinter.vue`): opens the moment you submit a request, stays on
+  "Processing" until the request truly exists, then feeds the real receipt (category,
+  subject, reference, time, decorative barcode — deterministic, not scannable) out of
+  the slot in 20 steps and ends on "Request submitted". Reduced motion skips the feed.
+- **Magnetic drop zone** (`MagneticDropzone.vue`): replaces the attach button. Within 180px of
+  the card during a drag it leans up to 10px toward the pointer on a spring, with a glow
+  tracking it; states idle → "Bring it closer" → "Let go to add it" → ready (name, size,
+  Upload / Replace / Remove) → error (type or 20 MB). Used in Attachments.
+- **Ticket** (`TicketView.vue`): tall card, chamfered corners, real notches cut where body
+  meets stub (CSS mask, so they are transparent), dashed tear line, sheen, layered shadows
+  and a ≤6° hover tilt on hover-capable pointers. **Stamp** (`StampMark.vue`): perforated edge
+  as a real mask (no "punch colour" to match), sheen, shadow. `/verify` now shows an
+  itemised torn-edge receipt (stage, signer, role, date) closed by the stamp.
+- **Bencho One-time code and Slide to confirm**, ported from React to Vue (comments kept;
+  CSS in `src/bencho.css`, tokens mapped locally from frappe's, rgba(var(--ink-rgb)) replaced
+  with `color-mix`; slide uses the `motion` package, framer-motion's engine). The one-time code
+  now backs **every** code screen: sign-in two-step, authenticator enrolment, the emailed
+  confirm code on register and invite, authenticator replacement, and the destructive-delete
+  confirm (the Delete button enables once the code is accepted). Slide-to-approve replaces
+  the Approve button **on small screens only** (≤48rem) and only when no task is outstanding;
+  it holds at the end while the real approve call runs and springs home with the message if
+  it is refused.
+- **Password fields** (login, register, invite, account) now use frappe-ui's `Password`, which
+  has the show/hide toggle (Ctrl/Cmd+I).
+- **Trap, again:** frappe's Tailwind preset *removes* the `neutral` (and other stock) colour
+  families, so `bg-neutral-900` silently compiles to nothing; the receipt's housing was
+  washed out until found live. Fixed colours are used where the paper must stay white in dark mode.
+**Verified in a temporary public harness page (removed):** the receipt feed and final
+state, the one-time code (right code → "Verified" capsule, wrong → red digits and reset), the
+slider (follows a finger, holds, confirms with the right edge fixed; refused → home + message),
+the drop zone (near / over / ready / wrong-type) and the stamp. **Not seen live:** the ticket
+(needs an approved request's document), and the full flows against the real database
+(submitting a request, approving, a real code) — those would change your org's data or need a
+fresh authenticator code, so please exercise one of each.

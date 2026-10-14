@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Button, FormControl, ErrorMessage } from 'frappe-ui';
+import { ErrorMessage } from 'frappe-ui';
+import OneTimeCode from './OneTimeCode.vue';
 import { enrollTotp, verifyTotp } from '../lib/onboarding';
 
 // Enrols a new authenticator and verifies the first code. Mandatory and not
@@ -10,9 +11,7 @@ const emit = defineEmits<{ verified: [] }>();
 const factorId = ref<string | null>(null);
 const qr = ref('');
 const secret = ref('');
-const code = ref('');
 const error = ref('');
-const loading = ref(false);
 
 onMounted(async () => {
   try {
@@ -25,23 +24,16 @@ onMounted(async () => {
   }
 });
 
-async function submit() {
-  if (!factorId.value) return;
+// A wrong code throws, so the row shakes; a right one fuses into "Verified" and then we finish.
+async function check(c: string) {
   error.value = '';
-  loading.value = true;
-  try {
-    await verifyTotp(factorId.value, code.value);
-    emit('verified');
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Verification failed.';
-  } finally {
-    loading.value = false;
-  }
+  try { await verifyTotp(factorId.value!, c); }
+  catch (err) { error.value = err instanceof Error ? err.message : 'Verification failed.'; throw err; }
 }
 </script>
 
 <template>
-  <form class="space-y-4" @submit.prevent="submit">
+  <div class="space-y-4">
     <ErrorMessage :message="error" />
     <div v-if="qr" class="flex justify-center">
       <img :src="qr" alt="Scan with your authenticator app" width="180" height="180" class="rounded-6 border bg-white p-3" />
@@ -50,7 +42,9 @@ async function submit() {
       <div class="text-sm text-ink-gray-5">Can't scan? Enter this key manually</div>
       <code class="block break-all rounded-4 border bg-surface-gray-1 p-3 text-p-sm">{{ secret }}</code>
     </div>
-    <FormControl v-model="code" label="6-digit code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
-    <Button variant="solid" type="submit" class="w-full" :loading="loading" :disabled="!factorId">Verify &amp; finish</Button>
-  </form>
+    <div v-if="factorId" class="space-y-1">
+      <div class="text-sm text-ink-gray-5">Enter the 6-digit code from the app</div>
+      <div class="flex justify-center py-1"><OneTimeCode :length="6" :on-submit="check" :on-verified="() => emit('verified')" /></div>
+    </div>
+  </div>
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { Button, ErrorMessage } from 'frappe-ui';
+import MagneticDropzone from './MagneticDropzone.vue';
 import { listAttachments, getAttachmentUrl, deleteAttachment, uploadAttachment, type Attachment } from '../lib/attachments';
 import { errorMessage } from '../lib/requests';
 
@@ -16,7 +17,6 @@ const items = ref<Attachment[]>([]);
 const error = ref('');
 const busy = ref(false);
 const confirming = ref<string | null>(null);
-const fileInput = ref<HTMLInputElement | null>(null);
 
 const load = () => listAttachments(props.requestId).then((a) => { items.value = a; }).catch(() => { items.value = []; });
 watch(() => props.requestId, load, { immediate: true });
@@ -39,16 +39,13 @@ async function remove(a: Attachment) {
   finally { busy.value = false; }
 }
 
-async function pick(e: Event) {
-  const input = e.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
-  const ext = '.' + (file.name.split('.').pop() ?? '').toLowerCase();
-  if (!ACCEPT.split(',').includes(ext)) { error.value = 'That file type is not allowed.'; return; }
-  if (file.size > MAX_BYTES) { error.value = 'Files are limited to 20 MB.'; return; }
+const picked = ref<File | null>(null);
+
+// Type and size are checked by the drop zone before anything is chosen; the
+// storage bucket and database enforce the same limits regardless.
+async function upload(file: File) {
   busy.value = true; error.value = '';
-  try { await uploadAttachment(props.requestId, file); await load(); }
+  try { await uploadAttachment(props.requestId, file); picked.value = null; await load(); }
   catch (err) { error.value = errorMessage(err, 'Could not upload that file.'); }
   finally { busy.value = false; }
 }
@@ -72,10 +69,6 @@ async function pick(e: Event) {
         </Button>
       </template>
     </div>
-    <input ref="fileInput" type="file" class="hidden" :accept="ACCEPT" @change="pick" />
-    <Button :loading="busy" @click="fileInput?.click()">
-      <template #prefix><span class="lucide-paperclip size-4" aria-hidden="true" /></template>
-      Attach file
-    </Button>
+    <MagneticDropzone v-model:file="picked" :accept="ACCEPT.split(',')" :max-bytes="MAX_BYTES" :busy="busy" @upload="upload" />
   </div>
 </template>

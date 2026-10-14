@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Dialog, FormControl, ErrorMessage } from 'frappe-ui';
+import ReceiptPrinter from './ReceiptPrinter.vue';
 import {
   type RequestCategory, type FieldDefinition, type FirstHopCandidate,
-  listFirstHopCandidates, listFieldDefinitions, submitRequest, saveFieldValues,
+  listFirstHopCandidates, listFieldDefinitions, submitRequest, saveFieldValues, getRequest, type RequestRow,
   coerceFieldValue, fieldOptions, errorMessage,
 } from '../lib/requests';
 
@@ -19,6 +20,10 @@ const fieldValues = ref<Record<string, string>>({});
 const candidates = ref<FirstHopCandidate[]>([]);
 const firstHop = ref('');
 const submitting = ref(false);
+// The receipt printer opens the moment submitting starts and prints once the request truly exists.
+const printing = ref(false);
+const receipt = ref<RequestRow | null>(null);
+const createdId = ref('');
 const error = ref('');
 
 // Form is built from whatever the captain configured for the picked category.
@@ -44,6 +49,7 @@ async function submit() {
   const missing = fieldDefs.value.filter((d) => d.is_required && !(fieldValues.value[d.id] ?? '').trim());
   if (missing.length) { error.value = `Required: ${missing.map((d) => d.label).join(', ')}.`; return; }
   submitting.value = true;
+  printing.value = true; receipt.value = null;
   try {
     const id = await submitRequest({
       categoryId: categoryId.value, title: title.value, body: body.value, firstHop: firstHop.value || null,
@@ -53,9 +59,12 @@ async function submit() {
     await saveFieldValues(id, fieldDefs.value.map((d) => ({
       definitionId: d.id, value: coerceFieldValue(d, fieldValues.value[d.id]),
     })));
-    emit('created', id);
-    open.value = false;
+    createdId.value = id;
+    receipt.value = await getRequest(id);
+    // The request exists either way; if it cannot be re-read there is nothing to print.
+    if (!receipt.value) { printing.value = false; emit('created', id); open.value = false; }
   } catch (e) {
+    printing.value = false;
     error.value = errorMessage(e, 'Could not submit the request.');
   } finally {
     submitting.value = false;
@@ -106,4 +115,6 @@ async function submit() {
       </template>
     </div>
   </Dialog>
+
+  <ReceiptPrinter v-if="printing" :request="receipt" @done="printing = false; emit('created', createdId); open = false" />
 </template>

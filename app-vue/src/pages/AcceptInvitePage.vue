@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Button, FormControl, ErrorMessage } from 'frappe-ui';
+import { Button, FormControl, ErrorMessage, Password } from 'frappe-ui';
 import AuthShell from '../components/AuthShell.vue';
 import MfaEnroll from '../components/MfaEnroll.vue';
+import OneTimeCode from '../components/OneTimeCode.vue';
 import { supabase } from '../lib/supabase';
 import { bootstrap } from '../lib/session';
 import { sessionMfa } from '../lib/auth';
@@ -26,7 +27,6 @@ const error = ref('');
 const submitting = ref(false);
 const fullName = ref('');
 const password = ref('');
-const confirmCode = ref('');
 
 async function finish() {
   await bootstrap();
@@ -63,11 +63,12 @@ const submit = () => {
   });
 };
 
-const verifyConfirm = () => invite.value && run(async () => {
-  const { error: err } = await supabase.auth.verifyOtp({ email: invite.value!.email, token: confirmCode.value, type: 'signup' });
-  if (err) throw err;
-  step.value = 'mfa';
-});
+// The emailed code: a wrong one throws, which shakes the row; a right one fuses and moves on.
+async function verifyConfirm(token: string) {
+  error.value = '';
+  const { error: err } = await supabase.auth.verifyOtp({ email: invite.value!.email, token, type: 'signup' });
+  if (err) { error.value = err.message; throw err; }
+}
 
 const title = computed(() => step.value === 'form' ? 'Complete your account' : step.value === 'confirm' ? 'Check your email' : 'Set up two-step sign-in');
 const subtitle = computed(() => step.value === 'form' && invite.value
@@ -87,13 +88,12 @@ const subtitle = computed(() => step.value === 'form' && invite.value
     <ErrorMessage :message="error" />
     <form v-if="step === 'form'" class="space-y-4" @submit.prevent="submit">
       <FormControl v-model="fullName" label="Full name" required />
-      <FormControl v-model="password" type="password" label="Password" autocomplete="new-password" required />
+      <Password v-model="password" label="Password" autocomplete="new-password" required />
       <Button variant="solid" type="submit" class="w-full" :loading="submitting">Continue</Button>
     </form>
-    <form v-else-if="step === 'confirm'" class="space-y-4" @submit.prevent="verifyConfirm">
-      <FormControl v-model="confirmCode" label="6-digit code" inputmode="numeric" maxlength="6" required />
-      <Button variant="solid" type="submit" class="w-full" :loading="submitting">Verify</Button>
-    </form>
+    <div v-else-if="step === 'confirm'" class="flex justify-center py-2">
+      <OneTimeCode :length="6" :on-submit="verifyConfirm" :on-verified="() => { step = 'mfa'; }" />
+    </div>
     <MfaEnroll v-else @verified="finish" />
   </AuthShell>
 </template>

@@ -9,6 +9,8 @@ import DocumentView from './DocumentView.vue';
 import TicketView from './TicketView.vue';
 import { listTemplates } from '../lib/documents';
 import { getOutstandingTaskCount } from '../lib/workflow';
+import SlideToConfirm from './SlideToConfirm.vue';
+import { useMediaQuery, SMALL_SCREEN_QUERY } from '../lib/useMediaQuery';
 import type { UserContext } from '../lib/context';
 import {
   type RequestRow, type HistoryRow, type CommentRow, type FieldValue, type ForwardTarget,
@@ -28,6 +30,10 @@ const commentBody = ref('');
 const commentVisibility = ref<'public' | 'internal'>('public');
 const error = ref('');
 const busy = ref(false);
+// Slide-to-approve is for the screens where a slide is the natural gesture — a thumb on a
+// phone. With a cursor a click is faster, and a 280px drag track is a worse control than
+// the button it replaces.
+const smallScreen = useMediaQuery(SMALL_SCREEN_QUERY);
 const outstanding = ref(0);
 const docTypes = ref<string[]>([]);
 const openDoc = ref<string | null>(null);
@@ -88,14 +94,16 @@ const actions = computed(() => {
   if (props.request.decision_mode === 'log_only') {
     return [...list, { label: 'Mark reviewed', variant: 'solid' as const, theme: 'green' as const, onClick: () => decide('reviewed') }];
   }
+  // On a small screen, a clear-to-approve request is approved by the slider in the body, not a button.
+  const slide = smallScreen.value && outstanding.value === 0;
   return [
     ...list,
     { label: 'Request changes', variant: 'subtle' as const, onClick: () => decide('changes_requested') },
     { label: 'Reject', variant: 'subtle' as const, theme: 'red' as const, onClick: () => decide('rejected') },
-    {
+    ...(slide ? [] : [{
       label: outstanding.value > 0 ? `Approve (${outstanding.value} task${outstanding.value === 1 ? '' : 's'} outstanding)` : 'Approve',
       variant: 'solid' as const, theme: 'green' as const, disabled: outstanding.value > 0, onClick: () => decide('approved'),
-    },
+    }]),
   ];
 });
 
@@ -165,6 +173,14 @@ async function postComment() {
       </div>
 
       <FormControl v-if="canAct" v-model="note" type="textarea" label="Note (attached to your decision)" />
+
+      <div v-if="smallScreen && canAct && request.decision_mode !== 'log_only' && outstanding === 0" class="flex justify-center py-1">
+        <SlideToConfirm
+          label="Slide to approve" :width="280"
+          :on-confirm="async () => { error = ''; await decideRequest(request.id, 'approved', note); }"
+          :on-error="(m) => { error = m; }"
+        />
+      </div>
 
       <div>
         <div class="mb-2 text-sm text-ink-gray-5">Activity</div>

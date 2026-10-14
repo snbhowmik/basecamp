@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  LayoutDashboard, Inbox, UserPlus, Users, GitBranch, UserCircle, LogOut,
-  ChevronDown, Layers, FileText, Network, LayoutGrid, X,
+  LayoutDashboard, Inbox, UserPlus, Users, GitBranch, LogOut,
+  ChevronDown, ChevronsLeft, ChevronsRight, Layers, FileText, Network, LayoutGrid, Settings, X,
 } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
 import Brand from '../ui/Brand';
 import { useResolvedTheme } from '../../lib/theme';
+import AccountPage from '../pages/AccountPage';
+import Modal from '../ui/Modal';
 
 export type Route =
   | '/dashboard'
@@ -17,6 +19,8 @@ export type Route =
   | '/levels'
   | '/templates'
   | '/account';
+
+const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
 
 interface Tab {
   route: Route;
@@ -31,6 +35,11 @@ interface Tab {
 // (workflow config, invitations, the account roster); everyone else works
 // the queue. This is presentation only — RLS decides what any of these
 // pages can actually load.
+//
+// No "Account" entry: profile/password/MFA/appearance live behind the
+// Settings trigger in the sidebar footer now, a floating panel rather than
+// a routed destination — one less stop in a list that's supposed to be the
+// place you work, not administer yourself.
 export function tabsFor(ctx: UserContext): Tab[] {
   if (ctx.isCaptain) {
     return [
@@ -41,7 +50,6 @@ export function tabsFor(ctx: UserContext): Tab[] {
       { route: '/templates', label: 'Templates', icon: FileText, hint: 'Letters generated from a request' },
       { route: '/invite', label: 'Invite', icon: UserPlus, hint: 'Bring somebody into the organisation' },
       { route: '/accounts', label: 'Accounts', icon: Users, hint: 'Everybody with an account' },
-      { route: '/account', label: 'Account', icon: UserCircle, hint: 'Your profile, password and signature' },
     ];
   }
   const tabs: Tab[] = [
@@ -52,7 +60,6 @@ export function tabsFor(ctx: UserContext): Tab[] {
   // Staff who can invite (anyone above base level) get the invite tab too —
   // can_invite() still decides whether any given invite is permitted.
   if (ctx.isStaff) tabs.push({ route: '/invite', label: 'Invite', icon: UserPlus, hint: 'Bring somebody into the organisation' });
-  tabs.push({ route: '/account', label: 'Account', icon: UserCircle, hint: 'Your profile, password and signature' });
   return tabs;
 }
 
@@ -71,11 +78,16 @@ interface AppShellProps {
   route: Route;
   onNavigate: (route: Route) => void;
   onLogout: () => void;
+  onProfileChanged: () => void;
   children: ReactNode;
 }
 
-export default function AppShell({ ctx, route, onNavigate, onLogout, children }: AppShellProps) {
+export default function AppShell({ ctx, route, onNavigate, onLogout, onProfileChanged, children }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'; } catch { return false; }
+  });
   const menuRef = useRef<HTMLDivElement>(null);
   const tabs = tabsFor(ctx);
   const current = tabs.find((t) => t.route === route);
@@ -83,6 +95,14 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
   // its own white box) — on the rail/topbar's dark surface in dark mode
   // that reads as nearly invisible, so swap to the white mark instead.
   const brandVariant = useResolvedTheme() === 'dark' ? 'white' : 'color';
+
+  const toggleCollapsed = () => {
+    setCollapsed((v) => {
+      const next = !v;
+      try { localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next)); } catch { /* best effort */ }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -104,11 +124,15 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
           head — and a work tool used at a desk should spend horizontal space
           on wayfinding it can keep, rather than a row that has to scroll
           sideways the moment a level is added. */}
-      <aside className="rail">
+      <aside className="rail" data-collapsed={collapsed || undefined}>
         <div className="rail-brand">
           <Brand variant={brandVariant} height={26} />
-          <span className="brand-divider" aria-hidden="true" />
-          <strong>BaseCamp</strong>
+          {!collapsed && (
+            <>
+              <span className="brand-divider" aria-hidden="true" />
+              <strong>BaseCamp</strong>
+            </>
+          )}
         </div>
 
         <nav className="rail-nav" aria-label="Sections">
@@ -118,40 +142,60 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
               type="button"
               className={`rail-tab ${route === r ? 'active' : ''}`}
               aria-current={route === r ? 'page' : undefined}
+              title={collapsed ? label : undefined}
               onClick={() => onNavigate(r)}
             >
               <Icon size={16} aria-hidden="true" />
-              {label}
+              {!collapsed && label}
             </button>
           ))}
         </nav>
 
-        <div className="rail-user" ref={menuRef}>
+        <div className="rail-foot">
           <button
             type="button"
-            className="user-trigger"
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
-            onClick={() => setMenuOpen((v) => !v)}
+            className="rail-tab"
+            title={collapsed ? 'Settings' : undefined}
+            onClick={() => setSettingsOpen(true)}
           >
-            <span className="avatar">{initials(ctx.profile.full_name || '?')}</span>
-            <span className="rail-user-name">{ctx.profile.full_name}</span>
-            <ChevronDown size={14} aria-hidden="true" />
+            <Settings size={16} aria-hidden="true" />
+            {!collapsed && 'Settings'}
           </button>
-          {menuOpen && (
-            <div className="dropdown dropdown--rail" role="menu">
-              <div className="dropdown-header">
-                <strong>{ctx.profile.full_name}</strong>
-                <span>{ctx.profile.email}</span>
+
+          <button type="button" className="rail-collapse" onClick={toggleCollapsed} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+            {collapsed ? <ChevronsRight size={16} aria-hidden="true" /> : <ChevronsLeft size={16} aria-hidden="true" />}
+            {!collapsed && 'Collapse'}
+          </button>
+
+          <div className="rail-user" ref={menuRef}>
+            <button
+              type="button"
+              className="user-trigger"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              title={collapsed ? ctx.profile.full_name : undefined}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              <span className="avatar">{initials(ctx.profile.full_name || '?')}</span>
+              {!collapsed && (
+                <>
+                  <span className="rail-user-name">{ctx.profile.full_name}</span>
+                  <ChevronDown size={14} aria-hidden="true" />
+                </>
+              )}
+            </button>
+            {menuOpen && (
+              <div className="dropdown dropdown--rail" role="menu">
+                <div className="dropdown-header">
+                  <strong>{ctx.profile.full_name}</strong>
+                  <span>{ctx.profile.email}</span>
+                </div>
+                <button className="dropdown-item danger" role="menuitem" onClick={onLogout}>
+                  <LogOut size={16} aria-hidden="true" /> Sign out
+                </button>
               </div>
-              {/* No "My account" here — the rail already carries an Account
-                  tab, and a second door to the same room is just a decision
-                  to make twice. */}
-              <button className="dropdown-item danger" role="menuitem" onClick={onLogout}>
-                <LogOut size={16} aria-hidden="true" /> Sign out
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </aside>
 
@@ -177,7 +221,15 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
         email={ctx.profile.email}
         onNavigate={onNavigate}
         onLogout={onLogout}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
+
+      {/* Settings: a floating overlay, not a routed page — see tabsFor's
+          comment. Reachable from the rail footer on desktop and the
+          launcher's footer on mobile, same trigger either way. */}
+      <Modal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} title="Settings" maxWidth="640px">
+        <AccountPage ctx={ctx} onProfileChanged={onProfileChanged} />
+      </Modal>
     </div>
   );
 }
@@ -187,7 +239,7 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
 // menu that hides behind an icon costs a tap and a guess on every move; this
 // costs one tap and shows every destination at once.
 function MobileNav({
-  tabs, route, currentLabel, user, email, onNavigate, onLogout,
+  tabs, route, currentLabel, user, email, onNavigate, onLogout, onOpenSettings,
 }: {
   tabs: Tab[];
   route: Route;
@@ -196,6 +248,7 @@ function MobileNav({
   email: string;
   onNavigate: (r: Route) => void;
   onLogout: () => void;
+  onOpenSettings: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -285,6 +338,15 @@ function MobileNav({
                 <span className="launcher-item-hint">{hint}</span>
               </button>
             ))}
+            <button
+              type="button"
+              className="launcher-item"
+              onClick={() => { close(); onOpenSettings(); }}
+            >
+              <Settings size={19} aria-hidden="true" />
+              <span className="launcher-item-label">Settings</span>
+              <span className="launcher-item-hint">Profile, password, authenticator, appearance</span>
+            </button>
           </div>
 
           <button type="button" className="launcher-signout" onClick={onLogout}>

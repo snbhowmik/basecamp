@@ -14,7 +14,6 @@ import AppShell, { tabsFor, type Route } from './components/layout/AppShell';
 import DashboardPage from './components/pages/DashboardPage';
 import HierarchyPage from './components/pages/HierarchyPage';
 import RequestsPage from './components/pages/RequestsPage';
-import AccountPage from './components/pages/AccountPage';
 import AccountsPage from './components/pages/AccountsPage';
 import WorkflowPage from './components/pages/WorkflowPage';
 import TemplatesPage from './components/pages/TemplatesPage';
@@ -192,7 +191,7 @@ function App() {
 
   if (screen === 'app' && ctx) {
     return (
-      <AppShell ctx={ctx} route={route} onNavigate={navigate} onLogout={handleLogout}>
+      <AppShell ctx={ctx} route={route} onNavigate={navigate} onLogout={handleLogout} onProfileChanged={bootstrap}>
         {route === '/dashboard' && <DashboardPage ctx={ctx} onNavigate={navigate} />}
         {route === '/hierarchy' && <HierarchyPage />}
         {route === '/requests' && <RequestsPage ctx={ctx} />}
@@ -201,7 +200,6 @@ function App() {
         {route === '/workflow' && <WorkflowPage />}
         {route === '/templates' && <TemplatesPage />}
         {route === '/levels' && <LevelsSetup mode="manage" onDone={bootstrap} />}
-        {route === '/account' && <AccountPage ctx={ctx} onProfileChanged={bootstrap} />}
       </AppShell>
     );
   }

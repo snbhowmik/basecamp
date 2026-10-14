@@ -104,11 +104,18 @@
   padding: var(--sp-5) 0 var(--sp-4);
   background: var(--paper);
   border-right: 1px solid var(--rule-strong);
+  transition: width 180ms var(--ease);
 }
 
 @media (min-width: 60rem) {
   .rail { display: flex; }
 }
+
+/* Collapsible, because a fixed-width always-expanded list is the one thing
+   the captain singled out as "harder for people to change" — frappe-ui's
+   own Sidebar collapses to an icon rail rather than hiding navigation
+   behind a hamburger on desktop, which has room for it. */
+.rail[data-collapsed] { width: 4rem; }
 
 .rail-brand {
   display: flex;
@@ -118,6 +125,7 @@
   border-bottom: 2px solid var(--rule-ink);
   margin-inline: 0;
 }
+.rail[data-collapsed] .rail-brand { padding-inline: var(--sp-3); justify-content: center; }
 
 .rail-brand strong {
   font-family: var(--font-head);
@@ -155,9 +163,41 @@
 }
 .rail-tab:hover { color: var(--ink); background: var(--paper-sunk); }
 .rail-tab.active { color: var(--srm-blue); border-left-color: var(--srm-blue); }
+.rail[data-collapsed] .rail-tab { justify-content: center; padding-inline: var(--sp-2); }
 
-.rail-user { margin-top: auto; position: relative; padding: var(--sp-3) var(--sp-3) 0; border-top: 1px solid var(--rule); }
+/* The footer stack: Settings, the collapse toggle, then the user menu —
+   pushed to the bottom of the rail the same way .rail-user always was. */
+.rail-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3) var(--sp-3) 0;
+  border-top: 1px solid var(--rule);
+}
+.rail-foot .rail-tab { padding: var(--sp-2) var(--sp-3); border-radius: var(--radius); border-left: 0; }
+
+.rail-collapse {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  margin-top: 1px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  font: inherit;
+  font-size: var(--step--1);
+  color: var(--ink-faint);
+  text-align: left;
+  cursor: pointer;
+  transition: color 140ms var(--ease), background 140ms var(--ease);
+}
+.rail-collapse:hover { color: var(--ink-label); background: var(--paper-sunk); }
+.rail[data-collapsed] .rail-collapse { justify-content: center; padding-inline: var(--sp-2); }
+
+.rail-user { position: relative; padding-top: var(--sp-2); }
 .rail-user .user-trigger { width: 100%; }
+.rail[data-collapsed] .user-trigger { justify-content: center; }
 .rail-user-name {
   flex: 1;
   min-width: 0;
@@ -208,6 +248,10 @@
 /* Anchored to the bottom of the rail, so it opens upward. Must stay below
    .dropdown: same specificity, and source order is what settles top vs bottom. */
 .dropdown--rail { top: auto; bottom: calc(100% + var(--sp-2)); left: var(--sp-3); right: var(--sp-3); }
+/* Collapsed, the rail itself is too narrow (4rem) to hold the dropdown's
+   width via left/right insets — anchor it to a fixed width overhanging
+   the rail's right edge instead of squeezing "Sign out" into ~3rem. */
+.rail[data-collapsed] .dropdown--rail { left: var(--sp-2); right: auto; width: 13rem; }
 
 .dropdown-header { padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--rule); }
 .dropdown-header strong { display: block; color: var(--ink); font-size: var(--step-0); }
@@ -413,7 +457,11 @@ button.chip:hover { border-color: var(--ink-body); }
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  /* Above .launcher (60): opening Settings from the mobile launcher's
+     footer closes the launcher and opens this modal in the same click —
+     the launcher's 240ms close animation must not cover a modal that
+     opened on top of it in the meantime. */
+  z-index: 65;
   display: grid;
   place-items: center;
   padding: var(--sp-4);
@@ -884,6 +932,19 @@ button.chip:hover { border-color: var(--ink-body); }
 
 @media (min-width: 60rem) {
   .launcher-dock { display: none; }
+}
+
+/* Floating "New request" — fixed bottom-right on every screen size.
+   Mobile needs extra clearance above the launcher dock, which otherwise
+   sits directly under it; desktop has no dock to clear. */
+.new-request-fab {
+  position: fixed;
+  right: var(--sp-5);
+  bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  z-index: 44;
+}
+@media (min-width: 60rem) {
+  .new-request-fab { bottom: var(--sp-5); }
 }
 
 /* Room for the dock, so the last row of a page is never sitting underneath

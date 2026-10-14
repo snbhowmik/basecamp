@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { signIn } from '../../lib/auth';
 import Brand from '../ui/Brand';
 import { useMediaQuery, AUTH_PANEL_QUERY } from '../../lib/useMediaQuery';
+import { LabelInput } from '../bencho/LabelInput';
 
 interface LoginFormProps {
   onLoggedIn: () => void;
@@ -74,26 +75,22 @@ export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormP
           {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
 
           <form onSubmit={handlePasswordSubmit} className="auth-form">
-            <div className="form-group">
-              <label className="form-label">Email</label>
-              <input
-                type="email"
-                className="form-input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Password</label>
-              <input
-                type="password"
-                className="form-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+            <LabelInput
+              label="Email"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              autoComplete="email"
+              required
+            />
+            <LabelInput
+              label="Password"
+              type="password"
+              value={password}
+              onChange={setPassword}
+              autoComplete="current-password"
+              required
+            />
             <button type="submit" className="btn btn-primary" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'} <ArrowRight size={18} />
             </button>

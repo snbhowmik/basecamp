@@ -128,6 +128,12 @@ export default function RequestsPage({ ctx }: { ctx: UserContext }) {
           <h1 className="page-title">Requests</h1>
           <p className="page-subtitle">Everything you've raised, plus anything routed to you.</p>
         </div>
+      </div>
+
+      {/* Floating, bottom-right, on every screen size — not a page-header
+          button. The captain's ask: raising a request shouldn't depend on
+          scrolling back up to wherever the page put it. */}
+      <div className="new-request-fab">
         <Create
           label="New request"
           items={leafCategories.map((c) => ({ key: c.id, label: c.name }))}

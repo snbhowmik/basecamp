@@ -666,3 +666,68 @@ Bundle cost: `framer-motion` (new dependency, used by Upload/SlideConfirm/
 CreateMenu) took the gzipped bundle from ~171KB to ~226KB. Worth knowing,
 not currently worth undoing — these are real, requested interaction
 patterns, not decoration pulled in for its own sake.
+
+---
+
+## 14. LabelInput, and a navigation restructure (this session, follow-up)
+
+**Sixth Bencho component**: `LabelInput.tsx` (`app/src/components/bencho/`),
+the field-whose-label-becomes-its-placeholder-until-focused pattern.
+Adapted from the vendored demo (which was uncontrolled, and picked
+`email`/`password` from the label text) to take `value`/`onChange`/`type`
+as normal props, and wired into `LoginForm.tsx` in place of the two plain
+`.form-input`s. **Verified live**: typed into the email field, watched the
+label lift with the per-letter hop and the outline gap open, on the real
+frozen-light auth screen.
+
+Its `--ink-rgb` needed a second override: `.auth-wrapper`'s freeze (see §13)
+covers every token the pre-existing primitives read, but `--ink-rgb` is new
+with this component and a plain `.auth-wrapper .lbi` rule loses to the
+dark-mode bridge's `:root[data-theme="dark"] .lbi` on specificity regardless
+of source order (a directly-targeted rule always beats an inherited custom
+property value). Matched at equal specificity instead
+(`:root .auth-wrapper .lbi`), relying on source order for the tie — see the
+comment in `bencho.css`.
+
+**Navigation restructure**, the other half of the same request:
+
+- **The rail collapses.** `.rail[data-collapsed]` — frappe-ui's Sidebar
+  collapses to an icon rail rather than hiding navigation behind a
+  hamburger on desktop, which has the room for it; this app's rail was a
+  fixed 15rem with no collapse at all, the thing called out as "harder for
+  people to change." State persists in `localStorage['sidebar-collapsed']`,
+  toggled from a new button in the rail's footer.
+- **"Account" is gone from the nav list.** Profile, password, MFA
+  enrollment, and the appearance toggle all still live in `AccountPage.tsx`
+  — unchanged — but it's no longer a routed `/account` destination. A
+  "Settings" trigger (gear icon, in the rail footer on desktop, in the
+  launcher's grid on mobile) opens it inside the existing `Modal` component
+  instead. `AppShell` owns this state now (`onProfileChanged` is a new
+  required prop, threaded from `App.tsx`'s `bootstrap`); `App.tsx`'s
+  `/account` route render is deleted, though the route name stays valid in
+  the `Route` union in case anything still constructs it — bootstrap's
+  `allowed.includes(fromPath)` check already sends a stale `/account`
+  deep-link to the first real tab instead of erroring.
+- **"New request" is a floating button**, not a page-header button —
+  `.new-request-fab`, `position: fixed`, bottom-right on every screen size.
+  On mobile it sits above the launcher dock (`bottom: 4.5rem` + safe-area)
+  rather than under it; desktop drops to a plain `var(--sp-5)` corner
+  offset. Still scoped to `RequestsPage.tsx` specifically, not lifted to
+  `AppShell` — it's only reachable while on the Requests page, not from
+  Dashboard or anywhere else. Lifting it further (so it floats on every
+  page) would mean moving `NewRequestModal` and its category-loading state
+  out of `RequestsPage` entirely; flagged here rather than guessed at.
+
+**Caught while wiring Settings through the mobile launcher**: `.launcher`'s
+z-index (60) sat above `.modal-overlay`'s (50), so opening Settings from
+the launcher's footer — which closes the launcher and opens the modal in
+the same click — would show the modal hidden behind the launcher's own
+240ms close animation. Raised `.modal-overlay` to 65, above every other
+overlay in the app; a modal should always be the topmost layer regardless
+of what opened it.
+
+**Not verified live**: everything in this section past the login screen.
+Still no working TOTP code for any account this session (see §13's same
+note) — the collapsed rail, the Settings modal reachable both ways, and
+the floating "New request" button are all build-verified and read back
+carefully, not clicked through.

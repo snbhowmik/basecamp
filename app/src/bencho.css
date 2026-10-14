@@ -19,7 +19,7 @@
    248 248 248; dark mode swaps them, same as the rest of the
    app's tokens do). ══════════════════════════════════════ */
 
-.upl, .otp, .sld, .sek, .crt-stage {
+.upl, .otp, .sld, .sek, .crt-stage, .lbi {
   --card: var(--paper-sunk);
   --board: var(--paper);
   --bg: var(--paper-laid);
@@ -35,13 +35,13 @@
   --fill-on-rgb: var(--ink-rgb);
 }
 :root[data-theme="dark"] .upl, :root[data-theme="dark"] .otp, :root[data-theme="dark"] .sld,
-:root[data-theme="dark"] .sek, :root[data-theme="dark"] .crt-stage {
+:root[data-theme="dark"] .sek, :root[data-theme="dark"] .crt-stage, :root[data-theme="dark"] .lbi {
   --ink-rgb: 248 248 248;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .upl, :root:not([data-theme="light"]) .otp,
   :root:not([data-theme="light"]) .sld, :root:not([data-theme="light"]) .sek,
-  :root:not([data-theme="light"]) .crt-stage {
+  :root:not([data-theme="light"]) .crt-stage, :root:not([data-theme="light"]) .lbi {
     --ink-rgb: 248 248 248;
   }
 }
@@ -812,3 +812,174 @@
   .crt-stage[data-sink="true"] .crt-body,
     .crt-stage[data-sink="true"] .crt-pill { scale: 1; }
 }
+
+/* ══ Label input ═══════════════════════════════════════════
+   lab/LabelInput.tsx. Positioned at the root for the canvas
+   halo — see the note on .gen. */
+.lbi {
+  position: relative;
+  font-family: var(--font-ui);
+  display: grid;
+  place-items: center;
+  /* room above the field for the lifted label */
+  padding-top: 10px;}
+
+/* no fill: the field is only its outline */
+.lbi-box {
+  position: relative;
+  background: transparent;
+  cursor: text;}
+
+/* ── the outline ────────────────────────────────────────────
+   Always whole. At rest a hairline of grey; focused, the ink
+   at a hair heavier; left filled, a grey a step darker than
+   rest. The gap across the top is the only part that moves. */
+.lbi-ring {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;}
+
+.lbi-ring path {
+  fill: none;
+  stroke: rgba(var(--ink-rgb), 0.18);
+  stroke-width: 1;
+  stroke-linecap: butt;
+  transition: stroke 240ms ease, stroke-width 240ms ease;}
+
+.lbi[data-focus="true"] .lbi-ring path {
+  stroke: var(--ink);
+  stroke-width: 1.5;}
+
+.lbi[data-filled="true"]:not([data-focus="true"]) .lbi-ring path {
+  stroke: rgba(var(--ink-rgb), 0.3);}
+
+/* the gap: whole at rest, parting from its middle when the
+   label lifts. The dash is longer than the path so offset 0
+   is the whole line and -1 is none of it. */
+.lbi-gap {
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: 0;
+  transition: stroke 240ms ease, stroke-width 240ms ease,
+    stroke-dashoffset 320ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.lbi[data-up="true"] .lbi-gap { stroke-dashoffset: -1; }
+
+/* ── the label ──────────────────────────────────────────────
+   Its placeholder self in the middle of the field, and its
+   lifted self centred on the top edge — the second is the
+   first moved up by half the field and scaled from its left. */
+.lbi-label {
+  position: absolute;
+  left: var(--lbi-x);
+  top: 50%;
+  font-size: var(--step-0);
+  line-height: 1;
+  letter-spacing: -0.005em;
+  white-space: pre;
+  color: var(--ink-4);
+  transform-origin: left center;
+  transform: translateY(-50%);
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), color 200ms ease;
+  cursor: text;
+  -webkit-user-select: none;
+  user-select: none;}
+
+.lbi[data-up="true"] .lbi-label {
+  transform: translateY(-50%) translateY(-26px) scale(0.78);
+  color: var(--ink-3);}
+
+.lbi[data-focus="true"] .lbi-label { color: var(--fill-on, var(--ink)); }
+
+.lbi-label span { display: inline-block; }
+
+/* the hop: each letter lifts a hair and settles, one after the
+   next, so the word ripples as it rises */
+.lbi[data-focus="true"] .lbi-label span {
+  animation: lbi-hop 460ms cubic-bezier(0.3, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--i) * 24ms);}
+
+.lbi-field {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0 0 0 var(--lbi-x);
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: var(--step-0);
+  letter-spacing: -0.005em;
+  color: var(--fill-on, var(--ink));
+  outline: none;}
+
+/* the reveal: the text passes through a soft blur rather than
+   snapping between dots and letters. Two names so a second
+   press restarts it. */
+.lbi-field[data-flip="1"] { animation: lbi-flip-a 260ms ease-out; }
+
+.lbi-field[data-flip="0"] { animation: lbi-flip-b 260ms ease-out; }
+
+.lbi-eye {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  margin-top: -15px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-4);
+  cursor: pointer;
+  transition: color 160ms ease, scale 130ms cubic-bezier(0.3, 0.9, 0.4, 1);}
+
+.lbi-eye:hover { color: var(--fill-on, var(--ink)); }
+
+.lbi-eye:active { scale: 0.9; }
+
+/* the two icons in one place, trading places */
+.lbi-eye svg {
+  grid-area: 1 / 1;
+  transition: opacity 200ms ease, scale 260ms cubic-bezier(0.22, 1, 0.36, 1), filter 200ms ease;}
+
+.lbi-eye svg:last-child { opacity: 0; scale: 0.7; filter: blur(2px); }
+
+.lbi-eye[data-show="true"] svg:first-child { opacity: 0; scale: 0.7; filter: blur(2px); }
+
+.lbi-eye[data-show="true"] svg:last-child { opacity: 1; scale: 1; filter: none; }
+
+/* not in the vendored source: LabelInput sits inside the auth
+   screen, which is frozen to light regardless of app theme
+   (see components.css's .auth-wrapper and the note at the top
+   of this file). --ink-rgb above is directly targeted by a
+   [data-theme="dark"] rule, which always beats an inherited
+   value regardless of relative specificity — so a plain
+   `.auth-wrapper .lbi` override is not enough to win; this
+   matches it at equal specificity and relies on source order
+   (last declared wins a tie) rather than !important. */
+:root .auth-wrapper .lbi { --ink-rgb: 23 23 23; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lbi-ring path,
+    .lbi-gap,
+    .lbi-label { transition-duration: 1ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lbi[data-focus="true"] .lbi-label span,
+    .lbi-field { animation: none; }
+}
+
+@keyframes lbi-hop {
+  0% { transform: translateY(0); }
+  38% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }}
+
+@keyframes lbi-flip-a { from { filter: blur(3px); opacity: 0.5; } }
+
+@keyframes lbi-flip-b { from { filter: blur(3px); opacity: 0.5; } }

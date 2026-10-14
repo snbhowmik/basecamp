@@ -1,67 +1,86 @@
 /* ==========================================================
-   SRMIST BaseCamp — The Countersigned Slip
+   SRMIST BaseCamp — design system
    ==========================================================
-   An approval is a countersigned document, not a chat thread.
-   The material is ruled institutional stationery: hairline rules
-   instead of card borders, small-caps field labels sitting over
-   their values, a signature strip that fills as authority is
-   added, and monospaced reference codes.
+   Tokens sourced from frappe-ui's real published scale (the
+   `frappe-ui` npm package, tailwind/tokens/colors.js, radius.js,
+   effects.js — see DESIGN.md "Where these numbers come from").
+   frappe-ui itself is a Vue component library and cannot be
+   mounted in this React app, so this is the same oklch palette,
+   radius scale and elevation values, applied natively through the
+   plain CSS custom properties every component here already reads —
+   no Tailwind layer added on top of this file.
 
-   Density is handled the way a book of slips handles it — with
-   counterfoil stubs, not by rendering forty paper forms. A queue
-   is a run of stubs; opening one unfolds the full slip.
+   Every primitive below (.sheet, .btn, .form-input, .mark, .ledger,
+   .field, …) consumes these variable names, not literal colors, so
+   repointing them here repaints the whole component library at
+   once. Light is the default on :root; dark is layered on top
+   under `[data-theme="dark"]` and, for anyone who hasn't chosen
+   explicitly, `prefers-color-scheme: dark` — see the toggle in
+   Account and the pre-paint script in index.html.
 
-   Colour discipline: the surface is ink-on-paper neutral. SRM
-   blue appears only where a control acts. Seal gold is spent
-   once, on `countersigned`, and nowhere else — the moment it
-   decorates anything, it stops meaning "verified".
-   ========================================================== */
+   Two things stay outside this system on purpose:
+   - The login/register screens' own branding (.auth-side,
+     .auth-title, …) are frozen to literal pre-retheme values in
+     components.css, not these tokens — captain's call, V3.
+   - A printed/rendered document (.doc-sheet) stays paper-white
+     regardless of app theme; see components.css. A verification
+     QR code printed dark-on-light must stay scannable. ========================================================== */
 
 :root {
-  /* --- Institution -------------------------------------- */
-  --srm-blue: #154494;          /* SRM wordmark */
-  --srm-blue-deep: #0f3370;
-  --srm-blue-wash: #eef2fa;
-  --srm-gold: #c89d00;          /* seal ring — countersigned only */
-  --srm-gold-wash: #fdf8e7;
+  color-scheme: light;
 
-  /* --- Paper & ink -------------------------------------- */
+  /* --- Brand -------------------------------------------- */
+  --srm-blue: oklch(0.587 0.174 252.167);       /* frappe blue.600 */
+  --srm-blue-deep: oklch(0.561 0.168 252.355);  /* frappe blue.700 */
+  --srm-blue-wash: oklch(0.976 0.011 243.65);   /* frappe blue.50 */
+  --srm-gold: oklch(0.659 0.142 67.548);        /* frappe amber.600 — seal ring, countersigned only */
+  --srm-gold-wash: oklch(0.98 0.015 86.424);    /* frappe amber.50 */
+  --srm-gold-ink: oklch(0.416 0.099 47.734);    /* frappe amber.900 — text on the gold wash */
+
+  /* --- Surface & ink -------------------------------------
+     frappe's neutral "gray" scale. 50/100 are surfaces, 600-900
+     are text — the numbering is "distance from white", which is
+     why dark mode below reuses the same scale with the roles
+     flipped rather than inventing a second palette. */
   --paper: #ffffff;
-  --paper-laid: #faf9f6;        /* faintly warm, like form stock */
-  --paper-sunk: #f2f1ed;        /* recessed wells, table headers */
+  --paper-laid: oklch(0.979 0 0);   /* gray.50 — page background */
+  --paper-sunk: oklch(0.964 0 0);   /* gray.100 — recessed wells, table headers */
 
-  --ink: #16161a;
-  --ink-body: #3c3d44;
-  --ink-label: #6a6c75;         /* field labels, meta */
-  --ink-faint: #94969e;
+  --ink: oklch(0.205 0 0);          /* gray.900 — headings */
+  --ink-body: oklch(0.341 0 0);     /* gray.800 — body text */
+  --ink-label: oklch(0.586 0 0);    /* gray.600 — field labels, meta */
+  --ink-faint: oklch(0.683 0 0);    /* gray.500 — placeholders, disabled */
 
   /* Rules are the structural element. Nothing here is a card
      border; these are ruled lines on a form. */
-  --rule: #e2e0da;
-  --rule-strong: #cdcac2;
-  --rule-ink: #16161a;          /* the heavy rule under a masthead */
+  --rule: oklch(0.946 0 0);         /* gray.200 */
+  --rule-strong: oklch(0.913 0 0);  /* gray.300 */
+  --rule-ink: oklch(0.205 0 0);     /* gray.900 — the heavy rule under a masthead */
 
-  /* --- Document state ----------------------------------- */
-  --state-draft: #6a6c75;
-  --state-pending: #8a5a00;
-  --state-pending-wash: #fdf6e9;
-  --state-approved: #1c6b47;
-  --state-approved-wash: #eef6f1;
-  --state-rejected: #a3271c;
-  --state-rejected-wash: #fbefee;
+  /* --- Document state ------------------------------------
+     frappe's amber/green/red scales, 700 for text-on-wash and 50
+     for the wash itself. */
+  --state-draft: oklch(0.586 0 0);               /* gray.600 */
+  --state-pending: oklch(0.612 0.136 63.758);     /* amber.700 */
+  --state-pending-wash: oklch(0.98 0.015 86.424); /* amber.50 */
+  --state-approved: oklch(0.53 0.122 156.15);     /* green.700 */
+  --state-approved-wash: oklch(0.976 0.014 155.594); /* green.50 */
+  --state-rejected: oklch(0.497 0.185 27.335);    /* red.700 */
+  --state-rejected-wash: oklch(0.978 0.011 17.34); /* red.50 */
 
-  /* --- Type --------------------------------------------- */
+  /* --- Type -----------------------------------------------
+     frappe-ui ships one family, Inter, for everything — no
+     separate display/serif face. */
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   /* ui-monospace resolves to SF Mono on Apple platforms. Used for
      reference codes, register numbers, and timestamps — data and
      measurement, never as a "technical" costume. */
   --font-code: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
-  /* Masthead only. Matches the SRM wordmark's transitional serif. */
-  --font-head: 'Source Serif 4', Georgia, serif;
+  --font-head: var(--font-ui);
 
-  --step--1: 0.8125rem;
-  --step-0: 0.9375rem;
-  --step-1: 1.0625rem;
+  --step--1: 0.8125rem;  /* frappe 'sm' 13px */
+  --step-0: 0.9375rem;   /* frappe 'md' 15px — body */
+  --step-1: 1.0625rem;   /* frappe 'xl' 17px */
   --step-2: 1.375rem;
   --step-3: 1.75rem;
 
@@ -74,13 +93,13 @@
   --sp-6: 2rem;
   --sp-7: 3rem;
 
-  /* Paper has almost no radius. 2px reads as a cut edge. */
-  --radius: 2px;
-  --radius-lg: 3px;
+  /* frappe radius scale (tailwind/tokens/radius.js): "3" and "4". */
+  --radius: 6px;
+  --radius-lg: 8px;
 
-  /* Real offset + blur. A zero-offset halo is decoration. */
-  --lift: 0 1px 2px rgba(22, 22, 26, 0.06), 0 4px 12px rgba(22, 22, 26, 0.05);
-  --lift-overlay: 0 8px 16px rgba(22, 22, 26, 0.1), 0 24px 48px rgba(22, 22, 26, 0.14);
+  /* frappe elevation.light.sm / .lg (tailwind/tokens/effects.js). */
+  --lift: inset 0px 0.25px 1.5px 0px rgba(255,255,255,0.16), 0px 0px 1px 0px rgba(0,0,0,0.2), 0px 1px 3px 0px rgba(0,0,0,0.14);
+  --lift-overlay: inset 0px 0.25px 1.5px 0px rgba(255,255,255,0.16), 0px 0px 1.5px 0px rgba(0,0,0,0.18), 0px 0px 6px 3px rgba(0,0,0,0.03), 0px 18px 22px -6px rgba(0,0,0,0.1);
 
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
@@ -89,10 +108,10 @@
      indigo system through inline styles. Undefined custom
      properties fail silently — the declaration is dropped and the
      value inherits — so these would not error, they would just
-     quietly render wrong. Aliasing them onto the slip world keeps
-     the app correct while the inline styles are removed component
-     by component. Delete this block once no .tsx references them;
-     `grep -r "var(--text-main\|--bg-color\|--border)" app/src`
+     quietly render wrong. Aliasing them onto the current tokens
+     keeps the app correct while the inline styles are removed
+     component by component. Delete this block once no .tsx
+     references them; `grep -r "var(--text-main\|--bg-color\|--border)" app/src`
      returning nothing is the signal it has done its job. */
   --bg-color: var(--paper-laid);
   --surface-alt: var(--paper-sunk);
@@ -101,6 +120,86 @@
   --primary-light: var(--srm-blue-wash);
   --text-main: var(--ink);
   --text-muted: var(--ink-label);
+}
+
+/* Dark mode: an explicit choice (`[data-theme="dark"]`, the toggle
+   in Account) or, with no choice saved, the OS setting. Same frappe
+   gray/blue/green/red/amber scales, dark-mode half — see
+   colors.js's own `darkMode` export. In that half "50" is the
+   lightest swatch and "900/950" the darkest, which is why text and
+   surface roles below look inverted relative to the light block
+   even though the mapping logic (surfaces low, text high) is the
+   same. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --srm-blue: oklch(0.586 0.143 248.605);
+    --srm-blue-deep: oklch(0.671 0.155 247.709);
+    --srm-blue-wash: oklch(0.255 0.056 255.801);
+    --srm-gold: oklch(0.599 0.141 56.803);
+    --srm-gold-wash: oklch(0.253 0.049 61.325);
+    --srm-gold-ink: oklch(0.84 0.13 82.404);
+
+    --paper: oklch(0.239 0 0);
+    --paper-laid: oklch(0.205 0 0);
+    --paper-sunk: oklch(0.26 0 0);
+
+    --ink: oklch(0.979 0 0);
+    --ink-body: oklch(0.885 0 0);
+    --ink-label: oklch(0.683 0 0);
+    --ink-faint: oklch(0.457 0 0);
+
+    --rule: oklch(0.281 0 0);
+    --rule-strong: oklch(0.341 0 0);
+    --rule-ink: oklch(0.885 0 0);
+
+    --state-draft: oklch(0.683 0 0);
+    --state-pending: oklch(0.638 0.14 62.455);
+    --state-pending-wash: oklch(0.253 0.049 61.325);
+    --state-approved: oklch(0.607 0.116 158.84);
+    --state-approved-wash: oklch(0.244 0.05 156.367);
+    --state-rejected: oklch(0.639 0.196 24.565);
+    --state-rejected-wash: oklch(0.25 0.059 19.081);
+
+    --lift: inset 0px 0.5px 0.5px 0.5px rgba(255,255,255,0.03), 0px 0px 14px 0px rgba(0,0,0,0.18), 0px 1px 3px 0px rgba(0,0,0,0.7);
+    --lift-overlay: inset 0px 0.5px 1.5px 0.5px rgba(255,255,255,0.04), 0px 0px 16px 0px rgba(0,0,0,0.1), 0px 18px 20px -8px rgba(0,0,0,0.52);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --srm-blue: oklch(0.586 0.143 248.605);
+  --srm-blue-deep: oklch(0.671 0.155 247.709);
+  --srm-blue-wash: oklch(0.255 0.056 255.801);
+  --srm-gold: oklch(0.599 0.141 56.803);
+  --srm-gold-wash: oklch(0.253 0.049 61.325);
+  --srm-gold-ink: oklch(0.84 0.13 82.404);
+
+  --paper: oklch(0.239 0 0);
+  --paper-laid: oklch(0.205 0 0);
+  --paper-sunk: oklch(0.26 0 0);
+
+  --ink: oklch(0.979 0 0);
+  --ink-body: oklch(0.885 0 0);
+  --ink-label: oklch(0.683 0 0);
+  --ink-faint: oklch(0.457 0 0);
+
+  --rule: oklch(0.281 0 0);
+  --rule-strong: oklch(0.341 0 0);
+  --rule-ink: oklch(0.885 0 0);
+
+  --state-draft: oklch(0.683 0 0);
+  --state-pending: oklch(0.638 0.14 62.455);
+  --state-pending-wash: oklch(0.253 0.049 61.325);
+  --state-approved: oklch(0.607 0.116 158.84);
+  --state-approved-wash: oklch(0.244 0.05 156.367);
+  --state-rejected: oklch(0.639 0.196 24.565);
+  --state-rejected-wash: oklch(0.25 0.059 19.081);
+
+  --lift: inset 0px 0.5px 0.5px 0.5px rgba(255,255,255,0.03), 0px 0px 14px 0px rgba(0,0,0,0.18), 0px 1px 3px 0px rgba(0,0,0,0.7);
+  --lift-overlay: inset 0px 0.5px 1.5px 0.5px rgba(255,255,255,0.04), 0px 0px 16px 0px rgba(0,0,0,0.1), 0px 18px 20px -8px rgba(0,0,0,0.52);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -143,7 +242,6 @@ body {
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--srm-blue);
   outline-offset: 2px;
-  border-radius: 1px;
 }
 
 a {
@@ -272,7 +370,7 @@ h1, h2, h3, h4 {
   border: 1px solid var(--srm-gold);
   border-radius: var(--radius);
   background: var(--srm-gold-wash);
-  color: #6f5700;
+  color: var(--srm-gold-ink);
   font-size: var(--step--1);
   font-weight: 600;
 }

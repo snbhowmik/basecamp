@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
 import Brand from '../ui/Brand';
+import { useResolvedTheme } from '../../lib/theme';
 
 export type Route =
   | '/dashboard'
@@ -78,6 +79,10 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
   const menuRef = useRef<HTMLDivElement>(null);
   const tabs = tabsFor(ctx);
   const current = tabs.find((t) => t.route === route);
+  // The colour mark assumes a white ground (mix-blend-mode: multiply drops
+  // its own white box) — on the rail/topbar's dark surface in dark mode
+  // that reads as nearly invisible, so swap to the white mark instead.
+  const brandVariant = useResolvedTheme() === 'dark' ? 'white' : 'color';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -101,7 +106,7 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
           sideways the moment a level is added. */}
       <aside className="rail">
         <div className="rail-brand">
-          <Brand height={26} />
+          <Brand variant={brandVariant} height={26} />
           <span className="brand-divider" aria-hidden="true" />
           <strong>BaseCamp</strong>
         </div>
@@ -155,7 +160,7 @@ export default function AppShell({ ctx, route, onNavigate, onLogout, children }:
             to the launcher, within thumb reach at the foot of the screen. */}
         <header className="topbar">
           <div className="topbar-brand">
-            <Brand height={26} />
+            <Brand variant={brandVariant} height={26} />
             <span className="brand-divider" aria-hidden="true" />
             <strong>BaseCamp</strong>
           </div>

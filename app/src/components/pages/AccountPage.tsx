@@ -14,6 +14,7 @@ import {
   type MemberDetails,
 } from '../../lib/account';
 import SignaturePad from '../documents/SignaturePad';
+import ThemeToggle from '../ui/ThemeToggle';
 
 export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContext; onProfileChanged: () => void }) {
   const [factors, setFactors] = useState<MfaFactorSummary[]>([]);
@@ -138,6 +139,16 @@ export default function AccountPage({ ctx, onProfileChanged }: { ctx: UserContex
         <div>
           <h1 className="page-title">My account</h1>
           <p className="page-subtitle">Your details, password, and authenticator.</p>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1.25rem' }}>
+        <div className="card-header"><h2 className="section-title">Appearance</h2></div>
+        <div className="card-body">
+          <div className="detail-row">
+            <span className="detail-label">Theme</span>
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 

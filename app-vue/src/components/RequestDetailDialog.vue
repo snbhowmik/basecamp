@@ -2,6 +2,10 @@
 import { computed, ref, watch } from 'vue';
 import { Dialog, FormControl, Button, ErrorMessage } from 'frappe-ui';
 import StatusBadge from './StatusBadge.vue';
+import StageTasks from './StageTasks.vue';
+import ParticipantsPanel from './ParticipantsPanel.vue';
+import Attachments from './Attachments.vue';
+import { getOutstandingTaskCount } from '../lib/workflow';
 import type { UserContext } from '../lib/context';
 import {
   type RequestRow, type HistoryRow, type CommentRow, type FieldValue, type ForwardTarget,
@@ -21,6 +25,7 @@ const commentBody = ref('');
 const commentVisibility = ref<'public' | 'internal'>('public');
 const error = ref('');
 const busy = ref(false);
+const outstanding = ref(0);
 const showForward = ref(false);
 const forwardQuery = ref('');
 const forwardResults = ref<ForwardTarget[]>([]);
@@ -33,7 +38,11 @@ watch(() => props.request.id, (id) => {
   listHistory(id).then((h) => { history.value = h; }).catch(() => { history.value = []; });
   listComments(id).then((c) => { comments.value = c; }).catch(() => { comments.value = []; });
   listFieldValues(id).then((f) => { fieldValues.value = f; }).catch(() => { fieldValues.value = []; });
+  refreshOutstanding();
 }, { immediate: true });
+
+const refreshOutstanding = () => getOutstandingTaskCount(props.request.id)
+  .then((n) => { outstanding.value = n; }).catch(() => { outstanding.value = 0; });
 
 let timer: ReturnType<typeof setTimeout> | undefined;
 watch(forwardQuery, (q) => {
@@ -72,7 +81,10 @@ const actions = computed(() => {
     ...list,
     { label: 'Request changes', variant: 'subtle' as const, onClick: () => decide('changes_requested') },
     { label: 'Reject', variant: 'subtle' as const, theme: 'red' as const, onClick: () => decide('rejected') },
-    { label: 'Approve', variant: 'solid' as const, theme: 'green' as const, onClick: () => decide('approved') },
+    {
+      label: outstanding.value > 0 ? `Approve (${outstanding.value} task${outstanding.value === 1 ? '' : 's'} outstanding)` : 'Approve',
+      variant: 'solid' as const, theme: 'green' as const, disabled: outstanding.value > 0, onClick: () => decide('approved'),
+    },
   ];
 });
 
@@ -112,6 +124,10 @@ async function postComment() {
         <div class="mb-1 text-sm text-ink-gray-5">Details</div>
         <p class="whitespace-pre-wrap text-p-base">{{ request.body }}</p>
       </div>
+
+      <StageTasks :ctx="ctx" :request="request" @saved="refreshOutstanding" />
+      <ParticipantsPanel :ctx="ctx" :request="request" />
+      <Attachments :request-id="request.id" :current-user-id="ctx.profile.id" />
 
       <div v-if="showForward && canAct" class="space-y-2 rounded-6 border p-3">
         <FormControl v-model="forwardQuery" label="Forward to" placeholder="Search by name or email…" />

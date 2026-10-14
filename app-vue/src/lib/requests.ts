@@ -315,3 +315,15 @@ export function renderFieldValue(v: unknown): string {
   if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
   return JSON.stringify(v);
 }
+
+export interface CategoryInfo {
+  participant_phase: 'before_submit' | 'after_approval';
+  participant_window_days: number;
+}
+
+export async function getCategoryInfo(id: string): Promise<CategoryInfo | null> {
+  const { data, error } = await supabase
+    .from('request_categories').select('participant_phase, participant_window_days').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data as CategoryInfo | null;
+}

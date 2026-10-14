@@ -920,3 +920,10 @@ attachments, slide-to-approve, the Organisation/Workflow/Templates/Accounts/
 Invite pages, registration, invite acceptance, the setup wizard, MFA
 enrolment. A stock frappe-ui theme already matches the SRM look (the React
 retheme adopted frappe's blue tokens), so no separate theming pass is needed.
+
+**Update — request detail completed in `app-vue/`:** stage tasks (all answer
+types incl. file), participants (add by register number, accept/decline) and
+attachments (upload, open, uploader-only delete) are ported, and Approve is
+disabled while required tasks are outstanding, as in React. Build + typecheck
+only, still not run in a browser. Uploads use a plain file picker, not the
+Bencho dropzone. Remaining React-only list unchanged apart from these.

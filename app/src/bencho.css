@@ -31,18 +31,18 @@
   --ink-3: var(--ink-label);
   --ink-4: var(--ink-label);
   --ink-5: var(--ink-faint);
-  --ink-rgb: 23 23 23;
+  --ink-rgb: 23, 23, 23;
   --fill-on-rgb: var(--ink-rgb);
 }
 :root[data-theme="dark"] .upl, :root[data-theme="dark"] .otp, :root[data-theme="dark"] .sld,
 :root[data-theme="dark"] .sek, :root[data-theme="dark"] .crt-stage, :root[data-theme="dark"] .lbi {
-  --ink-rgb: 248 248 248;
+  --ink-rgb: 248, 248, 248;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .upl, :root:not([data-theme="light"]) .otp,
   :root:not([data-theme="light"]) .sld, :root:not([data-theme="light"]) .sek,
   :root:not([data-theme="light"]) .crt-stage, :root:not([data-theme="light"]) .lbi {
-    --ink-rgb: 248 248 248;
+    --ink-rgb: 248, 248, 248;
   }
 }
 
@@ -962,7 +962,7 @@
    `.auth-wrapper .lbi` override is not enough to win; this
    matches it at equal specificity and relies on source order
    (last declared wins a tie) rather than !important. */
-:root .auth-wrapper .lbi { --ink-rgb: 23 23 23; }
+:root .auth-wrapper .lbi { --ink-rgb: 23, 23, 23; }
 
 @media (prefers-reduced-motion: reduce) {
   .lbi-ring path,

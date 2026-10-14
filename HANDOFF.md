@@ -862,3 +862,21 @@ to cache a document's signature list at generation time, and if that
 happens before (or independent of) the approval signature being recorded,
 the cached row never picks it up on its own. Worth investigating
 separately; out of scope for the stage-naming work this section covers.
+
+---
+
+## 17. Login fixes (this session)
+
+- `LabelInput` gained a `fill` prop (measured with a ResizeObserver, since
+  the outline is a pixel-sized SVG); login uses it, so the fields now match
+  the Sign In button's width exactly (confirmed via `getBoundingClientRect`).
+  They were a fixed 280px, centered in a 336px column.
+- **Real bug found:** every `rgba(var(--ink-rgb), a)` in `bencho.css` was
+  invalid because `--ink-rgb` was space-separated (`23 23 23`) — the field
+  outline stroke was silently dropped, so login's inputs had no visible
+  border at all. Channels are now comma-separated; this also repairs the
+  same latent use in Upload/Slide components (lines 478, 649, 768, 783, 803).
+- Password→button gap evened out. Register left as is: it uses the plain
+  labelled `.form-input` fields (needed for its selects) and showed no
+  defect. Screenshots were taken with Chrome autofill covering the fields,
+  so the unfilled outline was verified by computed style, not by eye.

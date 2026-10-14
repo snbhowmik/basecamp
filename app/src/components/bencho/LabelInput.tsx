@@ -27,7 +27,12 @@ import { Eye, EyeOff } from "lucide-react";
    state, for anywhere this is just a showcase), and `type` is a
    normal HTML input type rather than inferred from the label
    text, so a label like "Full name" doesn't silently become an
-   email field. */
+   email field.
+
+   `fill` makes the field take its container's width instead of a
+   fixed one (measured, because the outline is an SVG sized in
+   pixels). Without it the 280px default sat centered inside a
+   wider form column and didn't line up with the button below. */
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
@@ -49,6 +54,7 @@ export function LabelInput({
   required,
   autoComplete,
   showcase = false,
+  fill = false,
 }: {
   label?: string;
   type?: "email" | "password" | "text" | "tel";
@@ -59,8 +65,20 @@ export function LabelInput({
   required?: boolean;
   autoComplete?: string;
   showcase?: boolean;
+  fill?: boolean;
 } = {}) {
-  const w = clamp(Math.round(width), 160, 480);
+  const root = useRef<HTMLDivElement | null>(null);
+  const [measured, setMeasured] = useState(0);
+  useLayoutEffect(() => {
+    if (!fill || !root.current) return;
+    const el = root.current;
+    const read = () => setMeasured(el.clientWidth);
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fill]);
+  const w = fill && measured > 0 ? clamp(Math.round(measured), 160, 640) : clamp(Math.round(width), 160, 480);
   const r = clamp(corner, 0, H / 2);
   const secret = type === "password";
   const id = `lbi-${useId().replace(/:/g, "")}`;
@@ -124,7 +142,7 @@ export function LabelInput({
   };
 
   return (
-    <div className="lbi" data-up={up} data-focus={focus} data-filled={current.length > 0}>
+    <div className="lbi" ref={root} data-up={up} data-focus={focus} data-filled={current.length > 0}>
       <div
         className="lbi-box"
         style={{ width: w, height: H, borderRadius: r, "--lbi-x": `${lx}px` } as React.CSSProperties}

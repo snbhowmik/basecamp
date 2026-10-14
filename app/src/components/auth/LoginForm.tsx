@@ -76,6 +76,7 @@ export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormP
 
           <form onSubmit={handlePasswordSubmit} className="auth-form">
             <LabelInput
+              fill
               label="Email"
               type="email"
               value={email}
@@ -84,6 +85,7 @@ export default function LoginForm({ onLoggedIn, onSwitchToRegister }: LoginFormP
               required
             />
             <LabelInput
+              fill
               label="Password"
               type="password"
               value={password}

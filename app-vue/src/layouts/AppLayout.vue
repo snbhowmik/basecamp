@@ -12,9 +12,10 @@ const router = useRouter();
 const tabs = computed(() => {
   const all = router.getRoutes().filter((r) => r.meta?.label);
   const byPath = (p: string) => all.find((r) => r.path === p);
-  const paths = session.ctx?.isCaptain
-    ? ['/dashboard', '/hierarchy']
-    : ['/dashboard', '/requests', '/hierarchy'];
+  const ctx = session.ctx;
+  const paths = ctx?.isCaptain
+    ? ['/dashboard', '/hierarchy', '/invite', '/accounts']
+    : ['/dashboard', '/requests', '/hierarchy', ...(ctx?.isStaff ? ['/invite'] : [])];
   return paths.map(byPath).filter((r): r is NonNullable<typeof r> => !!r);
 });
 

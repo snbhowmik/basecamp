@@ -963,3 +963,18 @@ cut short because the browser session's TOTP freshness had lapsed (the Vue
 two-step screen correctly caught it). To verify: sign in at `/next/`, open a
 request with an approved document, and try Document, Ticket and Print preview.
 Signature capture (SignaturePad) is not ported yet.
+
+**Update — Invite and Accounts ported to `app-vue/`:** `/next/invite` (single
+and bulk student invites, sent-invites list with delivery status, resend,
+revoke behind the name-plus-TOTP `ConfirmDestructive`) and `/next/accounts`
+(roster, and the person editor: roles, tags, suspend/restore, each destructive
+step behind `ConfirmDestructive`). The libs (`types`, `org`, `admin`, `people`,
+`invites` minus the public-registration half) are copies of the React ones.
+Captain sees Invite + Accounts in the nav; staff see Invite. **Live:** the Invite
+page rendered against real data (real tags, real sent-invites list, phone-width
+viewport). Not exercised: creating/revoking an invite, the person editor, the
+Accounts page (the browser's TOTP freshness lapsed). **Lesson:** `vue-tsc` does
+not flag an unknown prop on a frappe-ui component (`TabButtons :buttons` instead
+of `:options` built clean and rendered nothing) — a live look is the only check.
+Invite links shown for copying still point at the React `/invite/<token>`
+(the mailer worker emits the same), which remains valid.

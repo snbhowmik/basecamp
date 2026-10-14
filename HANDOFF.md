@@ -1002,3 +1002,17 @@ catalog (the real "Internal OD" type and category) and the Stages editor (the
 real Mentor and HOD stages with their tasks) all rendered. Nothing was saved,
 created or deleted. Not yet ported: Templates, Levels setup, signature capture
 and account settings, setup wizard.
+
+**Update — Templates, My account and signature capture ported to `app-vue/`:**
+`/next/templates` (per-category document template editor, field and signature
+insertion, preview, publish-a-new-version, version list), `/next/account`
+(profile name, theme, authenticator replacement, password, and for staff the
+signature pad with the same canvas clean-up as React) and a "My account" item
+in the sidebar footer. The stored light/dark/system preference is now applied
+at startup (`useColorScheme()` in `App.vue`) so every page follows it — before,
+only the account page did, and the rest stayed light. **Live, as the captain:**
+Templates (the real v1/v2 `OD_Interal_4.4` versions, v2 loaded into the editor)
+and My account rendered; nothing was published, saved or changed. Not exercised
+live: publishing a version, the field/signature insert menus, the signature pad
+draw/upload/save, password and authenticator changes. Remaining React-only:
+Levels setup, the setup wizard, the sticky-note settings, dashboard content.

@@ -14,7 +14,7 @@ const tabs = computed(() => {
   const byPath = (p: string) => all.find((r) => r.path === p);
   const ctx = session.ctx;
   const paths = ctx?.isCaptain
-    ? ['/dashboard', '/hierarchy', '/workflow', '/invite', '/accounts']
+    ? ['/dashboard', '/hierarchy', '/workflow', '/templates', '/invite', '/accounts']
     : ['/dashboard', '/requests', '/hierarchy', ...(ctx?.isStaff ? ['/invite'] : [])];
   return paths.map(byPath).filter((r): r is NonNullable<typeof r> => !!r);
 });
@@ -44,7 +44,8 @@ async function logout() {
               />
             </div>
           </ScrollArea>
-          <div class="p-2">
+          <div class="space-y-0.5 p-2">
+            <SidebarItem label="My account" icon="lucide-user" route="/account" :active="route.path === '/account'" />
             <Button variant="ghost" class="w-full justify-start" @click="logout">Sign out</Button>
           </div>
         </Sidebar>

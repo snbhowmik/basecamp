@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { FrappeUIProvider } from 'frappe-ui';
+import { FrappeUIProvider, useColorScheme } from 'frappe-ui';
 import { bootstrap, session } from './lib/session';
 import AppLayout from './layouts/AppLayout.vue';
 import LoginPage from './pages/LoginPage.vue';
 import VerifyMfaPage from './pages/VerifyMfaPage.vue';
 
 const route = useRoute();
+// Applies the stored light/dark/system preference at startup, on every page, not only the one that shows the picker.
+useColorScheme();
 onMounted(bootstrap);
 </script>
 

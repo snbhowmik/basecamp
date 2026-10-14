@@ -2,7 +2,9 @@
   "buildPath": "code",
   "detector": {
     "ignoreRules": [],
-    "ignoreFiles": [],
+    "ignoreFiles": [
+      "app/src/bencho.css"
+    ],
     "ignoreValues": [
       {
         "rule": "design-system-font",

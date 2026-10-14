@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { PageHeader, PageHeaderTitle, Button, FormControl, ErrorMessage, Dropdown } from 'frappe-ui';
 import StatusBadge from '../components/StatusBadge.vue';
 import NewRequestDialog from '../components/NewRequestDialog.vue';
@@ -12,6 +13,8 @@ import {
 type Filter = 'all' | 'mine' | 'desk';
 
 const ctx = computed(() => session.ctx!);
+const route = useRoute();
+const router = useRouter();
 const requests = ref<RequestRow[]>([]);
 const categories = ref<RequestCategory[]>([]);
 const loading = ref(true);
@@ -30,6 +33,10 @@ async function reload() {
     requests.value = reqs;
     categories.value = cats.filter((c) => c.is_active);
     error.value = '';
+    // A link from the dashboard (`?open=<id>`) opens that request straight away.
+    const want = typeof route.query.open === 'string' ? route.query.open : '';
+    const hit = want ? reqs.find((r) => r.id === want) : undefined;
+    if (hit && !showDetail.value) { filter.value = 'all'; selected.value = hit; showDetail.value = true; router.replace({ path: route.path }); }
   } catch (e) {
     error.value = errorMessage(e, 'Failed to load requests.');
   } finally {

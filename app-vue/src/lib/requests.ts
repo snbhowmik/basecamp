@@ -30,6 +30,8 @@ export interface RequestRow {
   created_at: string;
   request_categories?: { name: string } | null;
   requester?: { full_name: string; email: string } | null;
+  holder?: { full_name: string } | null;
+  stage?: { name: string } | null;
 }
 
 // RLS (can_see_request) does the scoping — a student sees their own, a holder
@@ -39,7 +41,7 @@ export interface RequestRow {
 export async function listVisibleRequests(): Promise<RequestRow[]> {
   const { data, error } = await supabase
     .from('requests')
-    .select('*, request_categories(name), requester:profiles!requests_requested_by_fkey(full_name, email)')
+    .select('*, request_categories(name), requester:profiles!requests_requested_by_fkey(full_name, email), holder:profiles!requests_current_holder_fkey(full_name), stage:category_stages!requests_current_stage_id_fkey(name)')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as RequestRow[];
@@ -48,7 +50,7 @@ export async function listVisibleRequests(): Promise<RequestRow[]> {
 export async function getRequest(id: string): Promise<RequestRow | null> {
   const { data, error } = await supabase
     .from('requests')
-    .select('*, request_categories(name), requester:profiles!requests_requested_by_fkey(full_name, email)')
+    .select('*, request_categories(name), requester:profiles!requests_requested_by_fkey(full_name, email), holder:profiles!requests_current_holder_fkey(full_name), stage:category_stages!requests_current_stage_id_fkey(name)')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;

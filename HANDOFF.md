@@ -1083,3 +1083,28 @@ undated, and a bad field key was refused. **Not seen in a browser** (the session
 TOTP freshness had lapsed): the new widgets, the Kind column and the Fields dialog.
 **Data to set by hand:** the existing "Internal OD" category has no scope yet
 (it shows as "Not set"); set it to Internal under Workflow → Edit.
+
+**Update — personal dashboard tabs (`0041_notifications.sql`):** the captain's
+point: a normal dashboard, at least for a student, is notifications, pending
+requests and a request summary. Every user now gets those three tabs; staff and
+the captain also get **Analytics** (the OD numbers, RLS-scoped) and the captain
+opens on it, everyone else on Pending. All tabs stay mounted so each loads once
+and reports its count to the tab label ("Notifications (3)", "Pending requests (2)").
+- **Notifications** are *derived*, not stored: `my_notifications()` (SECURITY
+  INVOKER, so RLS decides what's visible) reads `request_assignment_history` and
+  `request_comments` — landed on you, approved/rejected/changes asked/reviewed on a
+  request you raised, a request of yours advancing, someone commenting on one you
+  raised or hold. The only new state is `notification_state.seen_at` (one timestamp
+  per person; unread = `at > seen_at`), written by `mark_notifications_seen()`.
+  Clicking one opens that request (`/next/requests?open=<id>`, a new param the
+  Requests page now honours once and then clears).
+- **Pending**: "Waiting on you" (people who decide things) and "Your requests in
+  progress" with who holds it and at which stage (the request query now joins holder
+  and stage names).
+- **Summary**: raised / approved / in progress / rejected tiles, a pinned-colour
+  outcome donut, by-category and latest.
+**Verified:** the SQL in rolled-back transactions as the requester of CTF (6 items:
+approvals, a rejection, a stage advance) and as HOD GOWTHAM (3 "assigned"); the
+tabs rendered live as the captain, whose own lists are correctly empty. **Not seen
+populated in a browser** — that needs a student or HOD session. Notifications are
+in-app only (nothing emailed or pushed).

@@ -1016,3 +1016,14 @@ and My account rendered; nothing was published, saved or changed. Not exercised
 live: publishing a version, the field/signature insert menus, the signature pad
 draw/upload/save, password and authenticator changes. Remaining React-only:
 Levels setup, the setup wizard, the sticky-note settings, dashboard content.
+
+**Update — Dashboard ported to `app-vue/`:** the captain's overview (fresh-org
+setup path, or stat tiles + staff table) and the member dashboard (stat tiles,
+awaiting-your-action, recent requests), plus the "Open the board" card.
+**Live, as the captain:** the Dashboard (11 accounts, 5 staff, 5 students, 2
+pending invites) and — this also closes the earlier gap — the Organisation page:
+the real ladder, narrowing by choosing GOWTHAM (Mentor and Student rungs refetch
+"under GOWTHAM", no duplicate rows) and the person card (email, FET ID, role,
+department, batch and class). Not seen live: the member (non-captain)
+dashboard branch. Remaining React-only: Levels setup, the first-run setup
+wizard, sticky-note settings.

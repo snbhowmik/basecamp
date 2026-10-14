@@ -59,9 +59,11 @@ async function pick(e: Event) {
     <div class="text-sm text-ink-gray-5">Attachments</div>
     <ErrorMessage :message="error" />
     <div v-for="a in items" :key="a.id" class="flex gap-2">
-      <Button class="flex-1 justify-between" @click="open(a)">
-        <span class="truncate">{{ a.file_name }}</span>
-        <span class="tabular-nums text-ink-gray-5">{{ size(a.size_bytes) }}</span>
+      <Button class="min-w-0 flex-1" @click="open(a)">
+        <div class="flex w-full min-w-0 items-center justify-between gap-3">
+          <span class="truncate">{{ a.file_name }}</span>
+          <span class="shrink-0 tabular-nums text-ink-gray-5">{{ size(a.size_bytes) }}</span>
+        </div>
       </Button>
       <template v-if="a.uploaded_by === currentUserId">
         <Button v-if="confirming === a.id" theme="red" variant="solid" :loading="busy" @click="remove(a)">Confirm</Button>

@@ -4,7 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 // depends on the async sign-in/MFA state, and RLS is the real boundary anyway.
 // /verify is public by design (PRD.md §14.4) and sits outside the gate.
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', redirect: '/dashboard' },
     { path: '/dashboard', component: () => import('./pages/DashboardPage.vue'), meta: { label: 'Dashboard', icon: 'lucide-layout-dashboard' } },

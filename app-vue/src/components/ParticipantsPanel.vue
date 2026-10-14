@@ -69,7 +69,7 @@ const respond = (id: string, accept: boolean) => run(() => respondToParticipatio
       </li>
     </ul>
     <form v-if="canAdd" class="flex items-end gap-2" @submit.prevent="add">
-      <FormControl v-model="regNo" class="flex-1" placeholder="Register number" />
+      <div class="min-w-0 flex-1"><FormControl v-model="regNo" placeholder="Register number" /></div>
       <Button type="submit" :disabled="busy">Add</Button>
     </form>
   </div>

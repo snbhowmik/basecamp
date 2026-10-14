@@ -165,11 +165,15 @@ async function postComment() {
           <div class="text-xs text-ink-gray-5 tabular-nums">{{ new Date(c.created_at).toLocaleString() }}</div>
         </div>
         <div class="flex items-end gap-2">
-          <FormControl v-model="commentBody" class="flex-1" placeholder="Add a comment…" />
-          <FormControl
-            v-if="ctx.isStaff" v-model="commentVisibility" type="select" class="w-32"
-            :options="[{ label: 'Public', value: 'public' }, { label: 'Internal', value: 'internal' }]"
-          />
+          <div class="min-w-0 flex-1">
+            <FormControl v-model="commentBody" placeholder="Add a comment…" />
+          </div>
+          <div v-if="ctx.isStaff" class="w-32 shrink-0">
+            <FormControl
+              v-model="commentVisibility" type="select"
+              :options="[{ label: 'Public', value: 'public' }, { label: 'Internal', value: 'internal' }]"
+            />
+          </div>
           <Button :disabled="busy || !commentBody.trim()" @click="postComment">Post</Button>
         </div>
       </div>

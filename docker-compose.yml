@@ -271,6 +271,8 @@ services:
       # catch-all route), never a published port of its own — same
       # single-entry-point rule as everything else here.
       - ./app/dist:/usr/share/nginx/html:ro
+      # Vue rewrite preview, served at /next/ — see nginx/frontend.conf.
+      - ./app-vue/dist:/usr/share/nginx/next:ro
       # SPA fallback (try_files ... /index.html) — without it, direct visits
       # to /register or /invite/<token> 404 instead of loading the app.
       # See nginx/frontend.conf's header comment.

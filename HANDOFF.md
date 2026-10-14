@@ -897,9 +897,11 @@ gate ported from `lib/auth.ts` (`lib/session.ts`); login, TOTP verify (existing
 factor only — enrolment is not ported), a stub dashboard, and a public
 `/verify/:code` that calls the same `verify_document` RPC.
 
-**Not verified:** nothing has been *run* in a browser — the Chrome extension
-cannot reach this host's dev server, and serving it on the live domain would
-change production. Build + typecheck only.
+**Preview route:** the Vue app is served at `https://basecamp.hackerxploit.org/next/`
+(`nginx/frontend.conf` + a second `frontend` volume, `./app-vue/dist`; Vite
+`base` and the router use `/next/`). Same origin, so the Supabase session is
+shared with the React app. Rebuild with `cd app-vue && npm run build` — no
+container restart needed after the first time.
 
 **Not ported:** every other page, registration/invite/wizard, theming of the
 SRM palette (it currently uses stock frappe-ui tokens), the Bencho components,
@@ -927,3 +929,12 @@ attachments (upload, open, uploader-only delete) are ported, and Approve is
 disabled while required tasks are outstanding, as in React. Build + typecheck
 only, still not run in a browser. Uploads use a plain file picker, not the
 Bencho dropzone. Remaining React-only list unchanged apart from these.
+
+**Update — Vue app now exercised live at `/next/`:** signed in via the shared
+session; Dashboard, Requests list (all four real requests, status badges),
+request detail (fields, real attachment, activity, comments) and the New
+request dialog (category preselected, first-hop hint) all rendered against the
+real database. Two layout bugs found and fixed there (attachment row, comment
+row). Read-only: nothing was submitted, decided or uploaded. Not yet exercised
+live: approve/reject/forward, stage tasks with real tasks, participants, file
+upload/delete, TOTP verify screen, login.

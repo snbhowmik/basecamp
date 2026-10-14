@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { errorMessage } from '../../lib/errors';
 import Brand from '../ui/Brand';
 import { useMediaQuery, AUTH_PANEL_QUERY } from '../../lib/useMediaQuery';
 import { enrollTotp, verifyTotp } from '../../lib/wizard';
+import { Otp } from '../bencho/OneTimeCode';
 
 interface VerifyMfaProps {
   /** A verified factor to challenge, or null to enroll one first. */
@@ -25,9 +25,7 @@ interface VerifyMfaProps {
 //                    act until a factor is verified, so the only safe exit is
 //                    to enroll here rather than show a dead end.
 export default function VerifyMfa({ factorId, onVerified, onSignOut }: VerifyMfaProps) {
-  const [code, setCode] = useState('');
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
   const enrolling = factorId === null;
   const [newFactorId, setNewFactorId] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState('');
@@ -48,19 +46,16 @@ export default function VerifyMfa({ factorId, onVerified, onSignOut }: VerifyMfa
 
   const target = factorId ?? newFactorId;
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  // Otp's "check" phase waits on this — a throw (a wrong code) plays its
+  // shake-and-drain; a resolve plays the fuse-into-"Verified" capsule.
+  const submitCode = async (code: string) => {
     if (!target) return;
     setError('');
-    setBusy(true);
     try {
       await verifyTotp(target, code);
-      onVerified();
     } catch (err) {
       setError(errorMessage(err, 'Verification failed.'));
-      setCode('');
-    } finally {
-      setBusy(false);
+      throw err;
     }
   };
 
@@ -94,7 +89,7 @@ export default function VerifyMfa({ factorId, onVerified, onSignOut }: VerifyMfa
 
           {error && <div className="alert alert-danger" style={{ marginBottom: '1rem' }}>{error}</div>}
 
-          <form onSubmit={handleSubmit} className="auth-form">
+          <div className="auth-form">
             {enrolling && qrCode && (
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <div style={{ padding: '1rem', background: 'white', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
@@ -110,24 +105,12 @@ export default function VerifyMfa({ factorId, onVerified, onSignOut }: VerifyMfa
                 </code>
               </div>
             )}
-            <div className="form-group">
-              <label className="form-label">6-digit code</label>
-              <input
-                className="form-input"
-                required
-                autoFocus
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.5rem' }}
-              />
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={busy || !target}>
-              {busy ? 'Verifying...' : 'Verify'} <ShieldCheck size={18} />
-            </button>
-          </form>
+            {target && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0 0.25rem' }}>
+                <Otp length={6} onSubmit={submitCode} onVerified={onVerified} />
+              </div>
+            )}
+          </div>
 
           {/* Without this a lost authenticator is a locked browser: nothing
               else on this screen can reach the app, and the session is not

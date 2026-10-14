@@ -3,6 +3,7 @@ import { ShieldCheck, ShieldAlert, ShieldX, Search } from 'lucide-react';
 import { errorMessage } from '../../lib/errors';
 import { verifyDocument, type VerificationResult } from '../../lib/documents';
 import Brand from '../ui/Brand';
+import Stamp from '../ui/Stamp';
 
 interface VerifyPageProps {
   code?: string;
@@ -15,10 +16,11 @@ interface VerifyPageProps {
 // whether it is genuine with no login. Never the document's contents —
 // otherwise a reference code would be a way to read somebody else's ticket.
 //
-// Signer detail is tiered server-side (verify_document(), 0035): signed in
-// or not, this page renders the same way — it just gets back `signatures:
-// null` instead of an array when the viewer has no session, and skips the
-// list. No client-side gating here; the RPC already decided.
+// Signer detail is NOT gated by login (0036, reversing 0035's narrower
+// tiering): the approver's identity is the stamp on the document, and a
+// stamp is meant to be checked by anyone holding it, not only someone
+// signed in. verify_document() returns the full signer list to every
+// caller; this page renders the last one who signed as Stamp.tsx.
 export default function VerifyPage({ code }: VerifyPageProps) {
   const [input, setInput] = useState(code ?? '');
   const [result, setResult] = useState<VerificationResult | null>(null);
@@ -101,18 +103,30 @@ export default function VerifyPage({ code }: VerifyPageProps) {
                   generated copy, which will carry a new reference code.
                 </p>
               )}
-              {result.signatures === null && (
-                <p className="text-muted">Sign in to see who signed this and when.</p>
-              )}
               {(result.signatures ?? []).length > 0 && (
-                <ul className="verify-signers">
-                  {result.signatures!.map((s, i) => (
-                    <li key={i}>
-                      Signed by <strong>{s.signer}</strong>{s.role ? ` (${s.role})` : ''} on{' '}
-                      {new Date(s.signed_at).toLocaleDateString()}
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <ul className="verify-signers">
+                    {result.signatures!.map((s, i) => (
+                      <li key={i}>
+                        Signed by <strong>{s.signer}</strong>{s.role ? ` (${s.role})` : ''} on{' '}
+                        {new Date(s.signed_at).toLocaleDateString()}
+                      </li>
+                    ))}
+                  </ul>
+                  {(() => {
+                    const last = result.signatures![result.signatures!.length - 1];
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                        <Stamp
+                          role={last.role || 'Approved'}
+                          name={last.signer}
+                          date={new Date(last.signed_at).toLocaleDateString()}
+                          punch={result.intact ? 'var(--state-approved-wash)' : 'var(--state-pending-wash)'}
+                        />
+                      </div>
+                    );
+                  })()}
+                </>
               )}
             </div>
           </div>

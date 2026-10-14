@@ -1,6 +1,6 @@
 import { errorMessage } from '../../lib/errors';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { Plus, Inbox, Search, Send, FileText } from 'lucide-react';
+import { Inbox, Search, Send, FileText } from 'lucide-react';
 import type { UserContext } from '../../lib/context';
 import {
   listVisibleRequests,
@@ -28,6 +28,9 @@ import type { RequestCategory } from '../../types';
 import StatusBadge from '../ui/StatusBadge';
 import Modal from '../ui/Modal';
 import { listTemplates } from '../../lib/documents';
+import { SlideConfirm } from '../bencho/SlideToConfirm';
+import { Seek } from '../bencho/Search';
+import { Create } from '../bencho/CreateMenu';
 import DocumentView from '../documents/DocumentView';
 import StageTasks from '../workflow/StageTasks';
 import ParticipantsPanel from '../workflow/ParticipantsPanel';
@@ -71,6 +74,7 @@ export default function RequestsPage({ ctx }: { ctx: UserContext }) {
   const [filter, setFilter] = useState<Filter>(ctx.isStaff ? 'desk' : 'mine');
   const [query, setQuery] = useState('');
   const [showNew, setShowNew] = useState(false);
+  const [newCategoryId, setNewCategoryId] = useState<string | undefined>(undefined);
   const [selected, setSelected] = useState<RequestRow | null>(null);
 
   const reload = async () => {
@@ -124,9 +128,11 @@ export default function RequestsPage({ ctx }: { ctx: UserContext }) {
           <h1 className="page-title">Requests</h1>
           <p className="page-subtitle">Everything you've raised, plus anything routed to you.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowNew(true)}>
-          <Plus size={16} /> New request
-        </button>
+        <Create
+          label="New request"
+          items={leafCategories.map((c) => ({ key: c.id, label: c.name }))}
+          onPick={(item) => { setNewCategoryId(item.key); setShowNew(true); }}
+        />
       </div>
 
       {error && <div className="alert alert-danger" style={{ marginBottom: '1.25rem' }}>{error}</div>}
@@ -207,6 +213,7 @@ export default function RequestsPage({ ctx }: { ctx: UserContext }) {
       {showNew && (
         <NewRequestModal
           categories={leafCategories}
+          initialCategoryId={newCategoryId}
           onClose={() => setShowNew(false)}
           onCreated={() => {
             setShowNew(false);
@@ -234,14 +241,16 @@ export default function RequestsPage({ ctx }: { ctx: UserContext }) {
 
 function NewRequestModal({
   categories,
+  initialCategoryId,
   onClose,
   onCreated,
 }: {
   categories: RequestCategory[];
+  initialCategoryId?: string;
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const [categoryId, setCategoryId] = useState('');
+  const [categoryId, setCategoryId] = useState(initialCategoryId ?? '');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   // The OD fields (event name, dates, travel scope, ...) are no longer columns
@@ -514,14 +523,22 @@ function RequestDetailModal({
                 <button className="btn btn-danger" disabled={busy} onClick={() => act(() => decideRequest(request.id, 'rejected', note))}>
                   Reject
                 </button>
-                <button
-                  className="btn btn-success"
-                  disabled={busy || outstandingTasks > 0}
-                  title={outstandingTasks > 0 ? `${outstandingTasks} required task${outstandingTasks === 1 ? '' : 's'} outstanding` : undefined}
-                  onClick={() => act(() => decideRequest(request.id, 'approved', note))}
-                >
-                  Approve
-                </button>
+                {outstandingTasks > 0 ? (
+                  <button className="btn btn-success" disabled title={`${outstandingTasks} required task${outstandingTasks === 1 ? '' : 's'} outstanding`}>
+                    Approve
+                  </button>
+                ) : (
+                  <SlideConfirm
+                    width={240}
+                    label="Slide to approve"
+                    onConfirm={async () => {
+                      setError('');
+                      await decideRequest(request.id, 'approved', note);
+                      onChanged();
+                    }}
+                    onError={(msg) => setError(msg)}
+                  />
+                )}
               </>
             )}
           </>
@@ -600,11 +617,11 @@ function RequestDetailModal({
         <div className="card" style={{ padding: '1rem' }}>
           <div className="form-group">
             <label className="form-label">Forward to</label>
-            <input
-              className="form-input"
+            <Seek
+              width={320}
               placeholder="Search by name or email..."
               value={forwardQuery}
-              onChange={(e) => setForwardQuery(e.target.value)}
+              onChange={setForwardQuery}
             />
           </div>
           {forwardResults.map((t) => (

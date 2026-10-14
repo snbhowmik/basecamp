@@ -792,13 +792,21 @@ button.chip:hover { border-color: var(--ink-body); }
 
 /* --- public verification page --- */
 .verify-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--sp-5); background: var(--bg-color, #f8f8f7); }
-.verify-card { width: 100%; max-width: 34rem; background: var(--surface, #fff); border: 1px solid var(--rule); border-radius: 12px; padding: var(--sp-6, 2rem); }
-.verify-result { display: flex; gap: var(--sp-4); align-items: flex-start; margin-top: var(--sp-5); padding: var(--sp-4); border-radius: 8px; border: 1px solid; }
-.verify-result p { margin: 0.35rem 0 0; font-size: 0.9rem; }
-.verify-good { background: #f0fdf4; border-color: #86efac; color: #14532d; }
-.verify-warn { background: #fffbeb; border-color: #fcd34d; color: #78350f; }
-.verify-bad  { background: #fef2f2; border-color: #fca5a5; color: #7f1d1d; }
-.verify-signers { margin: 0.6rem 0 0; padding-left: 1.1rem; font-size: 0.9rem; }
+/* Was hardcoded hex throughout (#fff, #f0fdf4, #86efac, …) with a
+   `var(--surface, #fff)` referencing a token this system has never had —
+   missed in the frappe-ui retheme because this block never routed through
+   the shared primitives (.alert, .mark) the rest of the app uses for the
+   same draft/pending/approved/rejected vocabulary. Fixed to use those same
+   state tokens, so /verify now actually follows dark mode like every other
+   page, instead of staying a white card with pastel hex regardless of the
+   theme choice. */
+.verify-card { width: 100%; max-width: 34rem; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius-lg); padding: var(--sp-6); }
+.verify-result { display: flex; gap: var(--sp-4); align-items: flex-start; margin-top: var(--sp-5); padding: var(--sp-4); border-radius: var(--radius-lg); border: 1px solid; }
+.verify-result p { margin: 0.35rem 0 0; font-size: var(--step--1); }
+.verify-good { background: var(--state-approved-wash); border-color: var(--state-approved); color: var(--state-approved); }
+.verify-warn { background: var(--state-pending-wash); border-color: var(--state-pending); color: var(--state-pending); }
+.verify-bad  { background: var(--state-rejected-wash); border-color: var(--state-rejected); color: var(--state-rejected); }
+.verify-signers { margin: 0.6rem 0 0; padding-left: 1.1rem; font-size: var(--step--1); }
 
 @media (max-width: 720px) {
   .tpl-fields { grid-template-columns: 1fr; }
@@ -1359,3 +1367,68 @@ button.chip:hover { border-color: var(--ink-body); }
 
 /* The stages editor carries a table inside each stage card. */
 .modal-content.modal-lg { width: min(64rem, 100%); }
+
+/* ── Stamp: a die-cut, ink-on-paper approval seal ───────────────────
+   The scalloped edge is small circles the colour of whatever sits
+   behind the stamp (--pf-punch, defaults to the app ground), not a
+   true CSS mask — correct as long as the context sets --pf-punch (or
+   accepts the default) to its own actual background, same contract
+   as Stamp.tsx's own header comment. */
+.pf-stamp {
+  --pf-punch: var(--paper-laid);
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 10rem;
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  background: var(--paper);
+  border: 2px solid var(--srm-blue);
+  color: var(--srm-blue);
+  box-shadow: var(--lift);
+  font-family: var(--font-ui);
+}
+.pf-stamp__edge {
+  position: absolute;
+  background-image: radial-gradient(circle, var(--pf-punch) 0 45%, transparent 46%);
+  pointer-events: none;
+}
+.pf-stamp__edge--top, .pf-stamp__edge--bottom {
+  left: 0; right: 0; height: 14px;
+  background-size: 14px 14px;
+  background-position: 0 center;
+}
+.pf-stamp__edge--top { top: -7px; }
+.pf-stamp__edge--bottom { bottom: -7px; }
+.pf-stamp__edge--left, .pf-stamp__edge--right {
+  top: 0; bottom: 0; width: 14px;
+  background-size: 14px 14px;
+  background-position: center 0;
+}
+.pf-stamp__edge--left { left: -7px; }
+.pf-stamp__edge--right { right: -7px; }
+
+.pf-stamp__row { display: flex; justify-content: space-between; align-items: baseline; }
+.pf-stamp__role, .pf-stamp__date {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pf-stamp__name {
+  font-size: var(--step-0);
+  font-weight: 700;
+  text-align: center;
+  padding: 0.3rem 0;
+  border-top: 1px dashed var(--srm-blue);
+  border-bottom: 1px dashed var(--srm-blue);
+  margin: 0.15rem 0;
+  word-break: break-word;
+}
+.pf-stamp__caption {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+}

@@ -536,30 +536,20 @@ token, remember in the next version we have to change it."
 
 ---
 
-## 11. Dark mode and the DESIGN.md rewrite — agreed, not started
+## 11. Dark mode and the DESIGN.md rewrite — done
 
-The captain asked for `sd.srmist.edu.in` (SRM's generic ManageEngine
-ServiceDesk instance) as design inspiration, filtered through `/impeccable`,
-plus full light/dark theming. Two things to hold onto before starting:
+Superseded by a more specific ask: not `sd.srmist.edu.in`, but frappe-ui's
+own published design tokens, native light/dark, with the whole component
+library repainted from them. Done this session — see `DESIGN.md` (fully
+rewritten) and §13 below for the mechanics. The print/document question
+this section used to flag is answered the way it anticipated: `.doc-sheet`
+stays paper-white regardless of app theme, documented in `DESIGN.md`'s
+"Two deliberate exceptions".
 
-- `sd.srmist.edu.in`'s dark chrome is stock vendor default, not a designed
-  system — useful for layout/interaction ideas (category tree, field
-  density, attachment placement), not as a palette to copy.
-- DESIGN.md currently forbids this outright: "the topbar is the letterhead:
-  white paper... never dark console chrome." The captain chose **full
-  dual-theme, DESIGN.md gets rewritten** (not console-only-dark,
-  not dropped) when asked directly. That is a reversal of the documented
-  visual identity, and it also has to answer for print/document surfaces —
-  a printed OD letter is white paper regardless of which theme the browser
-  is in, so the rewrite needs to say explicitly which surfaces stay
-  light-only and why.
-- Do this with the captain looking at real screens, not by inferring taste
-  from a stock ITSM palette. Concrete first step: define the token pairs in
-  `components.css`, get one screen approved, then propagate. This also
-  finally settles §8's 28 unresolved CSS findings and the type-ramp
-  question — `0.9rem` literals appear unflagged in several places
-  (`RequestsPage.tsx`) and should become a real step on the ramp or get
-  replaced, not silently ignored.
+Still open from the old version of this section: the §8 CSS findings this
+hasn't touched, and any `0.9rem`-style literal that isn't one of the
+documented type-ramp steps. The retheme repainted tokens; it didn't audit
+every inline style for one.
 
 ---
 
@@ -576,4 +566,103 @@ plus full light/dark theming. Two things to hold onto before starting:
 | `TASK.md` | build tracker, known gaps | **Stale** — dated 2026-08-11, "v1.0.0", predates V2's close. Several items it flags as open (custom fields) are done; some it doesn't mention (attachments UI) are still gaps. Read `HANDOFF.md` §8 instead. |
 | `SECURITY.md` | threat model, risk register R-01..R-32 | Current |
 | `DEPLOY.md` | deployment runbook, Part C covers host rebuild | Current, battle-tested |
-| `DESIGN.md` | the frontend's visual system | Current, but §11 commits to rewriting it for dual-theme — not started |
+| `DESIGN.md` | the frontend's visual system | Current — rewritten this session for the frappe-ui retheme and dual-theme, see §11/§13 |
+
+---
+
+## 13. Five Bencho components (this session) — what's vendored, what's wired, what isn't verified live
+
+`bencho.dev`'s MIT-licensed component library, requested one at a time and
+built faithfully (comments kept, as asked) under
+`app/src/components/bencho/`. Tokens mapped once, locally, in
+`app/src/bencho.css` — `--font-ui`/`--ink` already exist under those exact
+names in this app's own system; `--card`, `--board`, `--bg`, `--pane`,
+`--pane-edge`, `--ok`, `--signal`, `--ink-2..5` are aliased to the nearest
+existing token on `.upl`/`.otp`/`.sld`/`.sek`/`.crt-stage`'s own root rule,
+not promoted to `:root`. The `-rgb` tokens (`--ink-rgb`, `--fill-on-rgb`)
+are literal sRGB triplets computed from the real oklch ink tokens (light
+`23 23 23`, dark `248 248 248`), with their own `[data-theme="dark"]` /
+`prefers-color-scheme` pair, since oklch has no CSS-native RGB decomposition
+to alias from. Dropped, deliberately: the two components' `data-fill="..."`
+dark-mode overrides (that attribute is never set anywhere in this app) and
+Seek's frosted-glass `backdrop-filter` (nothing to blur against — `--pane`
+resolves to opaque `--paper`).
+
+**Two of the five were decorative demos, not functional ones, as shipped —
+flagged before building anything, not discovered after:**
+
+- **Upload dropzone.** The vendored `UploadDropzone.tsx` is kept as given —
+  its own header comment says `NO REAL FILES`, and it drags one of two
+  hardcoded fake tiles into a box with a simulated progress fill. The real
+  one the app actually uses is `BasecampUpload.tsx`, same box/motion
+  language, wired to a native file input + drag-and-drop and
+  `attachments.ts`'s real `uploadAttachment()`. No fake percentage — Supabase
+  storage's `upload()` wraps `fetch`, which exposes no progress events, so
+  this shows "Uploading…" rather than inventing a number. Restricted to
+  PDF/DOC/DOCX/PPT/PPTX/PNG/JPG/WEBP/GIF per the captain's list, checked by
+  MIME type with an extension fallback (some browsers send `application/
+  octet-stream` for a `.docx` dragged from certain sources). Wired into
+  `Attachments.tsx`, replacing the old plain "Attach a file" button.
+- **One-time code.** The vendored source took a fixed `answer: "Accept" |
+  "Reject"` prop — a demo for the wall, not a real check. Adapted to take
+  `onSubmit: (code) => Promise<...>`, wired straight into `VerifyMfa.tsx`'s
+  existing `verifyTotp()` — same real Supabase MFA challenge as before, just
+  behind the fuse-into-a-capsule animation instead of a plain input+button.
+  **Verified live**: typed a wrong code against a real account, got the
+  real `Invalid TOTP code entered` error back from Supabase, watched the
+  row shake and drain. The enrollment QR/secret display (a separate,
+  unrelated piece of this same screen) is untouched.
+
+**The other three also needed real adaptation, not just token-mapping:**
+
+- **Slide to confirm.** The vendored demo commits the instant the handle
+  crosses the mark — nothing to wait on. Wired into the Approve button on
+  `RequestsPage.tsx`'s request-detail footer (replacing the plain `btn
+  btn-success`, **only** there — the captain was explicit this is for
+  confirm actions, not every submit button), the handle now holds at the
+  wall and calls the real `decideRequest(id, 'approved', note)` RPC; only a
+  real resolve plays the "Confirmed" morph, a reject (outstanding tasks, a
+  stale decision, anything RLS refuses) springs the handle back and surfaces
+  the message the same way every other action's error already does. A
+  request still carrying outstanding required tasks shows the old disabled
+  button instead of the slider — sliding doesn't bypass that gate, it's
+  just not rendered when there's nothing to slide toward yet. **Not yet
+  clicked through live** — needs a request at that exact state and a
+  session past MFA, neither available this session (see below).
+- **Search ("Seek").** The vendored demo owns its own `value` internally.
+  Made optionally controlled (`value`/`onChange` props, falls back to
+  internal state when omitted) so it could drive the existing
+  `forwardQuery`/`searchForwardTargets` debounce already in
+  `RequestsPage.tsx`, replacing the plain `.form-input` "Forward to" box —
+  the "search for a role who might be intermediate in the request" the
+  captain asked for. None of the open/shut spring or magnet-hover geometry
+  touched.
+- **Create menu.** The vendored demo's four menu rows (Document,
+  Spreadsheet, Board, Folder) are a fixed `ITEMS` constant sized for exactly
+  four. This app's "create" action is "raise a request in category X", and
+  the category list is whatever the captain configured on Workflow — so
+  `items`/`onPick` are props now, and the panel's height is derived from
+  the real item count (`items.length * 34px + gaps + padding`) instead of a
+  hardcoded 166px for four rows. An empty category list shows "No
+  categories configured yet" rather than an empty panel. Replaces the plain
+  "+ New request" button on `RequestsPage.tsx`; picking a category opens
+  `NewRequestModal` with it pre-selected (`initialCategoryId`, new prop)
+  instead of landing on the modal's own category dropdown at nothing
+  selected.
+
+**Not verified live, and why**: beyond the OTP reject path above, nothing
+in this section was clicked through in a real browser. Every session
+reachable this turn hit the TOTP re-entry screen with no code to give it —
+GOWTHAM's token from an earlier session had long since expired, and no
+fresh session was available. Everything here is build-verified
+(`npm run build` clean after every component) and the wiring was read
+carefully against the real RPCs it calls, but "Slide to approve" against a
+real outstanding-tasks request, "Create" against a real category list, and
+the upload dropzone's real multipart path through `storage-api` all still
+need a non-captain login to actually watch happen, same gap §10 already
+tracks for the pre-existing task/participants UI.
+
+Bundle cost: `framer-motion` (new dependency, used by Upload/SlideConfirm/
+CreateMenu) took the gzipped bundle from ~171KB to ~226KB. Worth knowing,
+not currently worth undoing — these are real, requested interaction
+patterns, not decoration pulled in for its own sake.

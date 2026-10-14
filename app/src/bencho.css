@@ -1,0 +1,814 @@
+/* ══════════════════════════════════════════════════════════
+   Bencho components — vendored, MIT (bencho.dev/licence).
+   Comments are kept exactly as given; they are most of what
+   makes this worth copying rather than rewriting.
+
+   Token bridge: Bencho's components read --card, --fill-on,
+   --fill-slab, --font-ui, --ink, --ok, --signal, --pane-edge,
+   --board, --bg, --pane, --ink-2..5, and the -rgb variants of
+   --ink/--fill-on. --font-ui and --ink already exist under
+   those exact names in this app's own system (index.css) and
+   need no mapping. Everything else is defined once, locally,
+   on each component's own root class below — not promoted to
+   :root — so none of it leaks into the rest of the app. The
+   -rgb tokens want three bare numbers because the CSS builds
+   rgba() from them; this app's palette is oklch, which has no
+   static RGB triplet to alias, so these are literal sRGB
+   values computed from the same oklch ink/paper tokens
+   (light: oklch(0.205 0 0)/oklch(0.979 0 0) -> 23 23 23 /
+   248 248 248; dark mode swaps them, same as the rest of the
+   app's tokens do). ══════════════════════════════════════ */
+
+.upl, .otp, .sld, .sek, .crt-stage {
+  --card: var(--paper-sunk);
+  --board: var(--paper);
+  --bg: var(--paper-laid);
+  --pane: var(--paper);
+  --pane-edge: var(--rule-strong);
+  --ok: var(--state-approved);
+  --signal: var(--srm-blue);
+  --ink-2: var(--ink-body);
+  --ink-3: var(--ink-label);
+  --ink-4: var(--ink-label);
+  --ink-5: var(--ink-faint);
+  --ink-rgb: 23 23 23;
+  --fill-on-rgb: var(--ink-rgb);
+}
+:root[data-theme="dark"] .upl, :root[data-theme="dark"] .otp, :root[data-theme="dark"] .sld,
+:root[data-theme="dark"] .sek, :root[data-theme="dark"] .crt-stage {
+  --ink-rgb: 248 248 248;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .upl, :root:not([data-theme="light"]) .otp,
+  :root:not([data-theme="light"]) .sld, :root:not([data-theme="light"]) .sek,
+  :root:not([data-theme="light"]) .crt-stage {
+    --ink-rgb: 248 248 248;
+  }
+}
+
+/* ══ Upload dropzone ═════════════════════════════════════ */
+.upl {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 300px;
+  font-family: var(--font-ui);
+  color: var(--fill-on, var(--ink));
+  user-select: none;
+  -webkit-user-select: none;}
+
+/* BasecampUpload.tsx: the real uploader has no tray of draggable
+   tiles (there's nothing to pick up — a native file input and
+   drag-and-drop stand in for that), so it only ever needs the
+   box's own width, not the demo's fixed 300px stage. */
+.upl--real { width: 100%; }
+.upl--real .upl-zone { cursor: pointer; }
+
+/* a slot of fixed size, so the box can close in round an upload
+   without moving anything below it */
+.upl-zone-wrap {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 176px;}
+
+.upl-zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  /* 176, up from 128: the drop target is the block, and a short
+     one read as a banner rather than a place to put something */
+  height: 176px;
+  padding: 0 16px;
+  overflow: hidden;
+  border-radius: var(--upl-r, var(--radius-lg));
+  background: var(--fill-slab, var(--card));
+  /* a file over it and it grows, with a bounce; an upload and it
+     closes in round it */
+  transition:
+    scale 420ms cubic-bezier(0.3, 1.35, 0.4, 1),
+    width 460ms cubic-bezier(0.3, 1.2, 0.4, 1),
+    height 460ms cubic-bezier(0.3, 1.2, 0.4, 1),
+    background-color 200ms ease;}
+
+.upl--real .upl-zone { height: 128px; }
+.upl--real .upl-zone-wrap { display: none; }
+
+.upl-zone[data-over] { scale: 1.02; }
+
+/* the gulp: in a little as the file goes down, out past its size,
+   and settle */
+.upl-zone[data-gulp] { animation: upl-gulp 460ms cubic-bezier(0.3, 1.2, 0.4, 1); }
+
+.upl-zone[data-gulp] .upl-icon { animation: upl-open 460ms cubic-bezier(0.3, 1.4, 0.4, 1); }
+
+[data-stroke="on"] .upl-zone { box-shadow: 0 0 0 1px var(--pane-edge); }
+
+.upl-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  /* a light grey tile, no edge — the fill's own ink walked most
+     of the way to its slab, so it is a pale grey on the light fill
+     and a lifted grey on the dark one */
+  background: color-mix(in srgb, var(--fill-on, #17181a) 6%, var(--fill-slab, #fff));
+  color: color-mix(in srgb, var(--fill-on, #17181a) 70%, var(--fill-slab, #fff));
+  transition: translate 320ms cubic-bezier(0.3, 1.5, 0.4, 1), background-color 200ms ease, color 200ms ease;}
+
+/* over the box the tile only lifts, and its arrow goes to full
+   ink — no colour of its own */
+.upl-zone[data-over] .upl-icon {
+  translate: 0 -4px;
+  color: var(--fill-on, var(--ink));}
+
+.upl-say {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 13px;
+  text-align: center;}
+
+.upl-say b { font-weight: 500; }
+
+.upl-say span {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 45%, var(--fill-slab, #fff));}
+
+.upl-zone[data-refuse] .upl-say b { color: var(--state-rejected, #e5484d); }
+
+/* the file, arrived in the box */
+.upl-now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  flex: none;
+  animation: upl-land 420ms var(--upl-spring, cubic-bezier(0.3, 1.36, 0.4, 1)) both;}
+
+.upl-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 150px;}
+
+.upl-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;}
+
+.upl-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 14px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 45%, var(--fill-slab, #fff));}
+
+.upl-track {
+  position: relative;
+  height: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--fill-on, #17181a) 8%, var(--fill-slab, #fff));}
+
+.upl-bar {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--signal, #2231dd);
+  transform-origin: left center;}
+
+.upl-roll { display: inline-flex; line-height: 1em; height: 1em; overflow: hidden; }
+
+.upl-roll-col { display: inline-block; height: 1em; overflow: hidden; }
+
+.upl-roll-strip {
+  display: flex;
+  flex-direction: column;
+  transition: transform 220ms cubic-bezier(0.3, 1.2, 0.4, 1);}
+
+.upl-roll-strip > span { height: 1em; }
+
+.upl-end {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;}
+
+.upl-tick {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ok, #15803d);
+  color: #fff;
+  animation: upl-pop 380ms cubic-bezier(0.3, 1.6, 0.4, 1) both;}
+
+/* the tray: three files lying under the box */
+.upl-tray {
+  display: flex;
+  justify-content: center;
+  gap: 18px;}
+
+.upl-slot {
+  position: relative;
+  width: 76px;
+  height: 78px;}
+
+.upl-file {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+  /* home is a spring; the Bounce knob sets its overshoot */
+  transition: transform 460ms var(--upl-spring, cubic-bezier(0.3, 1.36, 0.4, 1)), opacity 200ms ease;}
+
+.upl-file[data-held] {
+  z-index: 5;
+  cursor: grabbing;
+  transition: none;}
+
+.upl-file[data-gone] { opacity: 0; pointer-events: none; transition: none; }
+
+.upl-file:not([data-gone]) { animation: upl-back 360ms var(--upl-spring, cubic-bezier(0.3, 1.36, 0.4, 1)) both; }
+
+.upl-file:focus-visible .upl-page { outline: 2px solid var(--signal, #2231dd); outline-offset: 3px; border-radius: 4px; }
+
+.upl-page { overflow: visible; }
+
+.upl-page-line {
+  stroke: color-mix(in srgb, var(--fill-on, #17181a) 18%, var(--fill-slab, #fff));
+  stroke-width: 1.5;
+  /* outline only: the page is drawn, not filled */
+  fill: none;}
+
+.upl-page-ext {
+  fill: #fff;
+  font-family: var(--font-ui);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;}
+
+.upl-label {
+  max-width: 76px;
+  overflow: hidden;
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 70%, var(--fill-slab, #fff));}
+
+@keyframes upl-gulp {
+  0% { scale: 1.02; }
+  35% { scale: 0.985; }
+  70% { scale: 1.006; }
+  100% { scale: 1; }}
+
+@keyframes upl-open { 40% { scale: 1.08; } }
+
+@keyframes upl-land { from { opacity: 0; scale: 0.85; translate: 0 10px; } }
+
+@keyframes upl-pop { from { scale: 0; } }
+
+@keyframes upl-back { from { scale: 0.7; opacity: 0; } }
+
+/* ── the goo's defs hold nothing you can see ────────────────
+   `useGoo` renders an <svg> carrying a <defs> and nothing
+   else, and an <svg> with no dimensions is a replaced element:
+   the browser gives it the default 300x150 and puts it in the
+   flow. Every block that mounts one has been carrying an
+   invisible 300x150 box ever since — harmless in the fixed-size
+   relative stages that host most of them, and not harmless in
+   a flex column, where it over-subscribed the container and
+   shrank the palette's swatch row from 132 to 64.
+
+   Nothing inside a <defs> is rendered, so taking the element
+   out of flow entirely costs nothing and is what it always
+   wanted. */
+.liq-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;}
+
+/* ══ One-time code ═════════════════════════════════════════
+   lab/Otp.tsx. Everything that moves is written inline; what
+   is here is the material. Positioned at the root so the
+   canvas's grab halo does not paint over the field — see the
+   note on .gen. */
+.otp {
+  position: relative;
+  font-family: var(--font-ui);
+  display: grid;
+  place-items: center;}
+
+.otp-row {
+  position: relative;}
+
+.otp-goo {
+  position: absolute;
+  inset: 0;}
+
+/* one colour under the filter, or the threshold smears two */
+.otp-cell {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--fill-slab, var(--card));}
+
+.otp-slot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  pointer-events: none;}
+
+.otp-digit {
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fill-on, var(--ink));
+  animation: otp-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: color 160ms ease;}
+
+.otp[data-phase="no"] .otp-digit { color: var(--state-rejected, #e5484d); }
+
+.otp-caret {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 2px;
+  height: 18px;
+  margin-top: -9px;
+  border-radius: 2px;
+  background: var(--fill-on, var(--ink));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;}
+
+.otp-caret[data-on="true"] {
+  opacity: 1;
+  animation: otp-breathe 1.1s ease-in-out infinite alternate;}
+
+.otp-ok {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fill-on, var(--ink));
+  pointer-events: none;}
+
+/* the field: over the whole row, there and invisible. 16px so
+   iOS does not zoom the page when it takes focus. */
+.otp-field {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  font-size: 16px;
+  caret-color: transparent;
+  cursor: text;}
+
+.otp[data-phase="ok"] .otp-field { cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  .otp-digit { animation: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otp-caret[data-on="true"] { animation: none; }
+}
+
+@keyframes otp-in {
+  from { transform: translateY(45%) scale(0.86); opacity: 0; filter: blur(3px); }
+  to { transform: none; opacity: 1; filter: none; }}
+
+@keyframes otp-breathe {
+  from { opacity: 1; }
+  to { opacity: 0.25; }}
+
+/* ══ Slide to confirm ══════════════════════════════════════
+   A handle crossing a track, and on commit the handle IS the
+   confirmation — it unfurls leftward and fills what it crossed.
+   See SlideToConfirm.tsx for why the right edge stays put, and
+   for the pending state this app adds while the real approve
+   call is in flight (the demo had nothing to wait on). */
+.sld {
+  box-sizing: border-box;
+  font-family: var(--font-ui);
+  color: var(--fill-on, var(--ink));}
+
+.sld-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  /* ── the track is the SLAB, the handle is the INK ─────────
+     It was the other way round — a translucent wash for the
+     track on the reasoning that a groove is darker than what
+     it is cut into. True, and it has nothing to be cut into:
+     this track IS the whole block, so there is no surrounding
+     surface and a 7% wash had no opaque ground under it. On a
+     dark fill that left a near-invisible track with a dark
+     circle sitting on it. Measured: track
+     rgba(244,243,241,0.07) over a light stage.
+
+     Slab and ink is the pair the liquid toggle uses and it
+     inverts from one rule: white track with a near-black
+     handle in light, near-black track with a light handle in
+     dark. And on commit the handle fills the track, so the
+     confirmed state is a solid ink pill in both. */
+  background: var(--fill-slab, var(--card));
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;}
+
+[data-stroke="on"] .sld-track {
+  box-shadow: inset 0 0 0 1px var(--pane-edge);}
+
+.sld-wash {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  bottom: 4px;
+  background: var(--fill-on, var(--ink));
+  z-index: 1;
+  pointer-events: none;}
+
+.sld-say {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  color: rgba(var(--fill-on-rgb, var(--ink-rgb)), 0.45);
+  pointer-events: none;
+  white-space: nowrap;}
+
+.sld-grip {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  background: var(--fill-on, var(--ink));
+  color: var(--fill-slab, var(--card));
+  cursor: grab;
+  pointer-events: auto;
+  transform-origin: 0% 50%;
+  transition: none;
+  z-index: 2;}
+
+.sld-track[data-held] .sld-grip { cursor: grabbing; }
+.sld-track[data-pending] .sld-grip { cursor: wait; }
+
+.sld-arrow,
+.sld-done {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+  pointer-events: none;}
+
+/* the handle holding at the wall, waiting on the real approve
+   call — not in the vendored original, which had nothing to
+   wait on. Same spinner geometry as the rest of the app's
+   .loading-spinner, recoloured to sit on the filled handle. */
+.sld-pending {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;}
+
+.sld-spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  /* currentColor: .sld-grip already sets color to --fill-slab, the
+     handle's own foreground, so this matches either theme with no
+     new token needed. color-mix stands in for the app's own
+     .loading-spinner's two-tone ring (components.css) — dim ring,
+     full-strength top arc — using one color instead of two tokens. */
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: sld-spin 700ms linear infinite;}
+
+@keyframes sld-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sld-done { transition-duration: 1ms; }
+  .sld-spinner { animation-duration: 1.4s; }
+}
+
+/* ══ Seek ═══════════════════════════════════════════════════
+   A search icon that becomes a search field, as one object.
+
+   Everything below is width and radius. There is no crossfade
+   between two components, no second element to keep in sync,
+   and nothing that animates on a clock of its own — the box
+   is sprung in JS and every other value here is derived from
+   how far through that spring it is. That is the whole reason
+   the transformation reads as continuous: there is only one
+   number, so nothing can arrive at the wrong time relative to
+   anything else. */
+.sek {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--frame, 380px);
+  height: var(--frameh, 96px);
+  font-family: var(--font-ui);}
+
+.sek-skin {
+  position: relative;
+  width: var(--w);
+  height: var(--shut);
+  border-radius: var(--sek-r, 999px);
+  background: var(--pane);
+  isolation: isolate;
+  transform: translate(var(--lx), var(--ly)) scale(var(--sk, 1));
+  transition:
+    transform 260ms cubic-bezier(0.22, 0.9, 0.28, 1),
+    background 220ms ease;
+  overflow: hidden;}
+
+.sek-skin::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid transparent;
+  pointer-events: none;
+  z-index: 2;}
+
+[data-stroke="on"] .sek-skin::before { border-color: var(--pane-edge); }
+
+.sek:not([data-open="true"]) .sek-skin:hover {
+  --sk: 1.045;
+  --g-bright: 104%;}
+
+.sek[data-press="true"] .sek-skin {
+  --sk: 0.93;
+  transition: transform 90ms cubic-bezier(0.4, 0, 0.6, 1);}
+
+.sek[data-open="true"] .sek-skin { cursor: text; }
+
+.sek-lens {
+  position: absolute;
+  left: var(--inset);
+  top: 50%;
+  width: var(--lens);
+  height: var(--lens);
+  margin-top: calc(var(--lens) / -2);
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  pointer-events: none;
+  transition: stroke 200ms ease, stroke-width 200ms ease;}
+
+.sek-skin:hover .sek-lens { stroke: var(--ink); }
+
+.sek[data-open="true"] .sek-lens { stroke: var(--ink-4); }
+
+.sek[data-busy="true"] .sek-lens { stroke: var(--ink-2); stroke-width: 1.8; }
+
+.sek-field {
+  position: absolute;
+  left: calc(var(--inset) + var(--lens) + 11px);
+  right: 14px;
+  top: 0;
+  height: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 18px;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  outline: none;
+  opacity: var(--say);
+  transform: translateX(calc((1 - var(--say)) * -6px));
+  pointer-events: var(--say-hit, none);}
+
+.sek[data-open="true"] .sek-field { --say-hit: auto; }
+
+.sek-field::placeholder { color: var(--ink-5); }
+
+.sek-hit {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;}
+
+.sek-hit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px rgba(var(--ink-rgb), 0.4);}
+
+/* the create menu has no ::before to hang it on — its shape
+   is a blob on a metaball layer — so its ring is a spread
+   shadow, which is the same mark by another means */
+[data-stroke="on"] .crt-body {
+  box-shadow: 0 0 0 1px var(--pane-edge);}
+
+/* ── 5 · create ──────────────────────────────────────────── */
+.crt-stage {
+  position: relative;
+  width: 244px; height: 244px;
+  --pill-w: 120px;
+  --pill-h: 38px;
+  --panel-w: 212px;
+  --panel-h: 166px;
+  --w: var(--pill-w);
+  --h: var(--pill-h);
+  --r: var(--crt-shut-r, 999px);}
+
+.crt-stage[data-open="true"] {
+  --w: var(--panel-w);
+  --h: var(--panel-h);
+  --r: var(--crt-r, 28px);}
+
+.crt-blobs {
+  position: absolute; inset: 0;
+  pointer-events: none;}
+
+.crt-body {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: var(--w); height: var(--h);
+  border-radius: var(--r);
+
+  background: var(--slab);
+
+  transition: scale 340ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.crt-stage[data-sink="true"] .crt-body,
+.crt-stage[data-sink="true"] .crt-pill {
+  scale: 0.94;
+  transition: scale 120ms cubic-bezier(0.35, 0, 0.5, 1);}
+
+.crt-stage:not([data-open="true"]) .crt-body {
+  transition: scale 260ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.crt-stage {
+  --slab: var(--fill-slab, var(--board));
+  --on-slab: var(--fill-on, var(--ink));
+  --on-slab-rgb: var(--fill-on-rgb, var(--ink-rgb));}
+
+.crt-ink { position: absolute; inset: 0; }
+
+.crt-pill {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: var(--pill-w); height: var(--pill-h);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border: 0; background: none;
+  color: var(--on-slab);
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition:
+    width 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 160ms ease,
+    scale 340ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.crt-stage[data-open="true"] .crt-pill {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;}
+
+.crt-stage[data-sink="true"] .crt-pill { opacity: 1; }
+
+.crt-glyph { display: grid; place-items: center; }
+
+.crt-say {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: left;
+  transition: width 380ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.crt-say > span { display: inline-block; }
+
+.crt-panel {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: var(--panel-w); height: var(--panel-h);
+  padding: 11px 10px;
+  color: var(--on-slab);
+  pointer-events: none;}
+
+.crt-stage[data-open="true"] .crt-panel { pointer-events: auto; }
+
+.crt-menu {
+  margin: 0; padding: 0;
+  list-style: none;
+  display: grid; align-content: start; gap: 2px;}
+
+.crt-item {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 150ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.crt-stage[data-open="true"] .crt-item { opacity: 1; transform: none; }
+
+.crt-item button {
+  position: relative;
+  width: 100%;
+  display: flex; align-items: center; gap: 10px;
+  height: 34px; padding: 0 14px;
+  border: 0; border-radius: var(--crt-row-r, 999px);
+  background: none;
+  color: rgba(var(--on-slab-rgb), 0.78);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: color 200ms ease;}
+
+.crt-item button:hover { color: var(--on-slab); }
+
+.crt-item button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgba(var(--on-slab-rgb), 0.08);
+  opacity: 0;
+  transition: opacity 220ms ease;
+  pointer-events: none;}
+
+@media (hover: hover) {
+  .crt-item button:hover::before { opacity: 1; transition-duration: 140ms; }
+}
+
+.crt-item button:focus-visible::before { opacity: 1; }
+
+.crt-item button { isolation: isolate; }
+
+/* not in the vendored source: the demo's four item types never
+   run out, a captain's category list can start empty */
+.crt-empty {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  color: rgba(var(--on-slab-rgb), 0.5);
+  font-family: var(--font-ui);
+  font-size: 13px;}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-body, .crt-pill, .crt-item, .crt-say { transition-duration: 1ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-stage[data-sink="true"] .crt-body,
+    .crt-stage[data-sink="true"] .crt-pill { scale: 1; }
+}

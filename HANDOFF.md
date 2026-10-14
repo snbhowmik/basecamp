@@ -905,3 +905,18 @@ change production. Build + typecheck only.
 SRM palette (it currently uses stock frappe-ui tokens), the Bencho components,
 the receipt/ticket/stamp pieces. Frappe's `use*` data composables assume a
 Frappe backend; data stays Supabase RPCs (`supabase.rpc(...)`).
+
+**Update — Requests ported to `app-vue/`:** list (filters: on my desk / raised
+by me / all, search), New request dialog (category, subject, details, per-
+category custom fields, first-hop recipient, field values saved as the second
+write exactly as in React), and the request detail dialog (fields, activity,
+comments, forward, and approve / reject / request changes / mark reviewed
+with a note). Data layer is `app-vue/src/lib/requests.ts`, copied from the
+React one — same RPCs, so RLS is still the only authority. Build + typecheck
+only; **not run in a browser**, for the same reason as above.
+
+Still React-only: documents/ticket/stamp/receipt, stage tasks, participants,
+attachments, slide-to-approve, the Organisation/Workflow/Templates/Accounts/
+Invite pages, registration, invite acceptance, the setup wizard, MFA
+enrolment. A stock frappe-ui theme already matches the SRM look (the React
+retheme adopted frappe's blue tokens), so no separate theming pass is needed.

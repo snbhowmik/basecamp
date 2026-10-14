@@ -8,7 +8,7 @@ export const router = createRouter({
   routes: [
     { path: '/', redirect: '/dashboard' },
     { path: '/dashboard', component: () => import('./pages/DashboardPage.vue'), meta: { label: 'Dashboard', icon: 'lucide-layout-dashboard' } },
-    { path: '/requests', component: () => import('./pages/ComingPage.vue'), meta: { label: 'Requests', icon: 'lucide-inbox' } },
+    { path: '/requests', component: () => import('./pages/RequestsPage.vue'), meta: { label: 'Requests', icon: 'lucide-inbox' } },
     { path: '/hierarchy', component: () => import('./pages/ComingPage.vue'), meta: { label: 'Organisation', icon: 'lucide-network' } },
     { path: '/verify/:code?', component: () => import('./pages/VerifyPage.vue'), meta: { public: true } },
     { path: '/:rest(.*)*', redirect: '/dashboard' },

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { PageHeader, PageHeaderTitle, FormControl, Button, ErrorMessage, Badge, useColorScheme, Password } from 'frappe-ui';
+import { FormControl, Button, ErrorMessage, Badge, useColorScheme, Password } from 'frappe-ui';
+import AppHeader from '../components/AppHeader.vue';
 import SignaturePad from '../components/SignaturePad.vue';
 import OneTimeCode from '../components/OneTimeCode.vue';
 import { session, bootstrap } from '../lib/session';
@@ -80,9 +81,9 @@ const themeOptions = [{ label: 'System', value: 'system' }, { label: 'Light', va
 </script>
 
 <template>
-  <PageHeader><PageHeaderTitle title="My account" /></PageHeader>
+  <AppHeader title="My account" />
   <p v-if="loading" class="py-12 text-center text-p-sm text-ink-gray-5">Loading…</p>
-  <div v-else class="max-w-3xl space-y-10 p-5">
+  <div v-else class="max-w-3xl space-y-10 px-3 pb-10 pt-5 sm:px-5">
     <p class="text-p-sm text-ink-gray-5">Your details, password, and authenticator.</p>
 
     <section class="space-y-3">

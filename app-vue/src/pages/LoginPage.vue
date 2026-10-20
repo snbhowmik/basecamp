@@ -24,7 +24,7 @@ async function submit() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-surface-base p-5">
+  <div class="flex min-h-screen items-center justify-center bg-surface-base px-3 py-8 sm:px-5">
     <form class="w-full max-w-sm space-y-4" @submit.prevent="submit">
       <div>
         <h1 class="text-2xl text-ink-gray-9">Welcome back</h1>

@@ -1144,3 +1144,128 @@ the drop zone (near / over / ready / wrong-type) and the stamp. **Not seen live:
 (needs an approved request's document), and the full flows against the real database
 (submitting a request, approving, a real code) — those would change your org's data or need a
 fresh authenticator code, so please exercise one of each.
+
+---
+
+## 20. Claimable stages, role-removal guard, requester delete (0042–0047)
+
+Three changes from one session's bug reports: "a second mentor on a class never
+gets the request", "I can't remove the previous mentor", and "let the requester
+delete their own ongoing request." Diagnosed against the **live** db and the
+auth/db logs (everyone is on the Vue app at `/next/` now — confirmed with the
+captain), each migration tested in `begin; … rollback;` with full aal2 JWTs
+before applying through `scripts/apply-migrations.sh`.
+
+**The real cause of "second mentor never gets it":** routing was never the
+first-hop picker here — `category_first_hop_options` and `category_level_roles`
+for Internal OD are both empty. `create_and_submit_request` calls
+`advance_stage`, which called `resolve_stage_holder` — `LIMIT 1`, ordered so
+"the same person is picked every time." With two equal mentors the oldest
+assignment (Indira) always won; the newer one (Nuthan) could never hold and was
+not even a watcher.
+
+- **`0042_claimable_stages.sql`** — a stage with ONE top-tier eligible holder
+  still auto-assigns (no change for a single HOD/dean). TWO OR MORE equally
+  ranked holders (top tier of `is_primary`, then scoped-over-instance-wide) land
+  the request **unclaimed** (`current_holder = null`, still `in_review`).
+  `is_eligible_stage_holder()` is the one predicate (level, currency, scope,
+  not-the-requester), reused by the new `can_see_request` arm (narrowed to
+  `current_holder IS NULL`, so peers stop seeing each other's tickets the moment
+  one is claimed), `claim_request()` (atomic `update … where current_holder is
+  null`, `has_mfa`, approval stage only — two simultaneous claims, one wins),
+  `can_claim_request()` / `my_claimable_request_ids()` (UI gating), the
+  `my_notifications` "claimable" feed item, and the 0043 guard.
+  `decide_request`/`forward_request` now refuse an unclaimed request with "Claim
+  this request before acting on it" (`is distinct from`, closing the `null <>
+  uid` hole), and `record_task_result`'s `stage_role` branch is null-safe the
+  same way.
+- **`0043_role_removal_guard.sql`** — `admin_delete` for `role_assignments` now
+  refuses (right after the captain check, before the TOTP step) while the person
+  is the current holder of open tickets **on this role** (same level + scope),
+  with the message the captain asked for ("N unresolved ticket(s) still on this
+  person's desk … ticket transfer is coming in a later version"); and refuses
+  removing the **last** eligible holder while unclaimed tickets sit at that stage
+  (otherwise 0042 could strand a ticket nobody can claim).
+- **`0044_requester_delete.sql`** — `requests.deleted_at` + `delete_own_request()`:
+  the requester (only) withdraws their own request. Soft delete — `can_see_request`
+  is wrapped so a deleted request is visible to nobody but its requester;
+  `current_holder` is cleared so it leaves the holder's desk. `my_claimable_request_ids`
+  and the 0043 guards skip `deleted_at is not null`.
+- **`0045_delete_merge_fixes.sql`** — fixes two things 0043/0044 got wrong, caught
+  in review: (a) 0043/0044 re-issued `admin_delete` from the old 0014 body and
+  dropped `category_stages`/`stage_tasks` from the allowlist that **0026** had
+  added — the captain could no longer delete a stage or task. Restored, with the
+  guards kept. (b) `delete_own_request` now refuses once a request is finished
+  (approved/rejected/reviewed/closed) — only an *ongoing* one can be withdrawn,
+  so a signed, verifiable document is never hidden from its signers. (Note:
+  `can_see_request` had no definer after 0003, so the 0042/0044 re-issues of it
+  were clean; only `admin_delete` had drifted.)
+- **`0046_lock_down_new_rpcs.sql`** — security fixes, both caught in review:
+  (a) `delete_own_request` guarded with `requested_by <> auth.uid()`, which is
+  NULL for an anon caller, so the raise was skipped — an anonymous caller (request
+  UUIDs travel in `?open=` links) could withdraw any ongoing request. Fixed with
+  an explicit `auth.uid() is null` check. (b) All six functions added in
+  0042/0044 came back **anon-executable** (the default-grant trap 0021 exists
+  for); revoked from `public, anon`, left to `authenticated`. `get_member_card`
+  needed nothing — it counts only `approved/reviewed/closed` requests and 0045
+  forbids deleting anything but an ongoing one, so a withdrawn request can never
+  reach that count.
+
+- **`0047_lock_down_stage_internals.sql`** — a pre-existing hole the review
+  surfaced: `advance_stage` (created 0027, after 0021) had **no caller check and
+  was executable by `authenticated` and `anon`** — a student or an anon caller
+  could advance their own request past the mentor stage with no signature. It is
+  only ever called from `create_and_submit_request`/`decide_request` (both
+  SECURITY DEFINER, so they keep access as the owner). Revoked from
+  `public, anon, authenticated`, along with the internal helpers
+  `resolve_stage_holder` and `top_tier_holder_count`. Also revoked `anon` (both
+  the PUBLIC and the explicit anon grant) from `decide_request`, `forward_request`
+  and `record_task_result` — they must stay `authenticated` (the frontend calls
+  them) but were never meant for anon. Verified: direct `advance_stage` as a
+  requester → permission denied, while `create_and_submit_request` still lands a
+  request unclaimed.
+
+Also fixed this session, frontend-only: `PendingTab` (the mentor's default
+dashboard tab) now folds claimable tickets into "Waiting on you" with a "To
+claim" tag, so the second mentor sees it there too; and an **iOS Safari dialog
+scroll** bug (reported on a real iPhone 17, invisible in desktop device-
+emulation): the whole dialog was frozen, not just clipped. Cause is reka-ui's
+iOS body-scroll-lock (`useBodyScrollLock` / `checkOverflowScroll`): it prevents
+every `touchmove` whose target has no overflowing `overflow-y:auto/scroll`
+ancestor, and frappe-ui's scroll element is the outer `.dialog-scroll-container`,
+a chain the lock wasn't honouring on-device. Fix in `style.css`: make the dialog
+**card** (`.dialog-content`) the scroll region (`max-height: calc(100dvh - 2rem);
+overflow-y:auto`), so an overflow-scroll ancestor sits directly above the content
+and reka allows the gesture; the outer container keeps a `100dvh` height as a
+fallback. A first attempt that only switched the container to `100dvh` did not
+fix it (the lock, not viewport height, was the cause) — **still unverified on a
+real device.**
+
+**Verified live (rolled-back txns against real data):** top-tier count = 2 for
+the two mentors; both see + can claim an unclaimed ticket, the requester sees it
+but cannot claim, a senior (dean above the org) still sees it only via the
+pre-existing rank rule (the new arm returns false, so no leak); deciding while
+unclaimed refused; claim race — one wins, the second is refused; a single-holder
+stage still auto-assigns; the removal guard refuses Indira (2, then 1 open
+tickets) and refuses the last-eligible-holder strand; a role holding nothing
+deletes cleanly; requester soft-delete — requester still sees it, former holder
+and admin do not, and the guard stops counting a withdrawn ticket.
+
+**Frontend (`app-vue`, built and live at `/next/`):** request detail shows a
+Claim banner + "Claim this request" button when the viewer can claim (gated by
+`can_claim_request`), after which the normal footer appears without closing the
+dialog; the Requests list folds claimable tickets into "On my desk" with a "To
+claim" tag; the requester gets a "Delete this request" control (two-tap confirm,
+no authenticator code — it is their own request) and a "Deleted" banner/badge on
+a withdrawn one. `RequestsPage.reload()` re-points the open detail dialog at the
+fresh row so claim-then-act works (StageTasks reads `current_holder` off the
+prop); `notifications.ts` has a `claimable` case; `PendingTab` excludes withdrawn
+requests from both "waiting on you" and "raised by me".
+
+**Not clicked through in a browser yet** (same TOTP wall as every prior
+session): raise a fresh Internal OD request and confirm it lands unclaimed with
+both mentors notified; claim it as one mentor; and retry removing Indira — you
+should now get the "unresolved tickets" refusal. If removing her instead shows a
+session/login error, that is the separate, still-unexplained client-session
+symptom from the original report (no `admin_delete` call reached the db in the
+logs), not this guard — tell me and I'll chase it.

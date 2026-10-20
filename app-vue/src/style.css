@@ -1,1 +1,29 @@
 @import 'frappe-ui/style.css';
+
+/* iOS Safari dialog scrolling.
+   reka-ui (frappe-ui's dialog engine) locks the body on iOS by preventing EVERY
+   touchmove whose target has no overflow-scrolling ancestor — see reka-ui's
+   useBodyScrollLock / checkOverflowScroll. frappe-ui's scroll element is the
+   OUTER .dialog-scroll-container, and on a real iPhone that chain isn't honoured,
+   so a tall dialog (request detail, the claim view) won't scroll at all — the
+   whole window is frozen. (Desktop device-emulation doesn't run the iOS lock,
+   which is why it scrolls there.)
+   Fix: make the dialog CARD itself the scroll region. reka then finds an
+   overflow-y:auto ancestor directly above the content and allows the gesture,
+   and the card is capped to the dynamic viewport so nothing is clipped. The
+   outer container keeps a dvh height as a fallback scroll surface. */
+.dialog-scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+@supports (height: 100dvh) {
+  .dialog-scroll-container { height: 100dvh; }
+  .dialog-scroll-container > .min-h-screen { min-height: 100dvh; }
+  /* overflow-y:auto overrides the card's overflow:hidden on the y axis only, so
+     reka allows the touch scroll while the rounded corners (x) stay clipped. */
+  .dialog-scroll-container .dialog-content {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

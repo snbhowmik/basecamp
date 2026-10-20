@@ -16,6 +16,7 @@ import {
   type RequestRow, type HistoryRow, type CommentRow, type FieldValue, type ForwardTarget,
   listHistory, listComments, listFieldValues, decideRequest, forwardRequest,
   searchForwardTargets, addComment, renderFieldValue, errorMessage, type DecisionAction,
+  claimRequest, canClaimRequest, deleteOwnRequest,
 } from '../lib/requests';
 
 const props = defineProps<{ ctx: UserContext; request: RequestRow }>();
@@ -43,11 +44,60 @@ const showForward = ref(false);
 const forwardQuery = ref('');
 const forwardResults = ref<ForwardTarget[]>([]);
 
-const isHolder = computed(() => props.request.current_holder === props.ctx.profile.id);
+// Once the viewer claims it in this dialog, treat them as the holder without
+// waiting for the parent to hand back a refreshed row.
+const claimedByMe = ref(false);
+const canClaim = ref(false);
+const isHolder = computed(() => props.request.current_holder === props.ctx.profile.id || claimedByMe.value);
 const isOpen = computed(() => !['approved', 'rejected', 'reviewed', 'closed'].includes(props.request.status));
 const canAct = computed(() => isHolder.value && isOpen.value);
+// The requester may withdraw their own request (soft delete). confirmDelete
+// is a deliberate second tap — no authenticator code, it is their own request.
+const isRequester = computed(() => props.request.requested_by === props.ctx.profile.id);
+const isDeleted = computed(() => !!props.request.deleted_at);
+const confirmDelete = ref(false);
+
+async function removeOwn() {
+  busy.value = true;
+  error.value = '';
+  try {
+    await deleteOwnRequest(props.request.id);
+    emit('changed');
+    open.value = false;
+  } catch (e) {
+    error.value = errorMessage(e, 'Could not delete this request.');
+  } finally {
+    busy.value = false;
+  }
+}
+// Unclaimed and mine to take — a stage with two or more equal holders lands here.
+const showClaim = computed(() =>
+  canClaim.value && !claimedByMe.value && props.request.current_holder === null && isOpen.value);
+
+async function claim() {
+  busy.value = true;
+  error.value = '';
+  try {
+    await claimRequest(props.request.id);
+    claimedByMe.value = true;
+    canClaim.value = false;
+    emit('changed');
+    history.value = await listHistory(props.request.id);
+  } catch (e) {
+    error.value = errorMessage(e, 'Could not claim this request.');
+  } finally {
+    busy.value = false;
+  }
+}
 
 watch(() => props.request.id, (id) => {
+  claimedByMe.value = false;
+  canClaim.value = false;
+  confirmDelete.value = false;
+  // Only ask about claiming when the request is actually sitting unclaimed.
+  if (props.request.current_holder === null && isOpen.value) {
+    canClaimRequest(id).then((c) => { canClaim.value = c; }).catch(() => { canClaim.value = false; });
+  }
   listHistory(id).then((h) => { history.value = h; }).catch(() => { history.value = []; });
   listComments(id).then((c) => { comments.value = c; }).catch(() => { comments.value = []; });
   listFieldValues(id).then((f) => { fieldValues.value = f; }).catch(() => { fieldValues.value = []; });
@@ -87,6 +137,12 @@ async function act(fn: () => Promise<void>) {
 const decide = (a: DecisionAction) => act(() => decideRequest(props.request.id, a, note.value));
 
 const actions = computed(() => {
+  if (showClaim.value) {
+    return [
+      { label: 'Close', variant: 'subtle' as const },
+      { label: 'Claim this request', variant: 'solid' as const, theme: 'green' as const, onClick: claim },
+    ];
+  }
   if (!canAct.value) return [{ label: 'Close', variant: 'subtle' as const }];
   const list = [
     { label: 'Forward', variant: 'subtle' as const, onClick: () => { showForward.value = !showForward.value; } },
@@ -127,6 +183,16 @@ async function postComment() {
   <Dialog v-model:open="open" :title="request.title" size="2xl" :actions="actions">
     <div class="space-y-5">
       <ErrorMessage :message="error" />
+
+      <div v-if="showClaim" class="rounded-6 border border-outline-amber-2 bg-surface-amber-1 p-3 text-p-sm text-ink-amber-8">
+        This request is waiting for a mentor to pick it up. Claim it to act on it — once you do, it moves to your desk.
+      </div>
+      <div v-else-if="request.current_holder === null && isOpen && !isDeleted" class="rounded-6 border border-outline-gray-2 bg-surface-gray-1 p-3 text-p-sm text-ink-gray-6">
+        This request is unclaimed — it is waiting for one of its mentors to pick it up.
+      </div>
+      <div v-if="isDeleted" class="rounded-6 border border-outline-red-2 bg-surface-red-1 p-3 text-p-sm text-ink-red-7">
+        You deleted this request. Only you can see it — it has been withdrawn from everyone else.
+      </div>
 
       <dl class="grid grid-cols-[8rem_1fr] gap-y-2 text-p-sm">
         <dt class="text-ink-gray-5">Reference</dt><dd class="font-mono">{{ request.reference_number }}</dd>
@@ -214,6 +280,21 @@ async function postComment() {
             />
           </div>
           <Button :disabled="busy || !commentBody.trim()" @click="postComment">Post</Button>
+        </div>
+      </div>
+
+      <div v-if="isRequester && !isDeleted && isOpen" class="border-t pt-4">
+        <template v-if="!confirmDelete">
+          <Button theme="red" variant="subtle" :disabled="busy" @click="confirmDelete = true">
+            <template #prefix><span class="lucide-trash-2 size-4" aria-hidden="true" /></template>Delete this request
+          </Button>
+        </template>
+        <div v-else class="space-y-2 rounded-6 border border-outline-red-2 bg-surface-red-1 p-3">
+          <p class="text-p-sm text-ink-red-7">Delete this request? It will be withdrawn from everyone else; you will still see it in your own list.</p>
+          <div class="flex gap-2">
+            <Button theme="red" variant="solid" :loading="busy" @click="removeOwn">Yes, delete it</Button>
+            <Button variant="subtle" :disabled="busy" @click="confirmDelete = false">Cancel</Button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { PageHeader, PageHeaderTitle, FormControl, Button, ErrorMessage } from 'frappe-ui';
+import { FormControl, Button, ErrorMessage } from 'frappe-ui';
+import AppHeader from '../components/AppHeader.vue';
 import { listCategories } from '../lib/org';
 import { listLevels } from '../lib/levels';
 import { listBindingKeys, listTemplates, saveTemplate, sanitizeDocumentHtml, type BindingKey, type DocumentTemplate } from '../lib/documents';
@@ -117,13 +118,13 @@ const categoryOptions = computed(() => categories.value.map((c) => ({ label: c.n
 </script>
 
 <template>
-  <PageHeader><PageHeaderTitle title="Document templates" /></PageHeader>
-  <div class="max-w-4xl space-y-5 p-5">
+  <AppHeader title="Document templates" />
+  <div class="max-w-4xl space-y-5 px-3 pb-10 pt-5 sm:px-5">
     <p class="text-p-sm text-ink-gray-5">Letters generated from a request — an Annexure, an NOC. Written here, per category, with the request's own fields dropped in.</p>
     <ErrorMessage :message="error" />
     <p v-if="msg" class="text-p-sm text-ink-green-7">{{ msg }}</p>
 
-    <div class="grid grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
       <FormControl v-model="categoryId" type="select" label="Category" :options="categoryOptions" />
       <FormControl v-model="docType" label="Document type" placeholder="annexure_4_4" />
       <FormControl v-model="name" label="Display name" placeholder="Annexure 4.4" />
@@ -157,6 +158,7 @@ const categoryOptions = computed(() => categories.value.map((c) => ({ label: c.n
 
     <section v-if="templates.length" class="space-y-2">
       <h2 class="text-lg-semibold">Published versions</h2>
+      <div class="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
       <table class="w-full text-left text-p-sm">
         <thead class="border-b text-ink-gray-5"><tr><th class="py-2 font-normal">Type</th><th class="font-normal">Name</th><th class="font-normal">Version</th><th class="font-normal">Published</th><th /></tr></thead>
         <tbody class="divide-y divide-outline-gray-1">
@@ -167,6 +169,7 @@ const categoryOptions = computed(() => categories.value.map((c) => ({ label: c.n
           </tr>
         </tbody>
       </table>
+</div>
     </section>
   </div>
 </template>

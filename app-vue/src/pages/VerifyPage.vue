@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { Button, FormControl, ErrorMessage } from 'frappe-ui';
 import { supabase } from '../lib/supabase';
 import StampMark from '../components/StampMark.vue';
+import Brand from '../components/Brand.vue';
 import { decorativeBars } from '../lib/barcode';
 
 interface Sig { signer: string; role: string; stage: string; signed_at: string }
@@ -38,43 +39,55 @@ onMounted(() => { if (input.value) run(); });
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-surface-base p-5">
-    <div class="w-full max-w-md space-y-4">
-      <div>
-        <h1 class="text-2xl text-ink-gray-9">Verify a document</h1>
-        <p class="text-p-base text-ink-gray-5">Enter the reference code printed on the document.</p>
+  <!-- top-aligned, not vertically centred: a centred card jumps every time the result appears -->
+  <div class="min-h-screen bg-surface-base px-3 pb-12 pt-8 sm:px-5 sm:pt-16">
+    <div class="mx-auto w-full max-w-md space-y-6">
+      <div class="space-y-4">
+        <div class="inline-block rounded-4 bg-white px-2 py-1"><Brand :height="30" /></div>
+        <div>
+          <h1 class="text-2xl text-ink-gray-9">Verify a document</h1>
+          <p class="mt-1 text-p-base text-ink-gray-5">Enter the reference code printed on the document, or scan its QR code.</p>
+        </div>
       </div>
+
       <form class="space-y-3" @submit.prevent="run">
-        <FormControl v-model="input" label="Reference code" required />
-        <Button variant="solid" type="submit" class="w-full" :loading="loading">Check</Button>
+        <FormControl v-model="input" label="Reference code" placeholder="e.g. F14203A43D1D42C2…" autocomplete="off" autocapitalize="characters" spellcheck="false" required />
+        <Button variant="solid" type="submit" class="w-full" size="md" :loading="loading">Check</Button>
       </form>
+
       <ErrorMessage :message="error" />
-      <div v-if="result && !result.found" class="rounded-6 border border-outline-red-3 bg-surface-red-2 p-4 text-ink-red-7 text-p-sm">
-        No record matches that reference code.
+
+      <div v-if="result && !result.found" class="rounded-6 border border-outline-red-3 bg-surface-red-2 p-4 text-p-sm text-ink-red-7">
+        <div class="text-base-medium">No such document</div>
+        No record matches that reference code. It may be mistyped, or the document may not be genuine.
       </div>
-      <!-- genuine: a status line, then the itemised receipt of who approved what and when, closed by the stamp -->
-      <div v-if="result?.found" class="space-y-3">
-        <div class="space-y-1 rounded-6 border p-4" :class="result.intact ? 'border-outline-green-3 bg-surface-green-2 text-ink-green-7' : 'border-outline-amber-3 bg-surface-amber-2 text-ink-amber-7'">
-          <div class="text-base-medium">{{ result.intact ? 'Genuine — and unchanged since it was signed.' : 'Genuine record, but the request has changed since it was signed.' }}</div>
-          <div class="text-p-sm">{{ result.doc_type }} · issued {{ result.issued_at ? new Date(result.issued_at).toLocaleDateString() : '—' }}</div>
-          <p v-if="!result.intact" class="text-p-sm">
-            A signed document is hashed against the request's data, and that data has changed since — so this printout no longer reflects what was approved. That is not proof of forgery: a request sent back for changes and resubmitted will also read this way. Ask the holder for a freshly generated copy, which carries a new reference code.
-          </p>
+
+      <!-- The receipt IS the result: it is what the database holds for this code. -->
+      <div v-if="result?.found" class="space-y-4">
+        <div v-if="!result.intact" class="space-y-1 rounded-6 border border-outline-amber-3 bg-surface-amber-2 p-4 text-p-sm text-ink-amber-7">
+          <div class="text-base-medium">This request has changed since it was signed</div>
+          A signed document is hashed against the request's data, and that data has changed since — so this printout no longer reflects what was approved. That is not proof of forgery: a request sent back for changes and resubmitted will also read this way. Ask the holder for a freshly generated copy, which carries a new reference code.
         </div>
 
-        <div v-if="result.signatures?.length" class="mx-2">
+        <div class="px-1">
           <div class="verify-paper bg-white px-5 pb-9 pt-5 font-mono text-[13px] text-[#16161a]">
-            <div class="font-sans text-base font-semibold">Approval record</div>
-            <div class="my-2 border-t border-dashed border-[#d4d4d4]" />
-            <div v-for="(s, i) in result.signatures" :key="i" class="py-1">
-              <div class="flex justify-between gap-3"><span>{{ s.stage || s.role }}</span><span>{{ s.signer }}</span></div>
-              <div class="flex justify-between gap-3 text-[11px] text-[#737373]"><span>{{ s.role && s.role !== s.stage ? s.role : '' }}</span><span>{{ new Date(s.signed_at).toLocaleDateString() }}</span></div>
+            <div class="flex items-baseline justify-between gap-3">
+              <span class="font-sans text-base font-semibold">{{ result.doc_type }}</span>
+              <span class="text-[11px] text-[#737373]">issued {{ result.issued_at ? new Date(result.issued_at).toLocaleDateString() : '—' }}</span>
             </div>
+            <div class="my-2 border-t border-dashed border-[#d4d4d4]" />
+            <template v-if="result.signatures?.length">
+              <div v-for="(s, i) in result.signatures" :key="i" class="py-1">
+                <div class="flex justify-between gap-3"><span>{{ s.stage || s.role }}</span><span class="text-right">{{ s.signer }}</span></div>
+                <div class="flex justify-between gap-3 text-[11px] text-[#737373]"><span>{{ s.role && s.role !== s.stage ? s.role : '' }}</span><span>{{ new Date(s.signed_at).toLocaleDateString() }}</span></div>
+              </div>
+            </template>
+            <p v-else class="py-1 text-[#737373]">No approvals are recorded on this document.</p>
             <div class="my-2 border-t border-dashed border-[#d4d4d4]" />
             <svg class="block h-7 w-full" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true">
               <rect v-for="(w, i) in bars" :key="i" :x="bars.slice(0, i).reduce((a, b) => a + b + 1, 0)" y="0" :width="w" height="24" fill="currentColor" />
             </svg>
-            <div class="mt-1 text-center text-[11px] tracking-widest text-[#737373]">{{ code }}</div>
+            <div class="mt-1 break-all text-center text-[11px] tracking-widest text-[#737373]">{{ code }}</div>
           </div>
         </div>
 

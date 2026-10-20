@@ -32,7 +32,7 @@ async function out() {
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-surface-base p-5">
+  <div class="flex min-h-screen items-center justify-center bg-surface-base px-3 py-8 sm:px-5">
     <div class="w-full max-w-sm space-y-4">
       <div>
         <h1 class="text-2xl text-ink-gray-9">{{ session.factorId ? 'Two-step check' : 'Set up two-step sign-in' }}</h1>

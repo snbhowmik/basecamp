@@ -27,6 +27,7 @@ export interface RequestRow {
   org_unit_id: string | null;
   submitted_at: string | null;
   closed_at: string | null;
+  deleted_at: string | null;
   created_at: string;
   request_categories?: { name: string } | null;
   requester?: { full_name: string; email: string } | null;
@@ -184,6 +185,38 @@ export async function forwardRequest(
     p_note: note ?? null,
     p_acted_as: actedAs ?? null,
   });
+  if (error) throw error;
+}
+
+// Claiming an unclaimed stage. A stage with two or more equal holders (two
+// mentors for one class) lands unclaimed — current_holder is null — and any of
+// them can take it. The database makes the claim atomic, so of two people
+// claiming at once exactly one wins.
+export async function claimRequest(requestId: string) {
+  const { error } = await supabase.rpc('claim_request', { p_request_id: requestId });
+  if (error) throw error;
+}
+
+// Whether the caller may claim this specific request — used to show the Claim
+// button only to the people who can, not to a senior who can merely see it.
+export async function canClaimRequest(requestId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('can_claim_request', { p_request_id: requestId });
+  if (error) throw error;
+  return data === true;
+}
+
+// The ids, among everything the caller can see, that are unclaimed and theirs
+// to claim — so the list can fold them into "on my desk".
+export async function listClaimableRequestIds(): Promise<string[]> {
+  const { data, error } = await supabase.rpc('my_claimable_request_ids');
+  if (error) throw error;
+  return ((data ?? []) as string[]);
+}
+
+// Withdraw a request you raised — including one still in flight. A soft delete:
+// you keep seeing it, everyone else stops. Requester-only, enforced in the DB.
+export async function deleteOwnRequest(requestId: string) {
+  const { error } = await supabase.rpc('delete_own_request', { p_request_id: requestId });
   if (error) throw error;
 }
 

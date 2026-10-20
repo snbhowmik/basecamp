@@ -95,14 +95,15 @@ const retainOptions = [{ label: 'Purge after a grace period', value: 'purge' }, 
 
     <section class="space-y-4">
       <h2 class="text-lg-semibold">Request types</h2>
-      <form class="grid grid-cols-3 items-end gap-3" @submit.prevent="addType">
+      <form class="grid grid-cols-1 items-end gap-3 sm:grid-cols-3" @submit.prevent="addType">
         <FormControl v-model="typeName" label="Name" placeholder="On-Duty Request" required />
         <FormControl v-model="typeCode" label="Code" placeholder="od_request" required />
         <FormControl v-model="typeMode" type="select" label="Decision mode" :options="modeOptions" />
-        <Button variant="solid" type="submit" :loading="busy" class="col-span-3">Add request type</Button>
+        <Button variant="solid" type="submit" :loading="busy" class="sm:col-span-3">Add request type</Button>
       </form>
       <p v-if="!types.length" class="text-p-sm text-ink-gray-5">None yet.</p>
-      <table v-else class="w-full text-left text-p-sm">
+      <div v-else class="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+      <table class="w-full text-left text-p-sm">
         <thead class="border-b text-ink-gray-5"><tr><th class="py-2 font-normal">Type</th><th class="font-normal">Code</th><th class="font-normal">Mode</th><th /></tr></thead>
         <tbody class="divide-y divide-outline-gray-1">
           <tr v-for="t in types" :key="t.id">
@@ -122,30 +123,32 @@ const retainOptions = [{ label: 'Purge after a grace period', value: 'purge' }, 
           </tr>
         </tbody>
       </table>
+</div>
     </section>
 
     <section class="space-y-4">
       <h2 class="text-lg-semibold">Categories</h2>
-      <form class="grid grid-cols-2 gap-3" @submit.prevent="addCategory">
+      <form class="grid grid-cols-1 gap-3 sm:grid-cols-2" @submit.prevent="addCategory">
         <FormControl v-model="catType" type="select" label="Request type" :options="typeOptions" @update:model-value="catParent = ''" />
         <FormControl v-model="catParent" type="select" label="Parent category (optional)" :options="parentOptions" :disabled="!catType" />
         <FormControl v-model="catName" label="Name" placeholder="Hackathon" required />
         <FormControl v-model="catScope" type="select" label="Event kind" :options="scopeOptions" />
         <FormControl v-model="catClass" type="select" label="Tech / non-tech" :options="classOptions" description="Decides the route for internal events — set up under Routing and Stages." />
-        <div class="col-span-2">
+        <div class="sm:col-span-2">
           <FormControl
             v-model="catRetain" type="select" label="Attachments after close" :options="retainOptions"
             description="Nothing closes a request yet, so this has never taken effect and the purge job is still unbuilt. Material collected after the event belongs to a follow-up stage, under Stages."
           />
         </div>
-        <div class="col-span-2 flex items-center gap-3">
+        <div class="sm:col-span-2 flex items-center gap-3">
           <Button variant="solid" type="submit" :loading="busy" :disabled="!types.length || !catType">Add category</Button>
           <span v-if="!types.length" class="text-p-sm text-ink-gray-5">Create a request type first.</span>
         </div>
       </form>
 
       <p v-if="!categories.length" class="text-p-sm text-ink-gray-5">No categories yet. Categories are what people actually file requests against.</p>
-      <table v-else class="w-full text-left text-p-sm">
+      <div v-else class="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+      <table class="w-full text-left text-p-sm">
         <thead class="border-b text-ink-gray-5"><tr><th class="py-2 font-normal">Category</th><th class="font-normal">Kind</th><th class="font-normal">Parent</th><th class="font-normal">Status</th><th /></tr></thead>
         <tbody class="divide-y divide-outline-gray-1">
           <tr v-for="c in categories" :key="c.id">
@@ -184,6 +187,7 @@ const retainOptions = [{ label: 'Purge after a grace period', value: 'purge' }, 
           </tr>
         </tbody>
       </table>
+</div>
     </section>
   </div>
 

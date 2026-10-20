@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { PageHeader, PageHeaderTitle, TabButtons } from 'frappe-ui';
+import { TabButtons } from 'frappe-ui';
+import AppHeader from '../components/AppHeader.vue';
 import OrgSection from '../components/OrgSection.vue';
 import CatalogSection from '../components/CatalogSection.vue';
 
@@ -11,8 +12,8 @@ const section = ref<'org' | 'catalog'>('org');
 </script>
 
 <template>
-  <PageHeader><PageHeaderTitle title="Workflow" /></PageHeader>
-  <div class="space-y-5 p-5">
+  <AppHeader title="Workflow" />
+  <div class="space-y-5 px-3 pb-10 pt-5 sm:px-5">
     <p class="text-p-sm text-ink-gray-5">Org units, batches, and the request categories people can file against — all configurable, none of it hardcoded.</p>
     <TabButtons v-model="section" :options="[{ label: 'Org units & batches', value: 'org' }, { label: 'Request catalog', value: 'catalog' }]" />
     <OrgSection v-if="section === 'org'" />

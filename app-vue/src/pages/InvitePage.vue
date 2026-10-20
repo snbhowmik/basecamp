@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { PageHeader, PageHeaderTitle, FormControl, Button, ErrorMessage, Badge, TabButtons } from 'frappe-ui';
+import { FormControl, Button, ErrorMessage, Badge, TabButtons } from 'frappe-ui';
+import AppHeader from '../components/AppHeader.vue';
 import ConfirmDestructive from '../components/ConfirmDestructive.vue';
 import { supabase } from '../lib/supabase';
 import {
@@ -170,9 +171,9 @@ async function copyLink() {
 </script>
 
 <template>
-  <PageHeader><PageHeaderTitle title="Invite" /></PageHeader>
+  <AppHeader title="Invite" />
   <p v-if="loading" class="py-12 text-center text-p-sm text-ink-gray-5">Loading…</p>
-  <div v-else class="max-w-3xl space-y-8 p-5">
+  <div v-else class="max-w-3xl space-y-8 px-3 pb-10 pt-5 sm:px-5">
     <section class="space-y-4">
       <div>
         <h2 class="text-lg-semibold">Invite someone</h2>
@@ -187,7 +188,7 @@ async function copyLink() {
       </div>
 
       <form v-if="mode === 'single'" class="space-y-4" @submit.prevent="submit">
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormControl v-model="email" type="email" label="Email" required />
           <FormControl v-model="levelId" type="select" label="Level" :options="levelOptions" />
         </div>
@@ -198,7 +199,7 @@ async function copyLink() {
           </div>
           <p class="text-p-sm text-ink-gray-5">Tags scope authority; the member type below decides what identifier this account needs.</p>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormControl v-model="memberType" type="select" label="Member type" :options="typeOptions" />
           <FormControl v-model="roleKind" type="select" label="Role kind" :options="kindOptions" />
           <FormControl v-model="orgUnitId" type="select" label="Org unit (optional)" :options="unitOptions" />
@@ -211,7 +212,7 @@ async function copyLink() {
       </form>
 
       <div v-else class="space-y-4">
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <FormControl v-model="levelId" type="select" label="Level" :options="levelOptions" />
           <FormControl v-model="orgUnitId" type="select" label="Org unit" :options="unitOptions" />
           <FormControl v-model="batchId" type="select" label="Batch" :options="batchOptions" :disabled="!orgUnitId" />
@@ -241,7 +242,8 @@ async function copyLink() {
     <section class="space-y-3">
       <h3 class="text-lg-semibold">Invites you've sent</h3>
       <p v-if="!invites.length" class="text-p-sm text-ink-gray-5">No invites yet.</p>
-      <table v-else class="w-full text-left text-p-sm">
+      <div v-else class="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+      <table class="w-full text-left text-p-sm">
         <thead class="border-b text-ink-gray-5">
           <tr><th class="py-2 font-normal">Email</th><th class="font-normal">Status</th><th class="font-normal">Delivery</th><th class="font-normal">Created</th><th /></tr>
         </thead>
@@ -264,6 +266,7 @@ async function copyLink() {
           </tr>
         </tbody>
       </table>
+</div>
     </section>
   </div>
 

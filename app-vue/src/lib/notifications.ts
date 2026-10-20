@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 // state is when this person last looked.
 export interface NotificationItem {
   id: string;
-  kind: string; // assigned | progress | comment | outcome:<approved|rejected|changes_requested|reviewed>
+  kind: string; // assigned | progress | comment | claimable | outcome:<approved|rejected|changes_requested|reviewed>
   request_id: string;
   reference: string;
   title: string;
@@ -37,6 +37,7 @@ export function describe(n: NotificationItem): { text: string; tone: 'green' | '
     case 'outcome:reviewed': return { text: `Your request ${t} was reviewed by ${who}.`, tone: 'green' };
     case 'progress': return { text: `${t} moved on${n.detail ? ` to ${n.detail}` : ''}.`, tone: 'gray' };
     case 'comment': return { text: `${who} commented on ${t}.`, tone: 'gray' };
+    case 'claimable': return { text: `${t} is waiting for a mentor to claim it — you can pick it up.`, tone: 'amber' };
     default: return { text: `${t} was updated.`, tone: 'gray' };
   }
 }

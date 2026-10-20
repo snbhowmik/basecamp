@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { PageHeader, PageHeaderTitle, TabButtons } from 'frappe-ui';
+import { TabButtons } from 'frappe-ui';
+import AppHeader from '../components/AppHeader.vue';
 import NotificationsTab from '../components/NotificationsTab.vue';
 import PendingTab from '../components/PendingTab.vue';
 import SummaryTab from '../components/SummaryTab.vue';
@@ -32,8 +33,8 @@ const firstName = computed(() => ctx.value.profile.full_name.split(' ')[0]);
 </script>
 
 <template>
-  <PageHeader><PageHeaderTitle title="Dashboard" /></PageHeader>
-  <div class="space-y-5 p-5">
+  <AppHeader title="Dashboard" />
+  <div class="space-y-5 px-3 pb-10 pt-5 sm:px-5">
     <p class="text-p-base text-ink-gray-7">Welcome back, {{ firstName }}.</p>
     <TabButtons v-model="tab" :options="options" />
 

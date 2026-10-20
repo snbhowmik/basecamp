@@ -29,7 +29,7 @@ const scope = computed(() => session.ctx!.isCaptain ? 'the whole instance' : 'ev
   <div class="space-y-4">
     <p class="text-p-sm text-ink-gray-5">OD requests across {{ scope }}.</p>
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div v-for="w in layout" :key="w.id" class="sm:col-span-1" :class="spanClass(w.span)">
+      <div v-for="w in layout" :key="w.id" class="h-full sm:col-span-1" :class="spanClass(w.span)">
         <DashboardWidget :spec="w" :summary="summary" :loading="loading" :error="error" />
       </div>
     </div>

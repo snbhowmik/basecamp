@@ -97,7 +97,7 @@ const kindOptions = ['academic', 'club', 'event', 'admin'].map((k) => ({ label: 
             </Button>
           </li>
         </ul>
-        <div class="grid grid-cols-3 items-end gap-2">
+        <div class="grid grid-cols-1 items-end gap-2 sm:grid-cols-3">
           <FormControl v-model="newLevel" type="select" label="Level" :options="levelOptions" />
           <FormControl v-model="newOrgUnit" type="select" label="Scope" :options="unitOptions" />
           <FormControl v-model="newKind" type="select" label="Kind" :options="kindOptions" />

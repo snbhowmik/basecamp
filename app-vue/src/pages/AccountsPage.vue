@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { PageHeader, PageHeaderTitle, FormControl, ErrorMessage, Badge } from 'frappe-ui';
+import { FormControl, ErrorMessage, Badge } from 'frappe-ui';
+import AppHeader from '../components/AppHeader.vue';
 import PersonEditor from '../components/PersonEditor.vue';
 import { listAccounts, type AccountRow } from '../lib/org';
 import { errorMessage } from '../lib/requests';
@@ -31,8 +32,8 @@ const visible = computed(() => {
 </script>
 
 <template>
-  <PageHeader><PageHeaderTitle title="Accounts" /></PageHeader>
-  <div class="space-y-4 p-5">
+  <AppHeader title="Accounts" />
+  <div class="space-y-4 px-3 pb-10 pt-5 sm:px-5">
     <p class="text-p-sm text-ink-gray-5">Everyone with an account on this instance. Select a row to change roles, tags, or access.</p>
     <ErrorMessage :message="error" />
     <div class="flex items-center justify-between gap-3">
@@ -41,7 +42,8 @@ const visible = computed(() => {
     </div>
     <p v-if="loading" class="py-12 text-center text-p-sm text-ink-gray-5">Loading…</p>
     <p v-else-if="!visible.length" class="py-12 text-center text-base-medium">No accounts found</p>
-    <table v-else class="w-full text-left text-p-sm">
+    <div v-else class="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+    <table class="w-full text-left text-p-sm">
       <thead class="border-b text-ink-gray-5">
         <tr><th class="py-2 font-normal">Name</th><th class="font-normal">Level</th><th class="font-normal">Tags</th><th class="font-normal">MFA</th><th class="font-normal">Status</th><th class="font-normal">Joined</th></tr>
       </thead>
@@ -56,6 +58,7 @@ const visible = computed(() => {
         </tr>
       </tbody>
     </table>
+</div>
   </div>
   <PersonEditor v-if="editing" v-model:open="showEditor" :account="editing" @changed="reload" />
 </template>

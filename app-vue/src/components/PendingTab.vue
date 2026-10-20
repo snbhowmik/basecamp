@@ -2,26 +2,39 @@
 import { computed, onMounted, ref } from 'vue';
 import { ErrorMessage } from 'frappe-ui';
 import StatusBadge from './StatusBadge.vue';
-import { listVisibleRequests, errorMessage, type RequestRow } from '../lib/requests';
+import {
+  listVisibleRequests, listClaimableRequestIds, errorMessage, type RequestRow,
+} from '../lib/requests';
 import { session } from '../lib/session';
 
 const emit = defineEmits<{ count: [n: number] }>();
 
 const ctx = computed(() => session.ctx!);
 const rows = ref<RequestRow[]>([]);
+const claimableIds = ref<Set<string>>(new Set());
 const loading = ref(true);
 const error = ref('');
 
 const OPEN = ['submitted', 'in_review', 'changes_requested'];
 onMounted(async () => {
-  try { rows.value = await listVisibleRequests(); emit('count', waiting.value.length + mine.value.length); }
-  catch (e) { error.value = errorMessage(e, 'Could not load requests.'); }
+  try {
+    const [reqs, claimable] = await Promise.all([
+      listVisibleRequests(), listClaimableRequestIds().catch(() => [] as string[]),
+    ]);
+    rows.value = reqs;
+    claimableIds.value = new Set(claimable);
+    emit('count', waiting.value.length + mine.value.length);
+  } catch (e) { error.value = errorMessage(e, 'Could not load requests.'); }
   finally { loading.value = false; }
 });
 
-// "Waiting on you" is only meaningful for someone who decides things; a student's desk is empty by construction.
-const waiting = computed(() => rows.value.filter((r) => r.current_holder === ctx.value.profile.id && OPEN.includes(r.status)));
-const mine = computed(() => rows.value.filter((r) => r.requested_by === ctx.value.profile.id && OPEN.includes(r.status)));
+// "Waiting on you" is what is on your desk plus what is unclaimed and yours to
+// claim — the second mentor on a class needs to see the ticket waiting for them.
+const waiting = computed(() => rows.value.filter((r) =>
+  !r.deleted_at && OPEN.includes(r.status)
+  && (r.current_holder === ctx.value.profile.id || claimableIds.value.has(r.id))));
+// A request the requester withdrew (deleted_at) is no longer pending, even though they still see it.
+const mine = computed(() => rows.value.filter((r) => !r.deleted_at && r.requested_by === ctx.value.profile.id && OPEN.includes(r.status)));
 const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—');
 const where = (r: RequestRow) => [r.holder?.full_name ? `With ${r.holder.full_name}` : 'Unassigned', r.stage?.name].filter(Boolean).join(' · ');
 </script>
@@ -41,7 +54,10 @@ const where = (r: RequestRow) => [r.holder?.full_name ? `With ${r.holder.full_na
                 <div class="truncate text-base-medium">{{ r.title || r.reference_number }}</div>
                 <div class="text-p-sm text-ink-gray-5">{{ r.requester?.full_name ?? '—' }} · {{ r.request_categories?.name }} · filed {{ day(r.submitted_at ?? r.created_at) }}</div>
               </div>
-              <StatusBadge :status="r.status" />
+              <div class="flex shrink-0 items-center gap-1.5">
+                <span v-if="claimableIds.has(r.id)" class="rounded-full bg-surface-amber-2 px-1.5 py-0.5 text-xs text-ink-amber-8">To claim</span>
+                <StatusBadge :status="r.status" />
+              </div>
             </router-link>
           </li>
         </ul>

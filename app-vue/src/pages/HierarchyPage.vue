@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { PageHeader, PageHeaderTitle, FormControl, Button, ErrorMessage } from 'frappe-ui';
+import { FormControl, Button, ErrorMessage } from 'frappe-ui';
+import AppHeader from '../components/AppHeader.vue';
 import PersonCard from '../components/PersonCard.vue';
 import {
   loadHierarchy, descendantOrgUnits, countStudents, fetchStudentPage, searchPeople,
@@ -155,8 +156,8 @@ const toggleKind = (k: MemberType) => setFilter({ memberType: filter.value.membe
 </script>
 
 <template>
-  <PageHeader><PageHeaderTitle title="Organisation" /></PageHeader>
-  <div class="space-y-4 p-5">
+  <AppHeader title="Organisation" />
+  <div class="space-y-4 px-3 pb-10 pt-5 sm:px-5">
     <p class="text-p-sm text-ink-gray-5">The ladder, read top to bottom. Choose somebody to narrow the rungs below them to their people.</p>
     <ErrorMessage :message="error" />
     <p v-if="!snap && !error" class="py-12 text-center text-p-sm text-ink-gray-5">Loading…</p>

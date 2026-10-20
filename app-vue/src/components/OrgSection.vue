@@ -84,16 +84,17 @@ const batchName = computed(() => batchStart.value && batchEnd.value ? `${batchSt
     <div class="grid gap-8 lg:grid-cols-2">
       <section class="space-y-4">
         <h2 class="text-lg-semibold">Org units</h2>
-        <form class="grid grid-cols-2 items-end gap-3" @submit.prevent="addUnit">
+        <form class="grid grid-cols-1 items-end gap-3 sm:grid-cols-2" @submit.prevent="addUnit">
           <FormControl v-model="unitName" label="Name" placeholder="Computer Science and Engineering" required />
           <FormControl v-model="unitCode" label="Short code" placeholder="cse" required />
           <FormControl v-model="unitType" type="select" label="Type" :options="typeOptions" @update:model-value="unitType === 'faculty' && (unitParent = '')" />
           <FormControl v-model="unitParent" type="select" label="Parent faculty" :options="[{ label: unitType === 'programme' ? 'Top level' : 'Not applicable', value: '' }, ...faculties]" :disabled="unitType !== 'programme'" />
-          <Button variant="solid" type="submit" :loading="busy" class="col-span-2">Add org unit</Button>
+          <Button variant="solid" type="submit" :loading="busy" class="sm:col-span-2">Add org unit</Button>
         </form>
 
         <p v-if="!orgUnits.length" class="text-p-sm text-ink-gray-5">No org units yet. Add one above — students pick from these when they register.</p>
-        <table v-else class="w-full text-left text-p-sm">
+        <div v-else class="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+        <table class="w-full text-left text-p-sm">
           <thead class="border-b text-ink-gray-5"><tr><th class="py-2 font-normal">Org unit</th><th class="font-normal">Type</th><th class="font-normal">Code</th><th /></tr></thead>
           <tbody class="divide-y divide-outline-gray-1">
             <tr v-for="d in orgUnits" :key="d.id">
@@ -116,13 +117,14 @@ const batchName = computed(() => batchStart.value && batchEnd.value ? `${batchSt
             </tr>
           </tbody>
         </table>
+</div>
       </section>
 
       <section class="space-y-4">
         <h2 class="text-lg-semibold">Batches</h2>
         <form class="space-y-3" @submit.prevent="addBatch">
           <FormControl v-model="batchUnit" type="select" label="Org unit" :options="unitOptions" />
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormControl v-model="batchStart" type="number" label="Start year" placeholder="2024" required />
             <FormControl v-model="batchEnd" type="number" label="End year" placeholder="2028" required />
           </div>
@@ -131,7 +133,8 @@ const batchName = computed(() => batchStart.value && batchEnd.value ? `${batchSt
         </form>
 
         <p v-if="!batches.length" class="text-p-sm text-ink-gray-5">No batches yet. Add intakes like "2023-2027" per org unit. A reg-no prefix lets self-registration validate the number against the batch.</p>
-        <table v-else class="w-full text-left text-p-sm">
+        <div v-else class="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+        <table class="w-full text-left text-p-sm">
           <thead class="border-b text-ink-gray-5"><tr><th class="py-2 font-normal">Batch</th><th class="font-normal">Org unit</th><th class="font-normal">Reg-no prefix</th><th /></tr></thead>
           <tbody class="divide-y divide-outline-gray-1">
             <tr v-for="b in batches" :key="b.id">
@@ -160,6 +163,7 @@ const batchName = computed(() => batchStart.value && batchEnd.value ? `${batchSt
             </tr>
           </tbody>
         </table>
+</div>
       </section>
     </div>
   </div>

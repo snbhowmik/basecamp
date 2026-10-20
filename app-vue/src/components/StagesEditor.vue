@@ -126,19 +126,19 @@ const fileTags = computed(() => props.tags.filter((t) => !t.code.startsWith('org
           <p v-if="!stages.length" class="text-p-sm text-ink-gray-5">No stages — requests in this category go wherever the first-hop picker sends them.</p>
 
           <div v-for="(s, si) in stages" :key="s.id ?? `new-${si}`" class="space-y-3 rounded-6 border p-4">
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <FormControl :model-value="s.name" :label="`Stage ${s.stage_no}`" placeholder="HOD approval" @update:model-value="patchStage(si, { name: String($event ?? '') })" />
               <FormControl :model-value="s.level_id" type="select" label="Checked by" :options="levelOptions" @update:model-value="patchStage(si, { level_id: String($event) })" />
               <FormControl :model-value="s.stage_kind" type="select" label="Kind" :options="KINDS" @update:model-value="patchStage(si, { stage_kind: $event as StageKind })" />
             </div>
 
             <div v-for="(t, ti) in s.tasks" :key="t.id ?? `t-${ti}`" class="space-y-2 rounded-4 bg-surface-gray-1 p-3">
-              <div class="grid grid-cols-[2fr_1fr_1fr] gap-3">
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr]">
                 <FormControl :model-value="t.label" label="Task" placeholder="Parent permission taken" @update:model-value="patchTask(si, ti, { label: String($event ?? '') })" />
                 <FormControl :model-value="t.answer_type" type="select" label="Answer" :options="ANSWER_TYPES" @update:model-value="patchTask(si, ti, { answer_type: $event as AnswerType })" />
                 <FormControl :model-value="t.actor" type="select" label="Filled in by" :options="actorOptions(s)" @update:model-value="patchTask(si, ti, { actor: $event as TaskActor })" />
               </div>
-              <div v-if="t.answer_type === 'choice' || t.answer_type === 'yes_no'" class="grid grid-cols-2 gap-3">
+              <div v-if="t.answer_type === 'choice' || t.answer_type === 'yes_no'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <FormControl v-if="t.answer_type === 'choice'" :model-value="list(t.options)" placeholder="Options, comma separated" @update:model-value="patchTask(si, ti, { options: parseList(String($event ?? '')) })" />
                 <FormControl :model-value="list(t.passing_answers)" placeholder="Answers that clear it (blank: any)" @update:model-value="patchTask(si, ti, { passing_answers: parseList(String($event ?? '')) })" />
               </div>

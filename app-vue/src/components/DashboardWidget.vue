@@ -42,7 +42,7 @@ const hasTrend = computed(() => trendRows.value.some((r) => r.count > 0));
 </script>
 
 <template>
-  <div class="min-h-0 rounded-6 border bg-surface-base p-1">
+  <div class="h-full min-h-0 rounded-6 border bg-surface-base p-1">
     <template v-if="spec.kind === 'number'">
       <NumberCard
         :title="spec.title" :loading="loading" :error="err"

@@ -1,8 +1,8 @@
 import { supabase } from './supabase';
 
 // Registration, invite acceptance and TOTP enrolment — ported from
-// app/src/lib/invites.ts and wizard.ts. Confirmation links return to /next/…
-// so the Vue flow resumes itself (the React app's own links still go to /…).
+// app/src/lib/invites.ts and wizard.ts. Confirmation links return to /…
+// so the Vue flow resumes itself.
 
 export interface PublicOption { id: string; name: string }
 
@@ -52,7 +52,7 @@ export async function selfRegisterStudent(input: SelfRegisterInput) {
     options: {
       data: { full_name: input.fullName },
       // Explicit: do not let the link's destination depend on the Referer header.
-      emailRedirectTo: `${window.location.origin}/next/register`,
+      emailRedirectTo: `${window.location.origin}/register`,
     },
   });
   if (error) throw error;
@@ -81,7 +81,7 @@ export async function acceptInvite(email: string, fullName: string, password: st
     password,
     options: {
       data: { full_name: fullName },
-      emailRedirectTo: `${window.location.origin}/next/invite/${token}`,
+      emailRedirectTo: `${window.location.origin}/invite/${token}`,
     },
   });
   if (error) throw error;

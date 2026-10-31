@@ -46,14 +46,20 @@ function verifyCodeFrom(pathname: string): string | null | undefined {
   return m ? decodeURIComponent(m[1]) : undefined;
 }
 
+// The app is served under /rfold/ (vite base), but the paths below are app paths.
+// These two helpers translate between the browser's URL and those app paths.
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const appPath = () => window.location.pathname.slice(BASE.length) || '/';
+const appUrl = (p: string) => BASE + p;
+
 function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [ctx, setCtx] = useState<UserContext | null>(null);
   const [route, setRoute] = useState<Route>('/dashboard');
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [mfaExpiresIn, setMfaExpiresIn] = useState<number | null>(null);
-  const inviteToken = inviteTokenFrom(window.location.pathname);
-  const verifyCode = verifyCodeFrom(window.location.pathname);
+  const inviteToken = inviteTokenFrom(appPath());
+  const verifyCode = verifyCodeFrom(appPath());
 
   const bootstrap = useCallback(async () => {
     try {
@@ -103,7 +109,7 @@ function App() {
       // of an empty screen — the page's queries would be denied by RLS
       // anyway, this just avoids showing a broken one.
       const allowed = tabsFor(loaded).map((t) => t.route);
-      const fromPath = window.location.pathname as Route;
+      const fromPath = appPath() as Route;
       setRoute(allowed.includes(fromPath) ? fromPath : allowed[0]);
       setScreen('app');
     } catch (err) {
@@ -127,7 +133,7 @@ function App() {
       setScreen('invite');
       return;
     }
-    if (window.location.pathname === '/register') {
+    if (appPath() === '/register') {
       setScreen('register');
       return;
     }
@@ -136,7 +142,7 @@ function App() {
 
   useEffect(() => {
     const onPop = () => {
-      const p = window.location.pathname;
+      const p = appPath();
       if (inviteTokenFrom(p) || p === '/register') {
         window.location.reload();
         return;
@@ -157,19 +163,19 @@ function App() {
   }, [mfaExpiresIn, bootstrap]);
 
   const navigate = (r: Route) => {
-    window.history.pushState({}, '', r);
+    window.history.pushState({}, '', appUrl(r));
     setRoute(r);
   };
 
   const goHome = () => {
-    window.history.pushState({}, '', '/');
+    window.history.pushState({}, '', appUrl('/'));
     bootstrap();
   };
 
   const handleLogout = async () => {
     await signOut();
     setCtx(null);
-    window.history.pushState({}, '', '/');
+    window.history.pushState({}, '', appUrl('/'));
     setScreen('login');
   };
 
@@ -208,7 +214,7 @@ function App() {
     <LoginForm
       onLoggedIn={bootstrap}
       onSwitchToRegister={() => {
-        window.history.pushState({}, '', '/register');
+        window.history.pushState({}, '', appUrl('/register'));
         setScreen('register');
       }}
     />

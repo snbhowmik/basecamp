@@ -1269,3 +1269,56 @@ should now get the "unresolved tickets" refusal. If removing her instead shows a
 session/login error, that is the separate, still-unexplained client-session
 symptom from the original report (no `admin_delete` call reached the db in the
 logs), not this guard — tell me and I'll chase it.
+
+## 21. Routing: Vue app at `/`, React app at `/rfold/`; tunnel boot order
+
+- **Default app is the Vue app, at `/`.** `app-vue/vite.config.ts` has `base: '/'`;
+  `docker-compose.yml` mounts `./app-vue/dist` at the nginx root.
+- **Previous React app is at `/rfold/`.** `app/vite.config.ts` has `base: '/rfold/'`;
+  `./app/dist` is mounted at `/usr/share/nginx/rfold`. Its path checks and
+  `pushState` calls go through `BASE`/`appPath()`/`appUrl()` in `app/src/App.tsx`,
+  so `/rfold/register`, `/rfold/invite/<token>` and the sidebar tabs resolve.
+- **`/next/…` 301s to the same path without `/next`** (`nginx/frontend.conf`).
+  Emails and bookmarks from before the move keep working. The Vue app's
+  `emailRedirectTo` links now point at `/register` and `/invite/<token>`.
+- **`absolute_redirect off`** is required. Kong forwards the request with Host
+  `frontend`, so nginx's absolute redirects would point the browser at
+  `http://frontend/`.
+- **Kong caches the frontend container IP.** After recreating `frontend`, restart
+  `kong` too, or every route returns 502 (`connect() failed: No route to host`).
+- **Tunnel:** `cloudflared.service` is enabled and runs `tunnel run` with ingress
+  `basecamp.hackerxploit.org → http://localhost:8000` (Kong). Its drop-in at
+  `/etc/systemd/system/cloudflared.service.d/override.conf` (to install with root; not
+  yet in place as of this entry) orders it after
+  `docker.service` and sets `Restart=always`. Source copy:
+  `cloudflared-override.conf` in the session scratchpad; it needs root to install.
+
+## 22. Database reset, 2026-10-28
+
+- Full reset: `docker compose down -v`, then db → bootstrap-db-roles → auth →
+  storage → `apply-migrations.sh` (0001–0047, ledger at 47) → bootstrap-db-roles
+  again (it needs the mailer role the migrations create) → the rest of the stack.
+- The database is empty: no accounts, profiles, requests, role assignments or
+  storage rows. The setup wizard is the first thing a visitor sees, and it creates
+  the captain.
+- Backup taken first, outside the repo, at `~/backups/basecamp-20261028-183007/`
+  (`cluster.sql.gz` from `pg_dumpall`, plus `env.backup`). Restore with `psql` as
+  `supabase_admin`.
+- Garage was unconfigured after the reset: its layout, bucket and key lived in the
+  removed `basecamp_garage_meta` volume. `DEPLOY.md` (layout assign, bucket
+  create, key create, bucket allow) has to be run before attachments work. That
+  step generates new S3 keys, so `.env` changes with it.
+- The old attachment PDFs were not recoverable: `GARAGE_DATA_HOST_PATH`
+  (`/mnt/basecamp_garage/garage`) is an empty directory on the boot disk, with no
+  attached block volume, and garage refused to start without its marker file.
+
+**Update — garage on the root disk (same day):** no block volume is attached, so
+`GARAGE_DATA_HOST_PATH` now points at `/home/basecamp/garage-data` on the boot
+disk. This departs from DEPLOY.md's "not the boot disk" rule, as a temporary
+measure. Garage is configured: the layout gives the node a 20G capacity, which
+is advisory only (garage does not enforce it and nothing hard-caps the disk),
+`basecamp-files` is the bucket, and the existing `GARAGE_ACCESS_KEY` was
+re-imported with `garage key import`, so `.env` keys did not change. An upload,
+read-back and delete through storage succeeded. The garage metadata's stale
+`data_layout` record was removed. Move the data to the block volume once it is
+attached, and keep off-box backups of `garage-data`.
